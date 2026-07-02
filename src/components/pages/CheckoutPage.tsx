@@ -32,7 +32,14 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
             </span>
           </div>
           {i < steps.length - 1 && (
-            <div className={`w-12 sm:w-20 h-px mx-3 ${i < currentStep ? "bg-[#111]" : "bg-[#E8E8E8]"}`} />
+            <div className="w-12 sm:w-20 h-px mx-3 relative overflow-hidden bg-[#E8E8E8]">
+              <motion.div
+                initial={false}
+                animate={{ width: i < currentStep ? "100%" : "0%" }}
+                transition={{ duration: 0.5, ease: "easeInOut" }}
+                className="absolute inset-y-0 left-0 bg-[#4D5B47]"
+              />
+            </div>
           )}
         </div>
       ))}
@@ -50,6 +57,7 @@ export default function CheckoutPage() {
   const [shipping, setShipping] = useState({
     fullName: "", email: "", phone: "",
     address1: "", address2: "", city: "", state: "", pincode: "", country: "India",
+    notes: "",
   });
   const [paymentMethod, setPaymentMethod] = useState("card");
   const [cardDetails, setCardDetails] = useState({ number: "", expiry: "", cvv: "", name: "" });
@@ -62,11 +70,11 @@ export default function CheckoutPage() {
   const finalTotal = total + shippingCost;
 
   const paymentMethods = [
-    { id: "card", label: "Credit / Debit Card", icon: CreditCard },
-    { id: "upi", label: "UPI", icon: Smartphone },
-    { id: "netbanking", label: "Net Banking", icon: Building2 },
-    { id: "wallet", label: "Wallet", icon: Wallet },
-    { id: "cod", label: "Cash on Delivery", icon: Truck },
+    { id: "card", label: "Credit / Debit Card", icon: CreditCard, brand: "Visa, Mastercard, RuPay" },
+    { id: "upi", label: "UPI", icon: Smartphone, brand: "GPay, PhonePe, Paytm" },
+    { id: "netbanking", label: "Net Banking", icon: Building2, brand: "All major banks" },
+    { id: "wallet", label: "Wallet", icon: Wallet, brand: "Paytm, Amazon Pay" },
+    { id: "cod", label: "Cash on Delivery", icon: Truck, brand: "Pay on delivery" },
   ];
 
   const handlePlaceOrder = async () => {
@@ -308,6 +316,20 @@ export default function CheckoutPage() {
                       <InputField label="State" name="state" value={shipping.state} onChange={(v) => setShipping({ ...shipping, state: v })} />
                       <InputField label="Pincode" name="pincode" value={shipping.pincode} onChange={(v) => setShipping({ ...shipping, pincode: v })} />
                     </div>
+
+                    {/* Order Notes */}
+                    <div>
+                      <label className="block text-[11px] font-medium tracking-wider uppercase text-[#999] mb-1.5">
+                        Order Notes <span className="text-[#999] font-normal normal-case tracking-normal">(optional)</span>
+                      </label>
+                      <textarea
+                        value={shipping.notes}
+                        onChange={(e) => setShipping({ ...shipping, notes: e.target.value })}
+                        placeholder="Special delivery instructions, e.g. leave at the door, ring the bell twice..."
+                        rows={3}
+                        className="w-full px-3 py-2.5 border border-[#E8E8E8] text-[14px] outline-none focus:border-[#111] transition-colors bg-white placeholder:text-[#D1D1D1] resize-none"
+                      />
+                    </div>
                   </div>
                   <button
                     onClick={() => setStep(1)}
@@ -325,19 +347,23 @@ export default function CheckoutPage() {
 
                   <div className="space-y-2 mb-6">
                     {paymentMethods.map((pm) => (
-                      <button
+                      <motion.button
                         key={pm.id}
                         onClick={() => setPaymentMethod(pm.id)}
-                        className={`w-full flex items-center gap-3 p-4 border transition-all text-left ${
+                        whileTap={{ scale: 0.99 }}
+                        className={`w-full flex items-center gap-3 p-4 border-l-2 transition-all text-left ${
                           paymentMethod === pm.id
-                            ? "border-[#111] bg-white"
-                            : "border-[#E8E8E8] hover:border-[#999]"
+                            ? "border-l-[#4D5B47] border-y border-r border-[#4D5B47] bg-[#F8FAF7]"
+                            : "border-l-transparent border border-[#E8E8E8] hover:border-[#999]"
                         }`}
                       >
-                        <pm.icon className={`w-5 h-5 ${paymentMethod === pm.id ? "text-[#111]" : "text-[#999]"}`} strokeWidth={1.5} />
-                        <span className={`text-[14px] ${paymentMethod === pm.id ? "font-medium text-[#111]" : "text-[#666]"}`}>{pm.label}</span>
-                        {paymentMethod === pm.id && <CheckCircle className="w-4 h-4 text-[#4D5B47] ml-auto" />}
-                      </button>
+                        <pm.icon className={`w-5 h-5 ${paymentMethod === pm.id ? "text-[#4D5B47]" : "text-[#999]"}`} strokeWidth={1.5} />
+                        <div className="flex-1 min-w-0">
+                          <span className={`text-[14px] block ${paymentMethod === pm.id ? "font-medium text-[#111]" : "text-[#666]"}`}>{pm.label}</span>
+                          <span className="text-[11px] text-[#999]">{pm.brand}</span>
+                        </div>
+                        {paymentMethod === pm.id && <CheckCircle className="w-4 h-4 text-[#4D5B47] flex-shrink-0" />}
+                      </motion.button>
                     ))}
                   </div>
 
@@ -395,6 +421,12 @@ export default function CheckoutPage() {
                     <p className="text-[13px] text-[#666]">{shipping.address1}{shipping.address2 ? `, ${shipping.address2}` : ""}</p>
                     <p className="text-[13px] text-[#666]">{shipping.city}, {shipping.state} - {shipping.pincode}</p>
                     <p className="text-[13px] text-[#666]">{shipping.phone} &middot; {shipping.email}</p>
+                    {shipping.notes && (
+                      <div className="mt-2 pt-2 border-t border-[#E8E8E8]">
+                        <span className="text-[11px] text-[#999] uppercase tracking-wider">Notes: </span>
+                        <span className="text-[12px] text-[#666]">{shipping.notes}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Payment Summary */}

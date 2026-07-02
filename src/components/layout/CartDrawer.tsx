@@ -3,7 +3,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Minus, Plus, ShoppingBag, ArrowRight } from "lucide-react";
 import { useStore } from "@/lib/store";
-import Image from "next/image";
 
 export function CartDrawer() {
   const { isCartOpen, setCartOpen, cartItems, updateCartQuantity, removeFromCart, getCartTotal, getCartMrpTotal, getCartCount, navigate } = useStore();
@@ -76,12 +75,10 @@ export function CartDrawer() {
                       className="flex gap-4 pb-4 border-b border-[#E8E8E8]"
                     >
                       <div className="w-20 h-24 bg-[#E8E8E8] flex-shrink-0 relative overflow-hidden">
-                        <Image
+                        <img
                           src={item.image}
                           alt={item.name}
-                          fill
-                          className="object-cover"
-                          sizes="80px"
+                          className="absolute inset-0 w-full h-full object-cover"
                         />
                       </div>
                       <div className="flex-1 min-w-0">

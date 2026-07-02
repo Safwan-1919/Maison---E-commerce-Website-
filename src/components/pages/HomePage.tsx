@@ -9,7 +9,6 @@ import {
   ArrowRight, ChevronRight, Star, Truck, RotateCcw, Shield,
   Sparkles, Clock, Eye, Quote
 } from "lucide-react";
-import Image from "next/image";
 
 interface Product {
   id: string;
@@ -93,13 +92,10 @@ function HeroSection() {
     <motion.section ref={ref} className="relative h-screen min-h-[600px] max-h-[900px] overflow-hidden" style={{ opacity }}>
       {/* Background Image */}
       <motion.div className="absolute inset-0" style={{ y: bgY }}>
-        <Image
+        <img
           src="/images/hero-bg.png"
           alt="MAISON Collection"
-          fill
-          className="object-cover"
-          priority
-          sizes="100vw"
+          className="absolute inset-0 w-full h-full object-cover"
         />
         {/* Gradient Overlays */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/50" />
@@ -416,12 +412,10 @@ function EditorialSection() {
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
           <ScrollReveal direction="left">
             <motion.div ref={imgRef} className="relative aspect-[4/5] bg-[#F0EFED] overflow-hidden" style={{ y: imgY }}>
-              <Image
+              <img
                 src="/images/products/product-6.png"
                 alt="MAISON Editorial"
-                fill
-                className="object-cover"
-                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="absolute inset-0 w-full h-full object-cover"
               />
               <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/50 to-transparent">
                 <span className="text-[11px] tracking-[0.2em] uppercase text-white/80">SS25 Collection</span>
@@ -553,12 +547,10 @@ function FlashDealsSection() {
                 onClick={() => navigate("product", p.id)}
               >
                 <div className="relative aspect-[3/4] bg-[#1A1A1A] overflow-hidden mb-3 group-hover:[box-shadow:inset_0_0_30px_rgba(0,0,0,0.3)] transition-[box-shadow] duration-500">
-                  <Image
+                  <img
                     src={p.image}
                     alt={p.name}
-                    fill
-                    className="object-cover transition-transform duration-700 group-hover:scale-105"
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                   />
                   <span className="absolute top-3 left-3 px-2.5 py-1 bg-[#C53030] text-[#F8F8F6] text-[11px] font-medium tracking-wide uppercase">
                     {Math.round(p.discount)}% Off
@@ -668,7 +660,7 @@ function FeatureHighlight() {
         <div className="grid md:grid-cols-3 gap-6">
           <ScrollReveal delay={0}>
             <div className="relative aspect-[3/4] bg-[#F0EFED] overflow-hidden group cursor-pointer" onClick={() => useStore.getState().navigate("shop")}>
-              <Image src="/images/products/product-4.png" alt="Knitwear" fill className="object-cover transition-transform duration-700 group-hover:scale-105" sizes="(max-width: 768px) 100vw, 33vw" />
+              <img src="/images/products/product-4.png" alt="Knitwear" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 p-6">
                 <span className="text-[11px] tracking-[0.2em] uppercase text-white/70 block mb-1">New Season</span>
@@ -683,7 +675,7 @@ function FeatureHighlight() {
 
           <ScrollReveal delay={0.1}>
             <div className="relative aspect-[3/4] bg-[#F0EFED] overflow-hidden group cursor-pointer" onClick={() => useStore.getState().navigate("shop")}>
-              <Image src="/images/products/product-5.png" alt="Footwear" fill className="object-cover transition-transform duration-700 group-hover:scale-105" sizes="(max-width: 768px) 100vw, 33vw" />
+              <img src="/images/products/product-5.png" alt="Footwear" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 p-6">
                 <span className="text-[11px] tracking-[0.2em] uppercase text-white/70 block mb-1">Handcrafted</span>
@@ -698,7 +690,7 @@ function FeatureHighlight() {
 
           <ScrollReveal delay={0.2}>
             <div className="relative aspect-[3/4] bg-[#F0EFED] overflow-hidden group cursor-pointer" onClick={() => useStore.getState().navigate("shop")}>
-              <Image src="/images/products/product-10.png" alt="Outerwear" fill className="object-cover transition-transform duration-700 group-hover:scale-105" sizes="(max-width: 768px) 100vw, 33vw" />
+              <img src="/images/products/product-10.png" alt="Outerwear" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 p-6">
                 <span className="text-[11px] tracking-[0.2em] uppercase text-white/70 block mb-1">Investment Pieces</span>

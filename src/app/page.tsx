@@ -23,6 +23,7 @@ import { QuickViewModal } from "@/components/shared/QuickViewModal";
 import { PageSkeleton } from "@/components/shared/PageSkeleton";
 import { CompareDrawer } from "@/components/layout/CompareDrawer";
 import { SizeGuideModal } from "@/components/shared/SizeGuideModal";
+import { NewsletterPopup } from "@/components/shared/NewsletterPopup";
 import { GitCompareArrows, X } from "lucide-react";
 import { useCallback, useRef } from "react";
 
@@ -140,6 +141,7 @@ export default function Home() {
       <QuickViewModal />
       <CompareDrawer />
       <SizeGuideModal />
+      <NewsletterPopup />
 
       {/* Floating Compare Bar */}
       <AnimatePresence>

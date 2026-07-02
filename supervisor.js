@@ -21,7 +21,7 @@ function startNext() {
   restartCount++;
   isRestarting = false;
 
-  nextProcess = spawn('node', ['--max-old-space-size=192', 'server.js'], {
+  nextProcess = spawn('node', ['--max-old-space-size=384', 'server.js'], {
     cwd: STANDALONE_DIR,
     env: {
       ...process.env,

@@ -10,7 +10,6 @@ import {
   ShoppingBag, ClipboardCheck, RotateCcw,
   Calendar
 } from "lucide-react";
-import Image from "next/image";
 
 interface TrackingStep {
   label: string;
@@ -345,7 +344,7 @@ export default function OrderTrackingPage() {
                         className="flex gap-4 p-3 bg-white border border-[#E8E8E8] hover:border-[#D1D1D1] transition-colors"
                       >
                         <div className="w-16 h-20 sm:w-20 sm:h-24 bg-[#F0EFED] relative overflow-hidden flex-shrink-0">
-                          <Image src={item.image} alt={item.name} fill className="object-cover" sizes="80px" />
+                          <img src={item.image} alt={item.name} className="absolute inset-0 w-full h-full object-cover" />
                         </div>
                         <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
                           <div>

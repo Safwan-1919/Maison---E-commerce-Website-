@@ -9,7 +9,6 @@ import {
   TrendingUp, TrendingDown, DollarSign, Eye, ArrowUpRight,
   ArrowLeft, ChevronRight, Star, AlertCircle
 } from "lucide-react";
-import Image from "next/image";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   BarChart, Bar, CartesianGrid, PieChart, Pie, Cell
@@ -585,12 +584,10 @@ export default function AdminPage() {
                               >
                                 <td className="py-3 px-4">
                                   <div className="w-10 h-12 relative overflow-hidden bg-[#F0EFED]">
-                                    <Image
+                                    <img
                                       src={product.images?.split(",")[0] || "/placeholder.jpg"}
                                       alt={product.name}
-                                      fill
-                                      className="object-cover"
-                                      sizes="40px"
+                                      className="w-10 h-12 object-cover rounded-[2px]"
                                     />
                                   </div>
                                 </td>

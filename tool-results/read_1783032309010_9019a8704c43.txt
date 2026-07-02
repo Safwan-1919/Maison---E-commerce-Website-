@@ -1,0 +1,789 @@
+     1→     1→"use client";
+     2→     2→
+     3→     3→import { useEffect, useState, useCallback } from "react";
+     4→     4→import { motion, AnimatePresence } from "framer-motion";
+     5→     5→import { useStore } from "@/lib/store";
+     6→     6→import { ProductCard } from "@/components/shared/ProductCard";
+     7→     7→import { ScrollReveal } from "@/components/shared/ScrollReveal";
+     8→     8→import {
+     9→     9→  ArrowLeft, Heart, ShoppingBag, Star, Truck, RotateCcw, Shield,
+    10→    10→  ChevronDown, ChevronRight, ChevronLeft, Minus, Plus, Check, Ruler, X
+    11→    11→} from "lucide-react";
+    12→    12→import Image from "next/image";
+    13→    13→
+    14→    14→interface Product {
+    15→    15→  id: string;
+    16→    16→  name: string;
+    17→    17→  slug: string;
+    18→    18→  description: string | null;
+    19→    19→  price: number;
+    20→    20→  mrp: number;
+    21→    21→  category: string;
+    22→    22→  brand: string;
+    23→    23→  sizes: string;
+    24→    24→  colors: string;
+    25→    25→  images: string;
+    26→    26→  rating: number;
+    27→    27→  reviewCount: number;
+    28→    28→  stock: number;
+    29→    29→  isNew: boolean;
+    30→    30→  isTrending: boolean;
+    31→    31→  isBestSeller: boolean;
+    32→    32→  discount: number;
+    33→    33→  material: string | null;
+    34→    34→  care: string | null;
+    35→    35→  tags: string | null;
+    36→    36→  reviews: Review[];
+    37→    37→}
+    38→    38→
+    39→    39→interface Review {
+    40→    40→  id: string;
+    41→    41→  userName: string;
+    42→    42→  rating: number;
+    43→    43→  title: string | null;
+    44→    44→  comment: string | null;
+    45→    45→  createdAt: string;
+    46→    46→}
+    47→    47→
+    48→    48→function ProductSkeleton() {
+    49→    49→  return (
+    50→    50→    <div className="animate-pulse">
+    51→    51→      <div className="grid lg:grid-cols-2 gap-8 lg:gap-16">
+    52→    52→        <div className="aspect-[3/4] bg-[#F0EFED] rounded-[4px]" />
+    53→    53→        <div className="space-y-4">
+    54→    54→          <div className="h-3 w-24 bg-[#F0EFED] rounded-[4px]" />
+    55→    55→          <div className="h-8 w-3/4 bg-[#F0EFED] rounded-[4px]" />
+    56→    56→          <div className="h-4 w-48 bg-[#F0EFED] rounded-[4px]" />
+    57→    57→          <div className="h-6 w-32 bg-[#F0EFED] rounded-[4px]" />
+    58→    58→        </div>
+    59→    59→      </div>
+    60→    60→    </div>
+    61→    61→  );
+    62→    62→}
+    63→    63→
+    64→    64→function ImageGallery({ images, productName, onImageClick }: { images: string[]; productName: string; onImageClick?: (index: number) => void }) {
+    65→    65→  const [activeIndex, setActiveIndex] = useState(0);
+    66→    66→  const [zoomed, setZoomed] = useState(false);
+    67→    67→  const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
+    68→    68→
+    69→    69→  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    70→    70→    const rect = e.currentTarget.getBoundingClientRect();
+    71→    71→    setMousePos({
+    72→    72→      x: ((e.clientX - rect.left) / rect.width) * 100,
+    73→    73→      y: ((e.clientY - rect.top) / rect.height) * 100,
+    74→    74→    });
+    75→    75→  };
+    76→    76→
+    77→    77→  return (
+    78→    78→    <div className="space-y-3">
+    79→    79→      {/* Main Image */}
+    80→    80→      <div
+    81→    81→        className="relative aspect-[3/4] bg-[#F0EFED] overflow-hidden cursor-zoom-in"
+    82→    82→        onMouseEnter={() => setZoomed(true)}
+    83→    83→        onMouseLeave={() => setZoomed(false)}
+    84→    84→        onMouseMove={handleMouseMove}
+    85→    85→        onClick={() => onImageClick?.(activeIndex)}
+    86→    86→      >
+    87→    87→        <AnimatePresence mode="wait">
+    88→    88→          <motion.div
+    89→    89→            key={activeIndex}
+    90→    90→            initial={{ opacity: 0 }}
+    91→    91→            animate={{ opacity: 1 }}
+    92→    92→            exit={{ opacity: 0 }}
+    93→    93→            transition={{ duration: 0.3 }}
+    94→    94→            className="absolute inset-0"
+    95→    95→          >
+    96→    96→            <Image
+    97→    97→              src={images[activeIndex]}
+    98→    98→              alt={`${productName} - Image ${activeIndex + 1}`}
+    99→    99→              fill
+   100→   100→              className="object-cover transition-transform duration-300"
+   101→   101→              style={zoomed ? { transform: "scale(1.8)", transformOrigin: `${mousePos.x}% ${mousePos.y}%` } : {}}
+   102→   102→              sizes="(max-width: 1024px) 100vw, 50vw"
+   103→   103→              priority
+   104→   104→            />
+   105→   105→          </motion.div>
+   106→   106→        </AnimatePresence>
+   107→   107→        {images.length > 1 && (
+   108→   108→          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/40 backdrop-blur-sm px-3 py-1">
+   109→   109→            <span className="text-[11px] text-white font-medium">{activeIndex + 1} / {images.length}</span>
+   110→   110→          </div>
+   111→   111→        )}
+   112→   112→      </div>
+   113→   113→
+   114→   114→      {/* Thumbnails */}
+   115→   115→      {images.length > 1 && (
+   116→   116→        <div className="flex gap-2 overflow-x-auto scrollbar-none">
+   117→   117→          {images.map((img, i) => (
+   118→   118→            <button
+   119→   119→              key={i}
+   120→   120→              onClick={() => setActiveIndex(i)}
+   121→   121→              className={`flex-shrink-0 w-16 h-20 border-2 overflow-hidden transition-all ${
+   122→   122→                i === activeIndex ? "border-[#111]" : "border-transparent opacity-60 hover:opacity-100"
+   123→   123→              }`}
+   124→   124→            >
+   125→   125→              <Image src={img} alt="" width={64} height={80} className="w-full h-full object-cover" />
+   126→   126→            </button>
+   127→   127→          ))}
+   128→   128→        </div>
+   129→   129→      )}
+   130→   130→    </div>
+   131→   131→  );
+   132→   132→}
+   133→   133→
+   134→   134→function CollapsibleSection({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
+   135→   135→  const [open, setOpen] = useState(defaultOpen);
+   136→   136→  return (
+   137→   137→    <div className="border-b border-[#E8E8E8]">
+   138→   138→      <button
+   139→   139→        onClick={() => setOpen(!open)}
+   140→   140→        className="flex items-center justify-between w-full py-4 text-[13px] font-medium tracking-wide text-[#111] hover:text-[#666] transition-colors"
+   141→   141→      >
+   142→   142→        {title}
+   143→   143→        {open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+   144→   144→      </button>
+   145→   145→      <AnimatePresence>
+   146→   146→        {open && (
+   147→   147→          <motion.div
+   148→   148→            initial={{ height: 0, opacity: 0 }}
+   149→   149→            animate={{ height: "auto", opacity: 1 }}
+   150→   150→            exit={{ height: 0, opacity: 0 }}
+   151→   151→            transition={{ duration: 0.25 }}
+   152→   152→            className="overflow-hidden pb-4"
+   153→   153→          >
+   154→   154→            {children}
+   155→   155→          </motion.div>
+   156→   156→        )}
+   157→   157→      </AnimatePresence>
+   158→   158→    </div>
+   159→   159→  );
+   160→   160→}
+   161→   161→
+   162→   162→export default function ProductPage() {
+   163→   163→  const { selectedProductId, navigate, goBack, addToCart, toggleWishlist, isInWishlist, addToRecentlyViewed, setSizeGuideOpen, showNotification } = useStore();
+   164→   164→  const [product, setProduct] = useState<Product | null>(null);
+   165→   165→  const [similar, setSimilar] = useState<Product[]>([]);
+   166→   166→  const [loading, setLoading] = useState(true);
+   167→   167→  const [selectedSize, setSelectedSize] = useState<string | null>(null);
+   168→   168→  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+   169→   169→  const [quantity, setQuantity] = useState(1);
+   170→   170→  const [lightboxOpen, setLightboxOpen] = useState(false);
+   171→   171→  const [lightboxIndex, setLightboxIndex] = useState(0);
+   172→   172→  const [showReviewForm, setShowReviewForm] = useState(false);
+   173→   173→  const [reviewRating, setReviewRating] = useState(0);
+   174→   174→  const [hoverRating, setHoverRating] = useState(0);
+   175→   175→  const [reviewTitle, setReviewTitle] = useState("");
+   176→   176→  const [reviewName, setReviewName] = useState("");
+   177→   177→  const [reviewText, setReviewText] = useState("");
+   178→   178→  const [reviewErrors, setReviewErrors] = useState<Record<string, string>>({});
+   179→   179→  const [localReviews, setLocalReviews] = useState<Review[]>([]);
+   180→   180→
+   181→   181→  const fetchProduct = useCallback(async () => {
+   182→   182→    if (!selectedProductId) return;
+   183→   183→    setLoading(true);
+   184→   184→    try {
+   185→   185→      const res = await fetch(`/api/products/${selectedProductId}`);
+   186→   186→      const data = await res.json();
+   187→   187→      setProduct(data.product);
+   188→   188→      setSimilar(data.similar || []);
+   189→   189→    } catch (e) {
+   190→   190→      console.error(e);
+   191→   191→    }
+   192→   192→    setLoading(false);
+   193→   193→  }, [selectedProductId]);
+   194→   194→
+   195→   195→  useEffect(() => { fetchProduct(); }, [fetchProduct]);
+   196→   196→
+   197→   197→  // Escape key to close lightbox
+   198→   198→  useEffect(() => {
+   199→   199→    if (!lightboxOpen) return;
+   200→   200→    const handleKeyDown = (e: KeyboardEvent) => {
+   201→   201→      if (e.key === "Escape") setLightboxOpen(false);
+   202→   202→    };
+   203→   203→    window.addEventListener("keydown", handleKeyDown);
+   204→   204→    return () => window.removeEventListener("keydown", handleKeyDown);
+   205→   205→  }, [lightboxOpen]);
+   206→   206→
+   207→   207→  // Track recently viewed
+   208→   208→  useEffect(() => {
+   209→   209→    if (product) {
+   210→   210→      const timer = setTimeout(() => {
+   211→   211→        addToRecentlyViewed(product.id);
+   212→   212→      }, 2000);
+   213→   213→      return () => clearTimeout(timer);
+   214→   214→    }
+   215→   215→  }, [product]);
+   216→   216→
+   217→   217→  useEffect(() => {
+   218→   218→    if (product) {
+   219→   219→      const sizes: string[] = JSON.parse(product.sizes);
+   220→   220→      const colors: string[] = JSON.parse(product.colors);
+   221→   221→      if (!selectedSize && sizes.length > 0 && sizes[0] !== "ONE SIZE") {
+   222→   222→        setSelectedSize(sizes[Math.min(2, sizes.length - 1)]);
+   223→   223→      }
+   224→   224→      if (!selectedColor && colors.length > 0) {
+   225→   225→        setSelectedColor(colors[0]);
+   226→   226→      }
+   227→   227→      setLocalReviews(product.reviews || []);
+   228→   228→    }
+   229→   229→  }, [product]);
+   230→   230→
+   231→   231→  if (loading) return <main className="min-h-screen bg-[#F8F8F6] pt-20"><div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8"><ProductSkeleton /></div></main>;
+   232→   232→  if (!product) return <main className="min-h-screen bg-[#F8F8F6] pt-20 flex items-center justify-center"><p className="text-[15px] text-[#666]">Product not found</p></main>;
+   233→   233→
+   234→   234→  const images: string[] = JSON.parse(product.images);
+   235→   235→  const sizes: string[] = JSON.parse(product.sizes);
+   236→   236→  const colors: string[] = JSON.parse(product.colors);
+   237→   237→  const inWishlist = isInWishlist(product.id);
+   238→   238→  const deliveryDate = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+   239→   239→  const deliveryStr = deliveryDate.toLocaleDateString("en-IN", { weekday: "short", month: "short", day: "numeric" });
+   240→   240→
+   241→   241→  const handleAddToCart = () => {
+   242→   242→    addToCart({
+   243→   243→      productId: product.id,
+   244→   244→      name: product.name,
+   245→   245→      price: product.price,
+   246→   246→      mrp: product.mrp,
+   247→   247→      image: images[0],
+   248→   248→      size: selectedSize || sizes[0] || "M",
+   249→   249→      color: selectedColor || colors[0] || "Default",
+   250→   250→      quantity,
+   251→   251→    });
+   252→   252→  };
+   253→   253→
+   254→   254→  const handleBuyNow = () => {
+   255→   255→    addToCart({
+   256→   256→      productId: product.id,
+   257→   257→      name: product.name,
+   258→   258→      price: product.price,
+   259→   259→      mrp: product.mrp,
+   260→   260→      image: images[0],
+   261→   261→      size: selectedSize || sizes[0] || "M",
+   262→   262→      color: selectedColor || colors[0] || "Default",
+   263→   263→      quantity,
+   264→   264→    });
+   265→   265→    navigate("checkout");
+   266→   266→  };
+   267→   267→
+   268→   268→  return (
+   269→   269→    <main className="min-h-screen bg-[#F8F8F6] pt-20 pb-16">
+   270→   270→      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+   271→   271→        {/* Breadcrumb */}
+   272→   272→        <ScrollReveal>
+   273→   273→          <nav className="flex items-center gap-2 py-4 text-[12px] text-[#999]">
+   274→   274→            <button onClick={() => navigate("home")} className="hover:text-[#111] transition-colors">Home</button>
+   275→   275→            <ChevronRight className="w-3 h-3" />
+   276→   276→            <button onClick={() => navigate("shop")} className="hover:text-[#111] transition-colors">{product.category}</button>
+   277→   277→            <ChevronRight className="w-3 h-3" />
+   278→   278→            <span className="text-[#111] truncate max-w-[200px]">{product.name}</span>
+   279→   279→          </nav>
+   280→   280→        </ScrollReveal>
+   281→   281→
+   282→   282→        {/* Back Button */}
+   283→   283→        <button
+   284→   284→          onClick={goBack}
+   285→   285→          className="flex items-center gap-1.5 text-[12px] tracking-widest uppercase text-[#999] hover:text-[#111] transition-colors mb-6"
+   286→   286→        >
+   287→   287→          <ArrowLeft className="w-3.5 h-3.5" /> Back
+   288→   288→        </button>
+   289→   289→
+   290→   290→        {/* Product Layout */}
+   291→   291→        <div className="grid lg:grid-cols-2 gap-8 lg:gap-16">
+   292→   292→          {/* Gallery */}
+   293→   293→          <ScrollReveal direction="left">
+   294→   294→            <ImageGallery images={images} productName={product.name} onImageClick={(i) => { setLightboxIndex(i); setLightboxOpen(true); }} />
+   295→   295→          </ScrollReveal>
+   296→   296→
+   297→   297→          {/* Product Info */}
+   298→   298→          <ScrollReveal direction="right">
+   299→   299→            <div className="space-y-6">
+   300→   300→              {/* Brand */}
+   301→   301→              <p className="text-[11px] font-medium tracking-[0.2em] uppercase text-[#999]">
+   302→   302→                {product.brand}
+   303→   303→              </p>
+   304→   304→
+   305→   305→              {/* Name */}
+   306→   306→              <h1 className="text-[24px] sm:text-[28px] lg:text-[32px] font-medium tracking-[-0.02em] text-[#111] leading-tight">
+   307→   307→                {product.name}
+   308→   308→              </h1>
+   309→   309→
+   310→   310→              {/* Rating */}
+   311→   311→              <div className="flex items-center gap-3">
+   312→   312→                <div className="flex items-center gap-1">
+   313→   313→                  <Star className="w-4 h-4 fill-[#111] text-[#111]" />
+   314→   314→                  <span className="text-[14px] font-medium">{product.rating}</span>
+   315→   315→                </div>
+   316→   316→                <span className="text-[13px] text-[#999]">({product.reviewCount} reviews)</span>
+   317→   317→              </div>
+   318→   318→
+   319→   319→              {/* Price */}
+   320→   320→              <div className="flex items-baseline gap-3">
+   321→   321→                <span className="text-[24px] sm:text-[28px] font-medium text-[#111]">
+   322→   322→                  {"\u20B9"}{product.price.toLocaleString("en-IN")}
+   323→   323→                </span>
+   324→   324→                {product.mrp > product.price && (
+   325→   325→                  <>
+   326→   326→                    <span className="text-[16px] text-[#999] line-through">
+   327→   327→                      {"\u20B9"}{product.mrp.toLocaleString("en-IN")}
+   328→   328→                    </span>
+   329→   329→                    <span className="px-2 py-0.5 bg-[#F0EFED] text-[11px] font-medium tracking-wide text-[#111]">
+   330→   330→                      {product.discount}% OFF
+   331→   331→                    </span>
+   332→   332→                  </>
+   333→   333→                )}
+   334→   334→              </div>
+   335→   335→
+   336→   336→              {/* Short Description */}
+   337→   337→              {product.description && (
+   338→   338→                <p className="text-[14px] text-[#666] leading-relaxed">
+   339→   339→                  {product.description.length > 200 ? product.description.slice(0, 200) + "..." : product.description}
+   340→   340→                </p>
+   341→   341→              )}
+   342→   342→
+   343→   343→              <div className="border-t border-[#E8E8E8]" />
+   344→   344→
+   345→   345→              {/* Color Selection */}
+   346→   346→              {colors.length > 0 && (
+   347→   347→                <div>
+   348→   348→                  <p className="text-[12px] font-medium tracking-wider uppercase text-[#111] mb-3">
+   349→   349→                    Color: <span className="text-[#999] font-normal normal-case tracking-normal">{selectedColor}</span>
+   350→   350→                  </p>
+   351→   351→                  <div className="flex items-center gap-2">
+   352→   352→                    {colors.map((color) => (
+   353→   353→                      <button
+   354→   354→                        key={color}
+   355→   355→                        onClick={() => setSelectedColor(color)}
+   356→   356→                        className={`w-8 h-8 border-2 transition-all ${
+   357→   357→                          selectedColor === color ? "border-[#111] scale-110" : "border-[#E8E8E8] hover:border-[#999]"
+   358→   358→                        }`}
+   359→   359→                        style={{ backgroundColor: color }}
+   360→   360→                        title={color}
+   361→   361→                      />
+   362→   362→                    ))}
+   363→   363→                  </div>
+   364→   364→                </div>
+   365→   365→              )}
+   366→   366→
+   367→   367→              {/* Size Selection */}
+   368→   368→              {sizes.length > 0 && (
+   369→   369→                <div>
+   370→   370→                  <div className="flex items-center justify-between mb-3">
+   371→   371→                    <p className="text-[12px] font-medium tracking-wider uppercase text-[#111]">
+   372→   372→                      Size: <span className="text-[#999] font-normal normal-case tracking-normal">{selectedSize || "Select"}</span>
+   373→   373→                    </p>
+   374→   374→                    {sizes[0] !== "ONE SIZE" && (
+   375→   375→                      <button
+   376→   376→                        onClick={() => setSizeGuideOpen(true)}
+   377→   377→                        className="flex items-center gap-1 text-[11px] text-[#4D5B47] hover:text-[#111] transition-colors"
+   378→   378→                      >
+   379→   379→                        <Ruler className="w-3 h-3" /> Size Guide
+   380→   380→                      </button>
+   381→   381→                    )}
+   382→   382→                  </div>
+   383→   383→
+   384→   384→                  <div className="flex flex-wrap gap-2">
+   385→   385→                    {sizes.map((size) => (
+   386→   386→                      <button
+   387→   387→                        key={size}
+   388→   388→                        onClick={() => setSelectedSize(size)}
+   389→   389→                        className={`min-w-[44px] h-11 px-3 text-[13px] border transition-all flex items-center justify-center ${
+   390→   390→                          selectedSize === size
+   391→   391→                            ? "bg-[#111] text-[#F8F8F6] border-[#111]"
+   392→   392→                            : "border-[#E8E8E8] text-[#333] hover:border-[#999]"
+   393→   393→                        }`}
+   394→   394→                      >
+   395→   395→                        {size}
+   396→   396→                      </button>
+   397→   397→                    ))}
+   398→   398→                  </div>
+   399→   399→                </div>
+   400→   400→              )}
+   401→   401→
+   402→   402→              {/* Quantity */}
+   403→   403→              <div>
+   404→   404→                <p className="text-[12px] font-medium tracking-wider uppercase text-[#111] mb-3">Quantity</p>
+   405→   405→                <div className="inline-flex items-center border border-[#E8E8E8]">
+   406→   406→                  <button
+   407→   407→                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+   408→   408→                    className="w-11 h-11 flex items-center justify-center hover:bg-[#F0EFED] transition-colors"
+   409→   409→                  >
+   410→   410→                    <Minus className="w-3.5 h-3.5" strokeWidth={1.5} />
+   411→   411→                  </button>
+   412→   412→                  <span className="w-12 text-center text-[14px] font-medium">{quantity}</span>
+   413→   413→                  <button
+   414→   414→                    onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
+   415→   415→                    className="w-11 h-11 flex items-center justify-center hover:bg-[#F0EFED] transition-colors"
+   416→   416→                  >
+   417→   417→                    <Plus className="w-3.5 h-3.5" strokeWidth={1.5} />
+   418→   418→                  </button>
+   419→   419→                </div>
+   420→   420→                {product.stock <= 5 && product.stock > 0 && (
+   421→   421→                  <p className="text-[12px] text-[#C53030] mt-2">Only {product.stock} left in stock</p>
+   422→   422→                )}
+   423→   423→              </div>
+   424→   424→
+   425→   425→              {/* Action Buttons */}
+   426→   426→              <div className="space-y-3 pt-2">
+   427→   427→                <button
+   428→   428→                  onClick={handleAddToCart}
+   429→   429→                  className="w-full py-4 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#333] transition-colors flex items-center justify-center gap-2"
+   430→   430→                >
+   431→   431→                  <ShoppingBag className="w-4 h-4" />
+   432→   432→                  Add to Bag
+   433→   433→                </button>
+   434→   434→                <div className="flex gap-3">
+   435→   435→                  <button
+   436→   436→                    onClick={handleBuyNow}
+   437→   437→                    className="flex-1 py-3.5 border border-[#111] text-[#111] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#111] hover:text-[#F8F8F6] transition-all"
+   438→   438→                  >
+   439→   439→                    Buy Now
+   440→   440→                  </button>
+   441→   441→                  <button
+   442→   442→                    onClick={() => toggleWishlist(product.id)}
+   443→   443→                    className={`w-12 h-12 border flex items-center justify-center transition-all ${
+   444→   444→                      inWishlist ? "border-[#111] bg-[#111]" : "border-[#E8E8E8] hover:border-[#999]"
+   445→   445→                    }`}
+   446→   446→                  >
+   447→   447→                    <Heart
+   448→   448→                      className={`w-4 h-4 ${inWishlist ? "text-[#F8F8F6]" : "text-[#111]"}`}
+   449→   449→                      fill={inWishlist ? "currentColor" : "none"}
+   450→   450→                      strokeWidth={1.5}
+   451→   451→                    />
+   452→   452→                  </button>
+   453→   453→                </div>
+   454→   454→              </div>
+   455→   455→
+   456→   456→              {/* Delivery Info */}
+   457→   457→              <div className="border-t border-b border-[#E8E8E8] py-4 space-y-3">
+   458→   458→                <div className="flex items-center gap-3">
+   459→   459→                  <Truck className="w-4 h-4 text-[#4D5B47] flex-shrink-0" strokeWidth={1.5} />
+   460→   460→                  <div>
+   461→   461→                    <p className="text-[13px] text-[#111]">Free delivery by <span className="font-medium">{deliveryStr}</span></p>
+   462→   462→                    <p className="text-[11px] text-[#999]">Order within 2 hours for earliest delivery</p>
+   463→   463→                  </div>
+   464→   464→                </div>
+   465→   465→                <div className="flex items-center gap-3">
+   466→   466→                  <RotateCcw className="w-4 h-4 text-[#4D5B47] flex-shrink-0" strokeWidth={1.5} />
+   467→   467→                  <div>
+   468→   468→                    <p className="text-[13px] text-[#111]">Easy 30-day returns</p>
+   469→   469→                    <p className="text-[11px] text-[#999]">No questions asked return policy</p>
+   470→   470→                  </div>
+   471→   471→                </div>
+   472→   472→                <div className="flex items-center gap-3">
+   473→   473→                  <Shield className="w-4 h-4 text-[#4D5B47] flex-shrink-0" strokeWidth={1.5} />
+   474→   474→                  <div>
+   475→   475→                    <p className="text-[13px] text-[#111]">100% authentic products</p>
+   476→   476→                    <p className="text-[11px] text-[#999]">Sourced directly from brands</p>
+   477→   477→                  </div>
+   478→   478→                </div>
+   479→   479→              </div>
+   480→   480→
+   481→   481→              {/* Product Details Accordion */}
+   482→   482→              <div>
+   483→   483→                <CollapsibleSection title="Description &amp; Fit" defaultOpen>
+   484→   484→                  <p className="text-[14px] text-[#666] leading-relaxed">{product.description}</p>
+   485→   485→                </CollapsibleSection>
+   486→   486→                <CollapsibleSection title="Material &amp; Care">
+   487→   487→                  {product.material && (
+   488→   488→                    <p className="text-[13px] text-[#666] mb-2"><span className="text-[#111] font-medium">Material:</span> {product.material}</p>
+   489→   489→                  )}
+   490→   490→                  {product.care && (
+   491→   491→                    <p className="text-[13px] text-[#666]"><span className="text-[#111] font-medium">Care:</span> {product.care}</p>
+   492→   492→                  )}
+   493→   493→                </CollapsibleSection>
+   494→   494→                <CollapsibleSection title="Shipping &amp; Returns">
+   495→   495→                  <div className="space-y-2 text-[13px] text-[#666]">
+   496→   496→                    <p>Free shipping on orders over {"\u20B9"}2,000</p>
+   497→   497→                    <p>Standard delivery: 3-5 business days</p>
+   498→   498→                    <p>Express delivery: 1-2 business days ({"\u20B9"}299)</p>
+   499→   499→                    <p>30-day hassle-free returns</p>
+   500→   500→                    <p>Free returns on orders over {"\u20B9"}5,000</p>
+   501→   501→                  </div>
+   502→   502→                </CollapsibleSection>
+   503→   503→              </div>
+   504→   504→            </div>
+   505→   505→          </ScrollReveal>
+   506→   506→        </div>
+   507→   507→
+   508→   508→        {/* Reviews Section */}
+   509→   509→        <section className="mt-16 lg:mt-24">
+   510→   510→          <ScrollReveal>
+   511→   511→            <div className="flex items-center justify-between mb-8">
+   512→   512→              <div>
+   513→   513→                <h2 className="text-[24px] sm:text-[28px] font-medium tracking-[-0.02em]">Reviews</h2>
+   514→   514→                <p className="text-[13px] text-[#999] mt-1">{localReviews.length > 0 ? localReviews.length : product.reviewCount} reviews</p>
+   515→   515→              </div>
+   516→   516→              <div className="flex items-center gap-4">
+   517→   517→                {localReviews.length > 0 && (
+   518→   518→                  <div className="flex items-center gap-2">
+   519→   519→                    <span className="text-[32px] font-medium">{product.rating}</span>
+   520→   520→                    <div>
+   521→   521→                      <div className="flex items-center gap-0.5">
+   522→   522→                        {Array.from({ length: 5 }).map((_, i) => (
+   523→   523→                          <Star
+   524→   524→                            key={i}
+   525→   525→                            className={`w-3.5 h-3.5 ${i < Math.round(product.rating) ? "fill-[#B79B7B] text-[#B79B7B]" : "text-[#E8E8E8]"}`}
+   526→   526→                          />
+   527→   527→                        ))}
+   528→   528→                      </div>
+   529→   529→                      <p className="text-[11px] text-[#999] mt-0.5">Average rating</p>
+   530→   530→                    </div>
+   531→   531→                  </div>
+   532→   532→                )}
+   533→   533→                <button
+   534→   534→                  onClick={() => setShowReviewForm(!showReviewForm)}
+   535→   535→                  className="bg-[#4D5B47] text-white text-[13px] tracking-wide px-5 py-2.5 rounded-[4px] hover:bg-[#3A4835] transition-colors"
+   536→   536→                >
+   537→   537→                  {showReviewForm ? "Cancel" : "Write a Review"}
+   538→   538→                </button>
+   539→   539→              </div>
+   540→   540→            </div>
+   541→   541→          </ScrollReveal>
+   542→   542→
+   543→   543→          {/* Review Form */}
+   544→   544→          <AnimatePresence>
+   545→   545→            {showReviewForm && (
+   546→   546→              <motion.div
+   547→   547→                initial={{ height: 0, opacity: 0 }}
+   548→   548→                animate={{ height: "auto", opacity: 1 }}
+   549→   549→                exit={{ height: 0, opacity: 0 }}
+   550→   550→                transition={{ duration: 0.3 }}
+   551→   551→                className="overflow-hidden mb-8"
+   552→   552→              >
+   553→   553→                <div className="border border-[#E8E8E8] bg-white p-6 rounded-[4px]">
+   554→   554→                  <h3 className="text-[16px] font-medium text-[#111] mb-5 tracking-[-0.01em]">Write a Review</h3>
+   555→   555→
+   556→   556→                  {/* Star Rating */}
+   557→   557→                  <div className="mb-5">
+   558→   558→                    <label className="text-[13px] font-medium tracking-wide text-[#111] block mb-2">Your Rating</label>
+   559→   559→                    <div className="flex items-center gap-1">
+   560→   560→                      {Array.from({ length: 5 }).map((_, i) => {
+   561→   561→                        const starVal = i + 1;
+   562→   562→                        const isActive = starVal <= (hoverRating || reviewRating);
+   563→   563→                        const color = isActive ? (hoverRating ? "#4D5B47" : "#B79B7B") : "#E8E8E8";
+   564→   564→                        return (
+   565→   565→                          <button
+   566→   566→                            key={i}
+   567→   567→                            type="button"
+   568→   568→                            onClick={() => setReviewRating(starVal)}
+   569→   569→                            onMouseEnter={() => setHoverRating(starVal)}
+   570→   570→                            onMouseLeave={() => setHoverRating(0)}
+   571→   571→                            className="p-0.5 transition-transform hover:scale-110"
+   572→   572→                          >
+   573→   573→                            <Star
+   574→   574→                              className="w-6 h-6 transition-colors"
+   575→   575→                              style={isActive ? { fill: color, color } : { color: "#E8E8E8" }}
+   576→   576→                            />
+   577→   577→                          </button>
+   578→   578→                        );
+   579→   579→                      })}
+   580→   580→                    </div>
+   581→   581→                    {reviewErrors.rating && <p className="text-[12px] text-red-500 mt-1">{reviewErrors.rating}</p>}
+   582→   582→                  </div>
+   583→   583→
+   584→   584→                  {/* Title */}
+   585→   585→                  <div className="mb-4">
+   586→   586→                    <input
+   587→   587→                      type="text"
+   588→   588→                      placeholder="Review Title"
+   589→   589→                      value={reviewTitle}
+   590→   590→                      onChange={(e) => setReviewTitle(e.target.value)}
+   591→   591→                      className="w-full border border-[#E8E8E8] focus:border-[#4D5B47] transition-colors bg-white text-[14px] px-4 py-3 rounded-[4px] outline-none text-[#111] placeholder:text-[#999]"
+   592→   592→                    />
+   593→   593→                  </div>
+   594→   594→
+   595→   595→                  {/* Name */}
+   596→   596→                  <div className="mb-4">
+   597→   597→                    <input
+   598→   598→                      type="text"
+   599→   599→                      placeholder="Your Name"
+   600→   600→                      value={reviewName}
+   601→   601→                      onChange={(e) => { setReviewName(e.target.value); if (reviewErrors.name) setReviewErrors(prev => ({ ...prev, name: "" })); }}
+   602→   602→                      className="w-full border border-[#E8E8E8] focus:border-[#4D5B47] transition-colors bg-white text-[14px] px-4 py-3 rounded-[4px] outline-none text-[#111] placeholder:text-[#999]"
+   603→   603→                    />
+   604→   604→                    {reviewErrors.name && <p className="text-[12px] text-red-500 mt-1">{reviewErrors.name}</p>}
+   605→   605→                  </div>
+   606→   606→
+   607→   607→                  {/* Review Text */}
+   608→   608→                  <div className="mb-5">
+   609→   609→                    <textarea
+   610→   610→                      placeholder="Share your experience with this product..."
+   611→   611→                      rows={4}
+   612→   612→                      value={reviewText}
+   613→   613→                      onChange={(e) => { setReviewText(e.target.value); if (reviewErrors.text) setReviewErrors(prev => ({ ...prev, text: "" })); }}
+   614→   614→                      className="w-full border border-[#E8E8E8] focus:border-[#4D5B47] transition-colors bg-white text-[14px] px-4 py-3 rounded-[4px] outline-none text-[#111] placeholder:text-[#999] resize-none"
+   615→   615→                    />
+   616→   616→                    {reviewErrors.text && <p className="text-[12px] text-red-500 mt-1">{reviewErrors.text}</p>}
+   617→   617→                  </div>
+   618→   618→
+   619→   619→                  {/* Submit */}
+   620→   620→                  <button
+   621→   621→                    onClick={() => {
+   622→   622→                      const errors: Record<string, string> = {};
+   623→   623→                      if (reviewRating === 0) errors.rating = "Please select a rating";
+   624→   624→                      if (!reviewName.trim()) errors.name = "Please enter your name";
+   625→   625→                      if (!reviewText.trim() || reviewText.trim().length < 10) errors.text = "Review must be at least 10 characters";
+   626→   626→
+   627→   627→                      if (Object.keys(errors).length > 0) {
+   628→   628→                        setReviewErrors(errors);
+   629→   629→                        return;
+   630→   630→                      }
+   631→   631→
+   632→   632→                      const newReview: Review = {
+   633→   633→                        id: `local-${Date.now()}`,
+   634→   634→                        userName: reviewName.trim(),
+   635→   635→                        rating: reviewRating,
+   636→   636→                        title: reviewTitle.trim() || null,
+   637→   637→                        comment: reviewText.trim(),
+   638→   638→                        createdAt: new Date().toISOString(),
+   639→   639→                      };
+   640→   640→
+   641→   641→                      setLocalReviews(prev => [newReview, ...prev]);
+   642→   642→                      setShowReviewForm(false);
+   643→   643→                      setReviewRating(0);
+   644→   644→                      setHoverRating(0);
+   645→   645→                      setReviewTitle("");
+   646→   646→                      setReviewName("");
+   647→   647→                      setReviewText("");
+   648→   648→                      setReviewErrors({});
+   649→   649→                      showNotification("Thank you for your review!", "success");
+   650→   650→                    }}
+   651→   651→                    className="bg-[#111] text-[#F8F8F6] text-[13px] tracking-wide px-8 py-3 rounded-[4px] hover:bg-[#333] transition-colors"
+   652→   652→                  >
+   653→   653→                    Submit Review
+   654→   654→                  </button>
+   655→   655→                </div>
+   656→   656→              </motion.div>
+   657→   657→            )}
+   658→   658→          </AnimatePresence>
+   659→   659→
+   660→   660→          {/* Reviews List */}
+   661→   661→          {localReviews.length > 0 && (
+   662→   662→            <div className="space-y-4">
+   663→   663→              {localReviews.map((review, i) => (
+   664→   664→                <ScrollReveal key={review.id} delay={i * 0.05}>
+   665→   665→                  <div className="p-6 border border-[#E8E8E8] border-l-2 border-l-[#4D5B47] bg-white">
+   666→   666→                    <div className="flex items-center justify-between mb-3">
+   667→   667→                      <div className="flex items-center gap-3">
+   668→   668→                        <div className="w-8 h-8 bg-[#F0EFED] rounded-full flex items-center justify-center text-[12px] font-medium text-[#666]">
+   669→   669→                          {review.userName.charAt(0)}
+   670→   670→                        </div>
+   671→   671→                        <div>
+   672→   672→                          <p className="text-[13px] font-medium text-[#111]">{review.userName}</p>
+   673→   673→                          <p className="text-[11px] text-[#999]">
+   674→   674→                            {new Date(review.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+   675→   675→                          </p>
+   676→   676→                        </div>
+   677→   677→                      </div>
+   678→   678→                      <div className="flex items-center gap-0.5">
+   679→   679→                        {Array.from({ length: 5 }).map((_, si) => (
+   680→   680→                          <Star key={si} className={`w-3 h-3 ${si < review.rating ? "fill-[#B79B7B] text-[#B79B7B]" : "text-[#E8E8E8]"}`} />
+   681→   681→                        ))}
+   682→   682→                      </div>
+   683→   683→                    </div>
+   684→   684→                    {review.title && <p className="text-[14px] font-medium text-[#111] mb-1">{review.title}</p>}
+   685→   685→                    {review.comment && <p className="text-[13px] text-[#666] leading-relaxed">{review.comment}</p>}
+   686→   686→                  </div>
+   687→   687→                </ScrollReveal>
+   688→   688→              ))}
+   689→   689→            </div>
+   690→   690→          )}
+   691→   691→        </section>
+   692→   692→
+   693→   693→        {/* Similar Products */}
+   694→   694→        {similar.length > 0 && (
+   695→   695→          <section className="mt-16 lg:mt-24">
+   696→   696→            <ScrollReveal>
+   697→   697→              <h2 className="text-[24px] sm:text-[28px] font-medium tracking-[-0.02em] mb-8">You May Also Like</h2>
+   698→   698→            </ScrollReveal>
+   699→   699→            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
+   700→   700→              {similar.slice(0, 4).map((p, i) => (
+   701→   701→                <ProductCard
+   702→   702→                  key={p.id}
+   703→   703→                  id={p.id}
+   704→   704→                  name={p.name}
+   705→   705→                  price={p.price}
+   706→   706→                  mrp={p.mrp}
+   707→   707→                  image={p.image}
+   708→   708→                  images={p.images ? JSON.parse(p.images) : undefined}
+   709→   709→                  category={p.category}
+   710→   710→                  brand={p.brand}
+   711→   711→                  rating={p.rating}
+   712→   712→                  reviewCount={p.reviewCount}
+   713→   713→                  discount={p.discount}
+   714→   714→                  isNew={p.isNew}
+   715→   715→                  isTrending={p.isTrending}
+   716→   716→                  isBestSeller={p.isBestSeller}
+   717→   717→                  index={i}
+   718→   718→                />
+   719→   719→              ))}
+   720→   720→            </div>
+   721→   721→          </section>
+   722→   722→        )}
+   723→   723→      </div>
+   724→   724→
+   725→   725→      {/* Image Lightbox */}
+   726→   726→      <AnimatePresence>
+   727→   727→        {lightboxOpen && (
+   728→   728→          <motion.div
+   729→   729→            initial={{ opacity: 0 }}
+   730→   730→            animate={{ opacity: 1 }}
+   731→   731→            exit={{ opacity: 0 }}
+   732→   732→            transition={{ duration: 0.2 }}
+   733→   733→            className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center"
+   734→   734→            onClick={() => setLightboxOpen(false)}
+   735→   735→          >
+   736→   736→            {/* Close button */}
+   737→   737→            <button
+   738→   738→              onClick={() => setLightboxOpen(false)}
+   739→   739→              className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors rounded"
+   740→   740→              aria-label="Close lightbox"
+   741→   741→            >
+   742→   742→              <X className="w-5 h-5" />
+   743→   743→            </button>
+   744→   744→
+   745→   745→            {/* Counter */}
+   746→   746→            <div className="absolute top-4 left-4 text-white/60 text-[12px] tracking-wider">
+   747→   747→              {lightboxIndex + 1} / {images.length}
+   748→   748→            </div>
+   749→   749→
+   750→   750→            {/* Left arrow */}
+   751→   751→            {lightboxIndex > 0 && (
+   752→   752→              <button
+   753→   753→                onClick={(e) => { e.stopPropagation(); setLightboxIndex(lightboxIndex - 1); }}
+   754→   754→                className="absolute left-4 w-10 h-10 bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors rounded"
+   755→   755→                aria-label="Previous image"
+   756→   756→              >
+   757→   757→                <ChevronLeft className="w-5 h-5" />
+   758→   758→              </button>
+   759→   759→            )}
+   760→   760→
+   761→   761→            {/* Right arrow */}
+   762→   762→            {lightboxIndex < images.length - 1 && (
+   763→   763→              <button
+   764→   764→                onClick={(e) => { e.stopPropagation(); setLightboxIndex(lightboxIndex + 1); }}
+   765→   765→                className="absolute right-4 w-10 h-10 bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors rounded"
+   766→   766→                aria-label="Next image"
+   767→   767→              >
+   768→   768→                <ChevronRight className="w-5 h-5" />
+   769→   769→              </button>
+   770→   770→            )}
+   771→   771→
+   772→   772→            {/* Image */}
+   773→   773→            <motion.img
+   774→   774→              key={lightboxIndex}
+   775→   775→              src={images[lightboxIndex]}
+   776→   776→              alt={`${product.name} - Image ${lightboxIndex + 1}`}
+   777→   777→              initial={{ opacity: 0, scale: 0.95 }}
+   778→   778→              animate={{ opacity: 1, scale: 1 }}
+   779→   779→              exit={{ opacity: 0, scale: 0.95 }}
+   780→   780→              transition={{ duration: 0.25 }}
+   781→   781→              className="max-h-[85vh] max-w-[85vw] object-contain"
+   782→   782→              onClick={(e) => e.stopPropagation()}
+   783→   783→            />
+   784→   784→          </motion.div>
+   785→   785→        )}
+   786→   786→      </AnimatePresence>
+   787→   787→    </main>
+   788→   788→  );
+   789→   789→}

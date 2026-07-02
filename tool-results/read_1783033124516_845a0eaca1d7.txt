@@ -1,0 +1,977 @@
+     1→"use client";
+     2→
+     3→import { useEffect, useState } from "react";
+     4→import { motion, AnimatePresence } from "framer-motion";
+     5→import { useStore } from "@/lib/store";
+     6→import { ScrollReveal } from "@/components/shared/ScrollReveal";
+     7→import {
+     8→  LayoutDashboard, Package, ShoppingCart, Users, BarChart3,
+     9→  TrendingUp, TrendingDown, DollarSign, Eye, ArrowUpRight,
+    10→  ArrowLeft, ChevronRight, Star, AlertCircle
+    11→} from "lucide-react";
+    12→import Image from "next/image";
+    13→import {
+    14→  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
+    15→  BarChart, Bar, CartesianGrid, PieChart, Pie, Cell
+    16→} from "recharts";
+    17→
+    18→interface AdminStats {
+    19→  totalProducts: number;
+    20→  totalOrders: number;
+    21→  totalRevenue: number;
+    22→  totalUsers: number;
+    23→  conversionRate: number;
+    24→  avgOrderValue: number;
+    25→}
+    26→
+    27→interface Order {
+    28→  id: string;
+    29→  orderNumber: string;
+    30→  status: string;
+    31→  total: number;
+    32→  paymentStatus: string;
+    33→  createdAt: string;
+    34→  items: { name: string; quantity: number }[];
+    35→}
+    36→
+    37→interface TopProduct {
+    38→  id: string;
+    39→  name: string;
+    40→  price: number;
+    41→  reviewCount: number;
+    42→  stock: number;
+    43→}
+    44→
+    45→interface CategoryData {
+    46→  category: string;
+    47→  _count: number;
+    48→  _avg: { price: number } | null;
+    49→}
+    50→
+    51→interface ProductItem {
+    52→  id: string;
+    53→  name: string;
+    54→  slug: string;
+    55→  price: number;
+    56→  mrp: number;
+    57→  category: string;
+    58→  brand: string;
+    59→  stock: number;
+    60→  rating: number;
+    61→  reviewCount: number;
+    62→  images: string;
+    63→}
+    64→
+    65→const statusColors: Record<string, string> = {
+    66→  confirmed: "bg-[#4D5B47] text-[#F8F8F6]",
+    67→  shipped: "bg-[#B79B7B] text-[#F8F8F6]",
+    68→  delivered: "bg-[#111] text-[#F8F8F6]",
+    69→  cancelled: "bg-[#C53030] text-[#F8F8F6]",
+    70→  pending: "bg-[#F0EFED] text-[#666]",
+    71→};
+    72→
+    73→const PIE_COLORS = ["#4D5B47", "#B79B7B", "#111", "#C53030", "#E8E8E8"];
+    74→
+    75→const PIE_LABEL_COLORS: Record<string, string> = {
+    76→  confirmed: "bg-[#4D5B47]",
+    77→  shipped: "bg-[#B79B7B]",
+    78→  delivered: "bg-[#111]",
+    79→  cancelled: "bg-[#C53030]",
+    80→  pending: "bg-[#E8E8E8]",
+    81→};
+    82→
+    83→const sidebarItems = [
+    84→  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+    85→  { id: "products", label: "Products", icon: Package },
+    86→  { id: "orders", label: "Orders", icon: ShoppingCart },
+    87→  { id: "users", label: "Users", icon: Users },
+    88→  { id: "analytics", label: "Analytics", icon: BarChart3 },
+    89→];
+    90→
+    91→function StatCard({ title, value, trend, prefix = "" }: {
+    92→  title: string; value: string | number; trend?: { value: number; positive: boolean }; prefix?: string;
+    93→}) {
+    94→  return (
+    95→    <motion.div
+    96→      initial={{ opacity: 0, y: 16 }}
+    97→      animate={{ opacity: 1, y: 0 }}
+    98→      className="bg-white border border-[#E8E8E8] p-5"
+    99→    >
+   100→      <p className="text-[11px] font-medium tracking-wider uppercase text-[#999] mb-2">{title}</p>
+   101→      <div className="flex items-end justify-between">
+   102→        <p className="text-[24px] font-medium tracking-tight">
+   103→          {prefix}{typeof value === "number" ? value.toLocaleString("en-IN") : value}
+   104→        </p>
+   105→        {trend && (
+   106→          <div className={`flex items-center gap-0.5 text-[12px] ${trend.positive ? "text-[#4D5B47]" : "text-[#C53030]"}`}>
+   107→            {trend.positive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+   108→            {trend.value}%
+   109→          </div>
+   110→        )}
+   111→      </div>
+   112→    </motion.div>
+   113→  );
+   114→}
+   115→
+   116→function ComingSoon() {
+   117→  return (
+   118→    <div className="flex-1 flex items-center justify-center py-24">
+   119→      <div className="text-center">
+   120→        <AlertCircle className="w-12 h-12 text-[#D1D1D1] mx-auto mb-4" strokeWidth={1} />
+   121→        <h3 className="text-[18px] font-medium text-[#111] mb-1">Coming Soon</h3>
+   122→        <p className="text-[13px] text-[#999]">This section is under development</p>
+   123→      </div>
+   124→    </div>
+   125→  );
+   126→}
+   127→
+   128→const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) => {
+   129→  if (active && payload && payload.length) {
+   130→    return (
+   131→      <div className="bg-white border border-[#E8E8E8] px-3 py-2 shadow-sm">
+   132→        <p className="text-[11px] text-[#999] mb-0.5">{label}</p>
+   133→        <p className="text-[13px] font-medium">{"\u20B9"}{payload[0].value.toLocaleString("en-IN")}</p>
+   134→      </div>
+   135→    );
+   136→  }
+   137→  return null;
+   138→};
+   139→
+   140→export default function AdminPage() {
+   141→  const { navigate } = useStore();
+   142→  const [activeSection, setActiveSection] = useState("dashboard");
+   143→  const [stats, setStats] = useState<AdminStats | null>(null);
+   144→  const [orders, setOrders] = useState<Order[]>([]);
+   145→  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
+   146→  const [revenueData, setRevenueData] = useState<{ month: string; revenue: number }[]>([]);
+   147→  const [categoryData, setCategoryData] = useState<CategoryData[]>([]);
+   148→  const [ordersByStatus, setOrdersByStatus] = useState<{ status: string; _count: number }[]>([]);
+   149→  const [loading, setLoading] = useState(true);
+   150→  const [sidebarOpen, setSidebarOpen] = useState(false);
+   151→
+   152→  // Products tab state
+   153→  const [productList, setProductList] = useState<ProductItem[]>([]);
+   154→  const [productSearch, setProductSearch] = useState("");
+   155→  const [productsFetched, setProductsFetched] = useState(false);
+   156→  const productsLoading = activeSection === "products" && !productsFetched;
+   157→
+   158→  // Orders tab state
+   159→  const [allOrders, setAllOrders] = useState<Order[]>([]);
+   160→  const [orderStatusFilter, setOrderStatusFilter] = useState("all");
+   161→  const [ordersFetched, setOrdersFetched] = useState(false);
+   162→  const ordersLoading = activeSection === "orders" && !ordersFetched;
+   163→
+   164→  // Analytics tab state
+   165→  const [analyticsStats, setAnalyticsStats] = useState<AdminStats | null>(null);
+   166→  const [analyticsOrdersByStatus, setAnalyticsOrdersByStatus] = useState<{ status: string; _count: number }[]>([]);
+   167→  const [analyticsCategoryData, setAnalyticsCategoryData] = useState<CategoryData[]>([]);
+   168→  const [analyticsStockValue, setAnalyticsStockValue] = useState(0);
+   169→  const [analyticsFetched, setAnalyticsFetched] = useState(false);
+   170→  const analyticsLoading = activeSection === "analytics" && !analyticsFetched;
+   171→
+   172→  useEffect(() => {
+   173→    fetch("/api/admin")
+   174→      .then((r) => r.json())
+   175→      .then((data) => {
+   176→        setStats(data.stats);
+   177→        setOrders(data.recentOrders || []);
+   178→        setTopProducts(data.topProducts || []);
+   179→        setRevenueData(data.revenueByMonth || []);
+   180→        setCategoryData(data.categoryBreakdown || []);
+   181→        setOrdersByStatus(data.ordersByStatus || []);
+   182→        setLoading(false);
+   183→      })
+   184→      .catch(() => setLoading(false));
+   185→  }, []);
+   186→
+   187→  // Fetch products for Products tab
+   188→  useEffect(() => {
+   189→    if (activeSection === "products" && !productsFetched) {
+   190→      fetch("/api/products?limit=50")
+   191→        .then((r) => r.json())
+   192→        .then((data) => {
+   193→          setProductList(data.products || []);
+   194→          setProductsFetched(true);
+   195→        })
+   196→        .catch(() => setProductsFetched(true));
+   197→    }
+   198→  }, [activeSection, productsFetched]);
+   199→
+   200→  // Fetch orders for Orders tab
+   201→  useEffect(() => {
+   202→    if (activeSection === "orders" && !ordersFetched) {
+   203→      fetch("/api/orders?limit=50")
+   204→        .then((r) => r.json())
+   205→        .then((data) => {
+   206→          setAllOrders(data.orders || []);
+   207→          setOrdersFetched(true);
+   208→        })
+   209→        .catch(() => setOrdersFetched(true));
+   210→    }
+   211→  }, [activeSection, ordersFetched]);
+   212→
+   213→  // Fetch data for Analytics tab
+   214→  useEffect(() => {
+   215→    if (activeSection === "analytics" && !analyticsFetched) {
+   216→      Promise.all([
+   217→        fetch("/api/admin").then((r) => r.json()),
+   218→        fetch("/api/products?limit=100").then((r) => r.json()),
+   219→      ])
+   220→        .then(([adminData, productsData]) => {
+   221→          setAnalyticsStats(adminData.stats);
+   222→          setAnalyticsOrdersByStatus(adminData.ordersByStatus || []);
+   223→          setAnalyticsCategoryData(adminData.categoryBreakdown || []);
+   224→          const sv = (productsData.products || []).reduce(
+   225→            (sum: number, p: ProductItem) => sum + p.price * p.stock,
+   226→            0
+   227→          );
+   228→          setAnalyticsStockValue(sv);
+   229→          setAnalyticsFetched(true);
+   230→        })
+   231→        .catch(() => setAnalyticsFetched(true));
+   232→    }
+   233→  }, [activeSection, analyticsFetched]);
+   234→
+   235→  // Computed values
+   236→  const filteredProducts = productList.filter((p) =>
+   237→    p.name.toLowerCase().includes(productSearch.toLowerCase())
+   238→  );
+   239→
+   240→  const filteredOrders =
+   241→    orderStatusFilter === "all"
+   242→      ? allOrders
+   243→      : allOrders.filter((o) => o.status === orderStatusFilter);
+   244→
+   245→  const categoryRevenueData = analyticsCategoryData.map((cat) => ({
+   246→    name: cat.category,
+   247→    revenue: Math.round((cat._avg?.price || 0) * cat._count),
+   248→  }));
+   249→
+   250→  return (
+   251→    <main className="min-h-screen bg-[#F8F8F6] pt-20">
+   252→      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+   253→        {/* Back Button */}
+   254→        <button
+   255→          onClick={() => navigate("home")}
+   256→          className="flex items-center gap-1.5 text-[12px] tracking-widest uppercase text-[#999] hover:text-[#111] transition-colors mb-6"
+   257→        >
+   258→          <ArrowLeft className="w-3.5 h-3.5" /> Back to Store
+   259→        </button>
+   260→
+   261→        <div className="flex items-center justify-between mb-8">
+   262→          <div>
+   263→            <h1 className="text-[28px] sm:text-[36px] font-medium tracking-[-0.02em]">Admin Dashboard</h1>
+   264→            <p className="text-[14px] text-[#999] mt-1">Overview of your store performance</p>
+   265→          </div>
+   266→          <button
+   267→            onClick={() => setSidebarOpen(!sidebarOpen)}
+   268→            className="lg:hidden w-10 h-10 border border-[#E8E8E8] flex items-center justify-center"
+   269→          >
+   270→            <LayoutDashboard className="w-5 h-5" strokeWidth={1.5} />
+   271→          </button>
+   272→        </div>
+   273→
+   274→        <div className="flex gap-8">
+   275→          {/* Sidebar */}
+   276→          <div className={`
+   277→            fixed lg:static inset-y-0 left-0 z-50 lg:z-auto
+   278→            w-[240px] bg-[#F8F8F6] lg:bg-transparent
+   279→            border-r border-[#E8E8E8] lg:border-0
+   280→            p-5 lg:p-0
+   281→            pt-16 lg:pt-0
+   282→            transform transition-transform duration-300
+   283→            ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+   284→          `}>
+   285→            <nav className="space-y-1">
+   286→              {sidebarItems.map((item) => (
+   287→                <button
+   288→                  key={item.id}
+   289→                  onClick={() => { setActiveSection(item.id); setSidebarOpen(false); }}
+   290→                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-[13px] transition-colors ${
+   291→                    activeSection === item.id
+   292→                      ? "bg-[#111] text-[#F8F8F6] font-medium"
+   293→                      : "text-[#666] hover:text-[#111] hover:bg-[#F0EFED]"
+   294→                  }`}
+   295→                >
+   296→                  <item.icon className="w-4 h-4" strokeWidth={1.5} />
+   297→                  {item.label}
+   298→                </button>
+   299→              ))}
+   300→            </nav>
+   301→            {sidebarOpen && (
+   302→              <div
+   303→                className="fixed inset-0 bg-black/20 z-[-1] lg:hidden"
+   304→                onClick={() => setSidebarOpen(false)}
+   305→              />
+   306→            )}
+   307→          </div>
+   308→
+   309→          {/* Main Content */}
+   310→          <div className="flex-1 min-w-0">
+   311→            {activeSection === "dashboard" && (
+   312→              <>
+   313→                {loading ? (
+   314→                  <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+   315→                    {Array.from({ length: 4 }).map((_, i) => (
+   316→                      <div key={i} className="h-28 skeleton-shimmer rounded-[4px]" />
+   317→                    ))}
+   318→                  </div>
+   319→                ) : (
+   320→                  <>
+   321→                    {/* Stats */}
+   322→                    <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+   323→                      <StatCard
+   324→                        title="Total Revenue"
+   325→                        value={Math.round(stats?.totalRevenue || 0)}
+   326→                        prefix={"\u20B9"}
+   327→                        trend={{ value: 12.5, positive: true }}
+   328→                      />
+   329→                      <StatCard
+   330→                        title="Total Orders"
+   331→                        value={stats?.totalOrders || 0}
+   332→                        trend={{ value: 8.2, positive: true }}
+   333→                      />
+   334→                      <StatCard
+   335→                        title="Conversion Rate"
+   336→                        value={`${stats?.conversionRate || 0}%`}
+   337→                        trend={{ value: 2.1, positive: true }}
+   338→                      />
+   339→                      <StatCard
+   340→                        title="Avg. Order Value"
+   341→                        value={Math.round(stats?.avgOrderValue || 0)}
+   342→                        prefix={"\u20B9"}
+   343→                        trend={{ value: 3.4, positive: false }}
+   344→                      />
+   345→                    </div>
+   346→
+   347→                    {/* Charts */}
+   348→                    <div className="grid lg:grid-cols-2 gap-6 mb-8">
+   349→                      {/* Revenue Chart */}
+   350→                      <motion.div
+   351→                        initial={{ opacity: 0, y: 16 }}
+   352→                        animate={{ opacity: 1, y: 0 }}
+   353→                        transition={{ delay: 0.1 }}
+   354→                        className="bg-white border border-[#E8E8E8] p-5"
+   355→                      >
+   356→                        <div className="flex items-center justify-between mb-6">
+   357→                          <h3 className="text-[14px] font-medium">Revenue Overview</h3>
+   358→                          <span className="text-[11px] text-[#999] tracking-wide">Last 6 months</span>
+   359→                        </div>
+   360→                        <div className="h-[240px]">
+   361→                          <ResponsiveContainer width="100%" height="100%">
+   362→                            <AreaChart data={revenueData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+   363→                              <defs>
+   364→                                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+   365→                                  <stop offset="5%" stopColor="#4D5B47" stopOpacity={0.15} />
+   366→                                  <stop offset="95%" stopColor="#4D5B47" stopOpacity={0} />
+   367→                                </linearGradient>
+   368→                              </defs>
+   369→                              <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#999" }} />
+   370→                              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#999" }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+   371→                              <Tooltip content={<CustomTooltip />} />
+   372→                              <Area type="monotone" dataKey="revenue" stroke="#4D5B47" strokeWidth={2} fill="url(#colorRevenue)" />
+   373→                            </AreaChart>
+   374→                          </ResponsiveContainer>
+   375→                        </div>
+   376→                      </motion.div>
+   377→
+   378→                      {/* Orders by Status */}
+   379→                      <motion.div
+   380→                        initial={{ opacity: 0, y: 16 }}
+   381→                        animate={{ opacity: 1, y: 0 }}
+   382→                        transition={{ delay: 0.15 }}
+   383→                        className="bg-white border border-[#E8E8E8] p-5"
+   384→                      >
+   385→                        <div className="flex items-center justify-between mb-6">
+   386→                          <h3 className="text-[14px] font-medium">Orders by Status</h3>
+   387→                          <span className="text-[11px] text-[#999] tracking-wide">All time</span>
+   388→                        </div>
+   389→                        <div className="h-[240px]">
+   390→                          <ResponsiveContainer width="100%" height="100%">
+   391→                            <BarChart data={ordersByStatus} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+   392→                              <CartesianGrid strokeDasharray="3 3" stroke="#F0EFED" vertical={false} />
+   393→                              <XAxis dataKey="status" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#999" }} />
+   394→                              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#999" }} />
+   395→                              <Tooltip content={<CustomTooltip />} />
+   396→                              <Bar dataKey="_count" fill="#111" radius={[2, 2, 0, 0]} />
+   397→                            </BarChart>
+   398→                          </ResponsiveContainer>
+   399→                        </div>
+   400→                      </motion.div>
+   401→                    </div>
+   402→
+   403→                    {/* Recent Orders Table */}
+   404→                    <motion.div
+   405→                      initial={{ opacity: 0, y: 16 }}
+   406→                      animate={{ opacity: 1, y: 0 }}
+   407→                      transition={{ delay: 0.2 }}
+   408→                      className="bg-white border border-[#E8E8E8] mb-8 overflow-hidden"
+   409→                    >
+   410→                      <div className="p-5 border-b border-[#E8E8E8] flex items-center justify-between">
+   411→                        <h3 className="text-[14px] font-medium">Recent Orders</h3>
+   412→                        <button className="text-[11px] text-[#4D5B47] hover:text-[#111] transition-colors tracking-wide uppercase flex items-center gap-1">
+   413→                          View All <ChevronRight className="w-3 h-3" />
+   414→                        </button>
+   415→                      </div>
+   416→                      <div className="overflow-x-auto">
+   417→                        <table className="w-full text-[13px]">
+   418→                          <thead>
+   419→                            <tr className="border-b border-[#E8E8E8]">
+   420→                              <th className="text-left py-3 px-5 text-[11px] font-medium tracking-wider uppercase text-[#999]">Order</th>
+   421→                              <th className="text-left py-3 px-5 text-[11px] font-medium tracking-wider uppercase text-[#999]">Date</th>
+   422→                              <th className="text-left py-3 px-5 text-[11px] font-medium tracking-wider uppercase text-[#999]">Items</th>
+   423→                              <th className="text-right py-3 px-5 text-[11px] font-medium tracking-wider uppercase text-[#999]">Total</th>
+   424→                              <th className="text-center py-3 px-5 text-[11px] font-medium tracking-wider uppercase text-[#999]">Status</th>
+   425→                              <th className="text-center py-3 px-5 text-[11px] font-medium tracking-wider uppercase text-[#999]">Payment</th>
+   426→                            </tr>
+   427→                          </thead>
+   428→                          <tbody>
+   429→                            {orders.slice(0, 8).map((order) => (
+   430→                              <tr key={order.id} className="border-b border-[#F0EFED] hover:bg-[#FAFAF8] transition-colors">
+   431→                                <td className="py-3 px-5 font-medium text-[#111]">#{order.orderNumber.slice(-6)}</td>
+   432→                                <td className="py-3 px-5 text-[#666]">
+   433→                                  {new Date(order.createdAt).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
+   434→                                </td>
+   435→                                <td className="py-3 px-5 text-[#666]">{order.items?.length || 0} items</td>
+   436→                                <td className="py-3 px-5 text-right font-medium">{"\u20B9"}{Math.round(order.total).toLocaleString("en-IN")}</td>
+   437→                                <td className="py-3 px-5 text-center">
+   438→                                  <span className={`inline-block px-2.5 py-1 text-[10px] font-medium tracking-wide uppercase ${statusColors[order.status] || statusColors.pending}`}>
+   439→                                    {order.status}
+   440→                                  </span>
+   441→                                </td>
+   442→                                <td className="py-3 px-5 text-center">
+   443→                                  <span className={`text-[11px] ${order.paymentStatus === "completed" ? "text-[#4D5B47] font-medium" : "text-[#999]"}`}>
+   444→                                    {order.paymentStatus === "completed" ? "Paid" : order.paymentStatus}
+   445→                                  </span>
+   446→                                </td>
+   447→                              </tr>
+   448→                            ))}
+   449→                          </tbody>
+   450→                        </table>
+   451→                      </div>
+   452→                    </motion.div>
+   453→
+   454→                    {/* Bottom Row */}
+   455→                    <div className="grid lg:grid-cols-2 gap-6">
+   456→                      {/* Top Products */}
+   457→                      <motion.div
+   458→                        initial={{ opacity: 0, y: 16 }}
+   459→                        animate={{ opacity: 1, y: 0 }}
+   460→                        transition={{ delay: 0.25 }}
+   461→                        className="bg-white border border-[#E8E8E8] p-5"
+   462→                      >
+   463→                        <h3 className="text-[14px] font-medium mb-4">Top Products</h3>
+   464→                        <div className="space-y-4">
+   465→                          {topProducts.slice(0, 5).map((product, i) => (
+   466→                            <div key={product.id} className="flex items-center gap-3">
+   467→                              <span className="text-[12px] text-[#999] w-4">{i + 1}.</span>
+   468→                              <div className="flex-1 min-w-0">
+   469→                                <p className="text-[13px] text-[#111] line-clamp-1">{product.name}</p>
+   470→                                <div className="flex items-center gap-3 mt-1">
+   471→                                  <span className="text-[12px] font-medium">{"\u20B9"}{product.price.toLocaleString("en-IN")}</span>
+   472→                                  <span className="text-[11px] text-[#999]">
+   473→                                    <Star className="w-2.5 h-2.5 inline fill-[#111] text-[#111]" /> {product.reviewCount}
+   474→                                  </span>
+   475→                                </div>
+   476→                                {/* Stock bar */}
+   477→                                <div className="mt-1.5 h-1 bg-[#F0EFED] w-full max-w-[120px]">
+   478→                                  <div
+   479→                                    className={`h-full transition-all ${
+   480→                                      product.stock < 30 ? "bg-[#C53030]" : product.stock < 60 ? "bg-[#B79B7B]" : "bg-[#4D5B47]"
+   481→                                    }`}
+   482→                                    style={{ width: `${Math.min((product.stock / 150) * 100, 100)}%` }}
+   483→                                  />
+   484→                                </div>
+   485→                              </div>
+   486→                              <span className={`text-[11px] font-medium ${
+   487→                                product.stock < 30 ? "text-[#C53030]" : "text-[#999]"
+   488→                              }`}>
+   489→                                {product.stock} left
+   490→                              </span>
+   491→                            </div>
+   492→                          ))}
+   493→                        </div>
+   494→                      </motion.div>
+   495→
+   496→                      {/* Category Breakdown */}
+   497→                      <motion.div
+   498→                        initial={{ opacity: 0, y: 16 }}
+   499→                        animate={{ opacity: 1, y: 0 }}
+   500→                        transition={{ delay: 0.3 }}
+   501→                        className="bg-white border border-[#E8E8E8] p-5"
+   502→                      >
+   503→                        <h3 className="text-[14px] font-medium mb-4">Category Breakdown</h3>
+   504→                        <div className="space-y-3">
+   505→                          {categoryData.map((cat) => (
+   506→                            <div key={cat.category} className="flex items-center justify-between py-1.5">
+   507→                              <div className="flex items-center gap-3">
+   508→                                <span className="text-[13px] text-[#111]">{cat.category}</span>
+   509→                                <span className="text-[11px] text-[#999]">{cat._count} products</span>
+   510→                              </div>
+   511→                              <span className="text-[12px] text-[#666] font-medium">
+   512→                                Avg. {"\u20B9"}{Math.round(cat._avg?.price || 0).toLocaleString("en-IN")}
+   513→                              </span>
+   514→                            </div>
+   515→                          ))}
+   516→                        </div>
+   517→                      </motion.div>
+   518→                    </div>
+   519→                  </>
+   520→                )}
+   521→              </>
+   522→            )}
+   523→
+   524→            {activeSection === "products" && (
+   525→              <>
+   526→                {productsLoading ? (
+   527→                  <div className="space-y-3">
+   528→                    {Array.from({ length: 8 }).map((_, i) => (
+   529→                      <div key={i} className="h-16 skeleton-shimmer rounded-[4px]" />
+   530→                    ))}
+   531→                  </div>
+   532→                ) : (
+   533→                  <>
+   534→                    {/* Search Bar */}
+   535→                    <motion.div
+   536→                      initial={{ opacity: 0, y: 16 }}
+   537→                      animate={{ opacity: 1, y: 0 }}
+   538→                      className="mb-6"
+   539→                    >
+   540→                      <input
+   541→                        type="text"
+   542→                        placeholder="Search products by name..."
+   543→                        value={productSearch}
+   544→                        onChange={(e) => setProductSearch(e.target.value)}
+   545→                        className="w-full sm:w-80 border border-[#E8E8E8] bg-white px-4 py-2.5 text-[13px] outline-none focus:border-[#111] transition-colors placeholder:text-[#999]"
+   546→                      />
+   547→                    </motion.div>
+   548→
+   549→                    {/* Products Table */}
+   550→                    <motion.div
+   551→                      initial={{ opacity: 0, y: 16 }}
+   552→                      animate={{ opacity: 1, y: 0 }}
+   553→                      transition={{ delay: 0.05 }}
+   554→                      className="bg-white border border-[#E8E8E8] overflow-hidden"
+   555→                    >
+   556→                      <div className="p-5 border-b border-[#E8E8E8] flex items-center justify-between">
+   557→                        <h3 className="text-[14px] font-medium">
+   558→                          All Products
+   559→                          <span className="text-[#999] font-normal ml-2">({filteredProducts.length})</span>
+   560→                        </h3>
+   561→                      </div>
+   562→                      <div className="overflow-x-auto">
+   563→                        <table className="w-full text-[13px]">
+   564→                          <thead className="sticky top-0 bg-white z-10">
+   565→                            <tr className="border-b border-[#E8E8E8]">
+   566→                              <th className="text-left py-3 px-4 text-[11px] font-medium tracking-wider uppercase text-[#999]">Image</th>
+   567→                              <th className="text-left py-3 px-4 text-[11px] font-medium tracking-wider uppercase text-[#999]">Name</th>
+   568→                              <th className="text-left py-3 px-4 text-[11px] font-medium tracking-wider uppercase text-[#999]">Category</th>
+   569→                              <th className="text-left py-3 px-4 text-[11px] font-medium tracking-wider uppercase text-[#999]">Brand</th>
+   570→                              <th className="text-right py-3 px-4 text-[11px] font-medium tracking-wider uppercase text-[#999]">Price</th>
+   571→                              <th className="text-left py-3 px-4 text-[11px] font-medium tracking-wider uppercase text-[#999]">Stock</th>
+   572→                              <th className="text-center py-3 px-4 text-[11px] font-medium tracking-wider uppercase text-[#999]">Rating</th>
+   573→                              <th className="text-center py-3 px-4 text-[11px] font-medium tracking-wider uppercase text-[#999]">Status</th>
+   574→                            </tr>
+   575→                          </thead>
+   576→                          <tbody>
+   577→                            {filteredProducts.map((product, idx) => (
+   578→                              <motion.tr
+   579→                                key={product.id}
+   580→                                initial={{ opacity: 0, y: 8 }}
+   581→                                animate={{ opacity: 1, y: 0 }}
+   582→                                transition={{ delay: idx * 0.02 }}
+   583→                                className="border-b border-[#F0EFED] hover:bg-[#FAFAF8] transition-colors cursor-pointer"
+   584→                                onClick={() => navigate("product", product.id)}
+   585→                              >
+   586→                                <td className="py-3 px-4">
+   587→                                  <div className="w-10 h-12 relative overflow-hidden bg-[#F0EFED]">
+   588→                                    <Image
+   589→                                      src={product.images?.split(",")[0] || "/placeholder.jpg"}
+   590→                                      alt={product.name}
+   591→                                      fill
+   592→                                      className="object-cover"
+   593→                                      sizes="40px"
+   594→                                    />
+   595→                                  </div>
+   596→                                </td>
+   597→                                <td className="py-3 px-4 font-medium text-[#111] max-w-[200px]">
+   598→                                  <p className="line-clamp-1">{product.name}</p>
+   599→                                </td>
+   600→                                <td className="py-3 px-4 text-[#666]">{product.category}</td>
+   601→                                <td className="py-3 px-4 text-[#666]">{product.brand}</td>
+   602→                                <td className="py-3 px-4 text-right font-medium">{"\u20B9"}{Math.round(product.price).toLocaleString("en-IN")}</td>
+   603→                                <td className="py-3 px-4">
+   604→                                  <div className="flex items-center gap-2">
+   605→                                    <div className="w-16 h-1.5 bg-[#F0EFED]">
+   606→                                      <div
+   607→                                        className={`h-full transition-all ${
+   608→                                          product.stock < 30 ? "bg-[#C53030]" : product.stock < 60 ? "bg-[#B79B7B]" : "bg-[#4D5B47]"
+   609→                                        }`}
+   610→                                        style={{ width: `${Math.min((product.stock / 150) * 100, 100)}%` }}
+   611→                                      />
+   612→                                    </div>
+   613→                                    <span className="text-[11px] text-[#666]">{product.stock}</span>
+   614→                                  </div>
+   615→                                </td>
+   616→                                <td className="py-3 px-4 text-center">
+   617→                                  <span className="text-[11px] text-[#666]">
+   618→                                    <Star className="w-2.5 h-2.5 inline fill-[#111] text-[#111] mr-0.5" />
+   619→                                    {product.rating.toFixed(1)}
+   620→                                  </span>
+   621→                                </td>
+   622→                                <td className="py-3 px-4 text-center">
+   623→                                  <span className={`inline-block px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase ${
+   624→                                    product.stock === 0
+   625→                                      ? "bg-[#C53030] text-[#F8F8F6]"
+   626→                                      : product.stock < 30
+   627→                                        ? "bg-amber-50 text-amber-700 border border-amber-200"
+   628→                                        : "bg-[#4D5B47] text-[#F8F8F6]"
+   629→                                  }`}>
+   630→                                    {product.stock === 0 ? "Out of Stock" : product.stock < 30 ? "Low Stock" : "In Stock"}
+   631→                                  </span>
+   632→                                </td>
+   633→                              </motion.tr>
+   634→                            ))}
+   635→                            {filteredProducts.length === 0 && (
+   636→                              <tr>
+   637→                                <td colSpan={8} className="py-12 text-center text-[13px] text-[#999]">
+   638→                                  {productSearch ? "No products match your search" : "No products found"}
+   639→                                </td>
+   640→                              </tr>
+   641→                            )}
+   642→                          </tbody>
+   643→                        </table>
+   644→                      </div>
+   645→                    </motion.div>
+   646→                  </>
+   647→                )}
+   648→              </>
+   649→            )}
+   650→
+   651→            {activeSection === "orders" && (
+   652→              <>
+   653→                {ordersLoading ? (
+   654→                  <div className="space-y-3">
+   655→                    {Array.from({ length: 8 }).map((_, i) => (
+   656→                      <div key={i} className="h-14 skeleton-shimmer rounded-[4px]" />
+   657→                    ))}
+   658→                  </div>
+   659→                ) : (
+   660→                  <>
+   661→                    {/* Status Filter Buttons */}
+   662→                    <motion.div
+   663→                      initial={{ opacity: 0, y: 16 }}
+   664→                      animate={{ opacity: 1, y: 0 }}
+   665→                      className="mb-6 flex flex-wrap gap-2"
+   666→                    >
+   667→                      {["all", "pending", "confirmed", "shipped", "delivered", "cancelled"].map((s) => {
+   668→                        const count = s === "all" ? allOrders.length : allOrders.filter((o) => o.status === s).length;
+   669→                        return (
+   670→                          <button
+   671→                            key={s}
+   672→                            onClick={() => setOrderStatusFilter(s)}
+   673→                            className={`px-3 py-1.5 text-[11px] tracking-wide uppercase transition-colors border ${
+   674→                              orderStatusFilter === s
+   675→                                ? "bg-[#111] text-[#F8F8F6] border-[#111]"
+   676→                                : "bg-white text-[#666] border-[#E8E8E8] hover:text-[#111] hover:border-[#999]"
+   677→                            }`}
+   678→                          >
+   679→                            {s === "all" ? "All" : s} ({count})
+   680→                          </button>
+   681→                        );
+   682→                      })}
+   683→                    </motion.div>
+   684→
+   685→                    {/* Orders Table */}
+   686→                    <motion.div
+   687→                      initial={{ opacity: 0, y: 16 }}
+   688→                      animate={{ opacity: 1, y: 0 }}
+   689→                      transition={{ delay: 0.05 }}
+   690→                      className="bg-white border border-[#E8E8E8] overflow-hidden"
+   691→                    >
+   692→                      <div className="p-5 border-b border-[#E8E8E8] flex items-center justify-between">
+   693→                        <h3 className="text-[14px] font-medium">
+   694→                          {orderStatusFilter === "all" ? "All Orders" : `${orderStatusFilter.charAt(0).toUpperCase() + orderStatusFilter.slice(1)} Orders`}
+   695→                          <span className="text-[#999] font-normal ml-2">({filteredOrders.length})</span>
+   696→                        </h3>
+   697→                      </div>
+   698→                      <div className="overflow-x-auto">
+   699→                        <table className="w-full text-[13px]">
+   700→                          <thead className="sticky top-0 bg-white z-10">
+   701→                            <tr className="border-b border-[#E8E8E8]">
+   702→                              <th className="text-left py-3 px-5 text-[11px] font-medium tracking-wider uppercase text-[#999]">Order</th>
+   703→                              <th className="text-left py-3 px-5 text-[11px] font-medium tracking-wider uppercase text-[#999]">Date</th>
+   704→                              <th className="text-left py-3 px-5 text-[11px] font-medium tracking-wider uppercase text-[#999]">Items</th>
+   705→                              <th className="text-right py-3 px-5 text-[11px] font-medium tracking-wider uppercase text-[#999]">Total</th>
+   706→                              <th className="text-center py-3 px-5 text-[11px] font-medium tracking-wider uppercase text-[#999]">Status</th>
+   707→                              <th className="text-center py-3 px-5 text-[11px] font-medium tracking-wider uppercase text-[#999]">Payment</th>
+   708→                            </tr>
+   709→                          </thead>
+   710→                          <tbody>
+   711→                            {filteredOrders.map((order, idx) => (
+   712→                              <motion.tr
+   713→                                key={order.id}
+   714→                                initial={{ opacity: 0, y: 8 }}
+   715→                                animate={{ opacity: 1, y: 0 }}
+   716→                                transition={{ delay: idx * 0.02 }}
+   717→                                className="border-b border-[#F0EFED] hover:bg-[#FAFAF8] transition-colors cursor-pointer"
+   718→                                onClick={() => navigate("order-tracking")}
+   719→                              >
+   720→                                <td className="py-3 px-5 font-medium text-[#111]">#{order.orderNumber.slice(-6)}</td>
+   721→                                <td className="py-3 px-5 text-[#666]">
+   722→                                  {new Date(order.createdAt).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}
+   723→                                </td>
+   724→                                <td className="py-3 px-5 text-[#666]">{order.items?.length || 0} items</td>
+   725→                                <td className="py-3 px-5 text-right font-medium">{"\u20B9"}{Math.round(order.total).toLocaleString("en-IN")}</td>
+   726→                                <td className="py-3 px-5 text-center">
+   727→                                  <span className={`inline-block px-2.5 py-1 text-[10px] font-medium tracking-wide uppercase ${statusColors[order.status] || statusColors.pending}`}>
+   728→                                    {order.status}
+   729→                                  </span>
+   730→                                </td>
+   731→                                <td className="py-3 px-5 text-center">
+   732→                                  <span className={`text-[11px] ${order.paymentStatus === "completed" ? "text-[#4D5B47] font-medium" : "text-[#999]"}`}>
+   733→                                    {order.paymentStatus === "completed" ? "Paid" : order.paymentStatus}
+   734→                                  </span>
+   735→                                </td>
+   736→                              </motion.tr>
+   737→                            ))}
+   738→                            {filteredOrders.length === 0 && (
+   739→                              <tr>
+   740→                                <td colSpan={6} className="py-12 text-center text-[13px] text-[#999]">
+   741→                                  No orders found for this filter
+   742→                                </td>
+   743→                              </tr>
+   744→                            )}
+   745→                          </tbody>
+   746→                        </table>
+   747→                      </div>
+   748→                    </motion.div>
+   749→                  </>
+   750→                )}
+   751→              </>
+   752→            )}
+   753→
+   754→            {activeSection === "analytics" && (
+   755→              <>
+   756→                {analyticsLoading ? (
+   757→                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   758→                    {Array.from({ length: 6 }).map((_, i) => (
+   759→                      <div key={i} className="h-24 skeleton-shimmer rounded-[4px]" />
+   760→                    ))}
+   761→                  </div>
+   762→                ) : analyticsStats ? (
+   763→                  <>
+   764→                    {/* Key Metrics Grid */}
+   765→                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+   766→                      <motion.div
+   767→                        initial={{ opacity: 0, y: 16 }}
+   768→                        animate={{ opacity: 1, y: 0 }}
+   769→                        transition={{ delay: 0 }}
+   770→                        className="bg-white border border-[#E8E8E8] p-5"
+   771→                      >
+   772→                        <div className="flex items-start justify-between">
+   773→                          <div>
+   774→                            <p className="text-[11px] font-medium tracking-wider uppercase text-[#999] mb-2">Total Revenue</p>
+   775→                            <p className="text-[24px] font-medium tracking-tight">{"\u20B9"}{Math.round(analyticsStats.totalRevenue).toLocaleString("en-IN")}</p>
+   776→                          </div>
+   777→                          <DollarSign className="w-5 h-5 text-[#999] mt-0.5" strokeWidth={1.5} />
+   778→                        </div>
+   779→                        <p className="text-[11px] text-[#999] mt-2">Total sales revenue across all orders</p>
+   780→                      </motion.div>
+   781→
+   782→                      <motion.div
+   783→                        initial={{ opacity: 0, y: 16 }}
+   784→                        animate={{ opacity: 1, y: 0 }}
+   785→                        transition={{ delay: 0.05 }}
+   786→                        className="bg-white border border-[#E8E8E8] p-5"
+   787→                      >
+   788→                        <div className="flex items-start justify-between">
+   789→                          <div>
+   790→                            <p className="text-[11px] font-medium tracking-wider uppercase text-[#999] mb-2">Total Orders</p>
+   791→                            <p className="text-[24px] font-medium tracking-tight">{analyticsStats.totalOrders.toLocaleString("en-IN")}</p>
+   792→                          </div>
+   793→                          <ShoppingCart className="w-5 h-5 text-[#999] mt-0.5" strokeWidth={1.5} />
+   794→                        </div>
+   795→                        <p className="text-[11px] text-[#999] mt-2">All placed orders to date</p>
+   796→                      </motion.div>
+   797→
+   798→                      <motion.div
+   799→                        initial={{ opacity: 0, y: 16 }}
+   800→                        animate={{ opacity: 1, y: 0 }}
+   801→                        transition={{ delay: 0.1 }}
+   802→                        className="bg-white border border-[#E8E8E8] p-5"
+   803→                      >
+   804→                        <div className="flex items-start justify-between">
+   805→                          <div>
+   806→                            <p className="text-[11px] font-medium tracking-wider uppercase text-[#999] mb-2">Products</p>
+   807→                            <p className="text-[24px] font-medium tracking-tight">{analyticsStats.totalProducts}</p>
+   808→                          </div>
+   809→                          <Package className="w-5 h-5 text-[#999] mt-0.5" strokeWidth={1.5} />
+   810→                        </div>
+   811→                        <p className="text-[11px] text-[#999] mt-2">Active products in catalog</p>
+   812→                      </motion.div>
+   813→
+   814→                      <motion.div
+   815→                        initial={{ opacity: 0, y: 16 }}
+   816→                        animate={{ opacity: 1, y: 0 }}
+   817→                        transition={{ delay: 0.15 }}
+   818→                        className="bg-white border border-[#E8E8E8] p-5"
+   819→                      >
+   820→                        <div className="flex items-start justify-between">
+   821→                          <div>
+   822→                            <p className="text-[11px] font-medium tracking-wider uppercase text-[#999] mb-2">Avg. Order Value</p>
+   823→                            <p className="text-[24px] font-medium tracking-tight">{"\u20B9"}{Math.round(analyticsStats.avgOrderValue).toLocaleString("en-IN")}</p>
+   824→                          </div>
+   825→                          <TrendingUp className="w-5 h-5 text-[#999] mt-0.5" strokeWidth={1.5} />
+   826→                        </div>
+   827→                        <p className="text-[11px] text-[#999] mt-2">Average revenue per order</p>
+   828→                      </motion.div>
+   829→
+   830→                      <motion.div
+   831→                        initial={{ opacity: 0, y: 16 }}
+   832→                        animate={{ opacity: 1, y: 0 }}
+   833→                        transition={{ delay: 0.2 }}
+   834→                        className="bg-white border border-[#E8E8E8] p-5"
+   835→                      >
+   836→                        <div className="flex items-start justify-between">
+   837→                          <div>
+   838→                            <p className="text-[11px] font-medium tracking-wider uppercase text-[#999] mb-2">Conversion Rate</p>
+   839→                            <p className="text-[24px] font-medium tracking-tight">{analyticsStats.conversionRate}%</p>
+   840→                          </div>
+   841→                          <BarChart3 className="w-5 h-5 text-[#999] mt-0.5" strokeWidth={1.5} />
+   842→                        </div>
+   843→                        <p className="text-[11px] text-[#999] mt-2">Visitor to buyer ratio</p>
+   844→                      </motion.div>
+   845→
+   846→                      <motion.div
+   847→                        initial={{ opacity: 0, y: 16 }}
+   848→                        animate={{ opacity: 1, y: 0 }}
+   849→                        transition={{ delay: 0.25 }}
+   850→                        className="bg-white border border-[#E8E8E8] p-5"
+   851→                      >
+   852→                        <div className="flex items-start justify-between">
+   853→                          <div>
+   854→                            <p className="text-[11px] font-medium tracking-wider uppercase text-[#999] mb-2">Stock Value</p>
+   855→                            <p className="text-[24px] font-medium tracking-tight">{"\u20B9"}{Math.round(analyticsStockValue).toLocaleString("en-IN")}</p>
+   856→                          </div>
+   857→                          <ArrowUpRight className="w-5 h-5 text-[#999] mt-0.5" strokeWidth={1.5} />
+   858→                        </div>
+   859→                        <p className="text-[11px] text-[#999] mt-2">Total inventory value at retail</p>
+   860→                      </motion.div>
+   861→                    </div>
+   862→
+   863→                    {/* Charts Row */}
+   864→                    <div className="grid lg:grid-cols-2 gap-6 mb-8">
+   865→                      {/* Order Status Pie/Donut Chart */}
+   866→                      <motion.div
+   867→                        initial={{ opacity: 0, y: 16 }}
+   868→                        animate={{ opacity: 1, y: 0 }}
+   869→                        transition={{ delay: 0.3 }}
+   870→                        className="bg-white border border-[#E8E8E8] p-5"
+   871→                      >
+   872→                        <div className="flex items-center justify-between mb-6">
+   873→                          <h3 className="text-[14px] font-medium">Order Status Distribution</h3>
+   874→                          <span className="text-[11px] text-[#999] tracking-wide">All time</span>
+   875→                        </div>
+   876→                        <div className="flex items-center gap-6">
+   877→                          <div className="h-[220px] w-[220px] flex-shrink-0">
+   878→                            <ResponsiveContainer width="100%" height="100%">
+   879→                              <PieChart>
+   880→                                <Pie
+   881→                                  data={analyticsOrdersByStatus}
+   882→                                  cx="50%"
+   883→                                  cy="50%"
+   884→                                  innerRadius={55}
+   885→                                  outerRadius={90}
+   886→                                  paddingAngle={3}
+   887→                                  dataKey="_count"
+   888→                                  nameKey="status"
+   889→                                  stroke="none"
+   890→                                >
+   891→                                  {analyticsOrdersByStatus.map((entry, index) => (
+   892→                                    <Cell key={entry.status} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+   893→                                  ))}
+   894→                                </Pie>
+   895→                                <Tooltip
+   896→                                  formatter={(value: number) => [`${value} orders`, ""]}
+   897→                                  contentStyle={{
+   898→                                    border: "1px solid #E8E8E8",
+   899→                                    fontSize: "12px",
+   900→                                    borderRadius: "4px",
+   901→                                  }}
+   902→                                />
+   903→                              </PieChart>
+   904→                            </ResponsiveContainer>
+   905→                          </div>
+   906→                          <div className="flex-1 space-y-2.5">
+   907→                            {analyticsOrdersByStatus.map((entry, index) => (
+   908→                              <div key={entry.status} className="flex items-center gap-2.5">
+   909→                                <div className={`w-2.5 h-2.5 ${PIE_LABEL_COLORS[entry.status] || "bg-[#E8E8E8]"}`} />
+   910→                                <span className="text-[12px] text-[#666] capitalize flex-1">{entry.status}</span>
+   911→                                <span className="text-[12px] font-medium text-[#111]">{entry._count}</span>
+   912→                              </div>
+   913→                            ))}
+   914→                          </div>
+   915→                        </div>
+   916→                      </motion.div>
+   917→
+   918→                      {/* Category Revenue Horizontal Bar Chart */}
+   919→                      <motion.div
+   920→                        initial={{ opacity: 0, y: 16 }}
+   921→                        animate={{ opacity: 1, y: 0 }}
+   922→                        transition={{ delay: 0.35 }}
+   923→                        className="bg-white border border-[#E8E8E8] p-5"
+   924→                      >
+   925→                        <div className="flex items-center justify-between mb-6">
+   926→                          <h3 className="text-[14px] font-medium">Category Revenue</h3>
+   927→                          <span className="text-[11px] text-[#999] tracking-wide">Estimated</span>
+   928→                        </div>
+   929→                        <div className="h-[220px]">
+   930→                          <ResponsiveContainer width="100%" height="100%">
+   931→                            <BarChart
+   932→                              data={categoryRevenueData}
+   933→                              layout="vertical"
+   934→                              margin={{ top: 0, right: 20, left: 0, bottom: 0 }}
+   935→                            >
+   936→                              <CartesianGrid strokeDasharray="3 3" stroke="#F0EFED" horizontal={false} />
+   937→                              <XAxis
+   938→                                type="number"
+   939→                                axisLine={false}
+   940→                                tickLine={false}
+   941→                                tick={{ fontSize: 11, fill: "#999" }}
+   942→                                tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+   943→                              />
+   944→                              <YAxis
+   945→                                type="category"
+   946→                                dataKey="name"
+   947→                                axisLine={false}
+   948→                                tickLine={false}
+   949→                                tick={{ fontSize: 11, fill: "#666" }}
+   950→                                width={90}
+   951→                              />
+   952→                              <Tooltip
+   953→                                formatter={(value: number) => [`\u20B9${value.toLocaleString("en-IN")}`, "Revenue"]}
+   954→                                contentStyle={{
+   955→                                  border: "1px solid #E8E8E8",
+   956→                                  fontSize: "12px",
+   957→                                  borderRadius: "4px",
+   958→                                }}
+   959→                              />
+   960→                              <Bar dataKey="revenue" fill="#4D5B47" radius={[0, 2, 2, 0]} barSize={16} />
+   961→                            </BarChart>
+   962→                          </ResponsiveContainer>
+   963→                        </div>
+   964→                      </motion.div>
+   965→                    </div>
+   966→                  </>
+   967→                ) : null}
+   968→              </>
+   969→            )}
+   970→
+   971→            {activeSection === "users" && <ComingSoon />}
+   972→          </div>
+   973→        </div>
+   974→      </div>
+   975→    </main>
+   976→  );
+   977→}

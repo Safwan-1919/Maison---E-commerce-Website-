@@ -4,7 +4,6 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, ShoppingBag, Star, Eye, GitCompareArrows } from "lucide-react";
 import { useStore } from "@/lib/store";
-import Image from "next/image";
 
 interface ProductCardProps {
   id: string;
@@ -100,13 +99,11 @@ export function ProductCard({
             <ShoppingBag className="w-8 h-8 text-[#999]" strokeWidth={1} />
           </div>
         ) : (
-          <Image
+          <img
             src={currentImage}
             alt={name}
-            fill
-            className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-            onError={() => setImgError(true)}
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; setImgError(true); }}
           />
         )}
 

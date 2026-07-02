@@ -1,0 +1,882 @@
+     1→"use client";
+     2→
+     3→import { useEffect, useState, useCallback, useRef } from "react";
+     4→import { motion, useScroll, useTransform, useInView, AnimatePresence } from "framer-motion";
+     5→import { useStore } from "@/lib/store";
+     6→import { ProductCard } from "@/components/shared/ProductCard";
+     7→import { ScrollReveal, StaggerContainer, StaggerItem } from "@/components/shared/ScrollReveal";
+     8→import {
+     9→  ArrowRight, ChevronRight, Star, Truck, RotateCcw, Shield,
+    10→  Sparkles, Clock, Eye, Quote
+    11→} from "lucide-react";
+    12→import Image from "next/image";
+    13→
+    14→interface Product {
+    15→  id: string;
+    16→  name: string;
+    17→  price: number;
+    18→  mrp: number;
+    19→  image: string;
+    20→  images?: string;
+    21→  category: string;
+    22→  brand: string;
+    23→  rating: number;
+    24→  reviewCount: number;
+    25→  discount: number;
+    26→  isNew: boolean;
+    27→  isTrending: boolean;
+    28→  isBestSeller: boolean;
+    29→}
+    30→
+    31→const categories = [
+    32→  { name: "T-Shirts", desc: "Essential foundations", icon: "T", count: 2 },
+    33→  { name: "Shirts", desc: "Button-down perfection", icon: "S", count: 2 },
+    34→  { name: "Blazers", desc: "Understated tailoring", icon: "B", count: 1 },
+    35→  { name: "Sweaters", desc: "Luxury knitwear", icon: "K", count: 2 },
+    36→  { name: "Jeans", desc: "Premium selvedge", icon: "J", count: 1 },
+    37→  { name: "Trousers", desc: "Impeccable cuts", icon: "P", count: 2 },
+    38→  { name: "Outerwear", desc: "Seasonless elegance", icon: "O", count: 1 },
+    39→  { name: "Footwear", desc: "Handcrafted shoes", icon: "F", count: 2 },
+    40→  { name: "Bags", desc: "Considered leather", icon: "L", count: 1 },
+    41→  { name: "Accessories", desc: "The finishing touch", icon: "A", count: 3 },
+    42→];
+    43→
+    44→const testimonials = [
+    45→  {
+    46→    name: "Arjun Mehta",
+    47→    location: "Mumbai",
+    48→    text: "The quality is unlike anything else at this price point. The selvedge denim has developed the most beautiful fades over six months.",
+    49→    rating: 5,
+    50→    avatar: "A",
+    51→  },
+    52→  {
+    53→    name: "Priya Sharma",
+    54→    location: "Delhi",
+    55→    text: "MAISON has completely replaced my wardrobe. Every piece feels considered and intentional. The cashmere sweater is my absolute favorite.",
+    56→    rating: 5,
+    57→    avatar: "P",
+    58→  },
+    59→  {
+    60→    name: "Vikram Kannan",
+    61→    location: "Bangalore",
+    62→    text: "Finally, a brand that understands minimalism without being boring. The tailoring is exceptional and the customer service is top-notch.",
+    63→    rating: 5,
+    64→    avatar: "V",
+    65→  },
+    66→];
+    67→
+    68→const marqueeItems = [
+    69→  "Free shipping on orders over \u20B92,000",
+    70→  "30-day hassle-free returns",
+    71→  "100% authentic products",
+    72→  "Crafted with premium materials",
+    73→  "Sustainable practices",
+    74→  "Worldwide delivery",
+    75→];
+    76→
+    77→const trustItems = [
+    78→  { icon: Truck, title: "Free Shipping", desc: "On all orders over \u20B92,000" },
+    79→  { icon: RotateCcw, title: "Easy Returns", desc: "30-day no questions asked" },
+    80→  { icon: Shield, title: "Authenticity", desc: "100% genuine products" },
+    81→  { icon: Sparkles, title: "Premium Quality", desc: "Finest materials only" },
+    82→];
+    83→
+    84→// ─── Hero Section ─────────────────────────────────────────────────────
+    85→function HeroSection() {
+    86→  const ref = useRef<HTMLDivElement>(null);
+    87→  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
+    88→  const bgY = useTransform(scrollYProgress, [0, 1], ["0%", "20%"]);
+    89→  const opacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
+    90→  const textY = useTransform(scrollYProgress, [0, 0.5], ["0%", "40%"]);
+    91→
+    92→  return (
+    93→    <motion.section ref={ref} className="relative h-screen min-h-[600px] max-h-[900px] overflow-hidden" style={{ opacity }}>
+    94→      {/* Background Image */}
+    95→      <motion.div className="absolute inset-0" style={{ y: bgY }}>
+    96→        <Image
+    97→          src="/images/hero-bg.png"
+    98→          alt="MAISON Collection"
+    99→          fill
+   100→          className="object-cover"
+   101→          priority
+   102→          sizes="100vw"
+   103→        />
+   104→        {/* Gradient Overlays */}
+   105→        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/50" />
+   106→        <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-black/30" />
+   107→        {/* Animated pulsing gradient at bottom */}
+   108→        <motion.div
+   109→          className="absolute bottom-0 left-0 right-0 h-40"
+   110→          animate={{ opacity: [0.3, 0.5, 0.3] }}
+   111→          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+   112→          style={{ background: "linear-gradient(to top, rgba(0,0,0,0.6), transparent)" }}
+   113→        />
+   114→      </motion.div>
+   115→
+   116→      {/* Content */}
+   117→      <motion.div
+   118→        className="relative z-10 h-full flex flex-col items-center justify-center text-center px-4 sm:px-6"
+   119→        style={{ y: textY }}
+   120→      >
+   121→        <motion.div
+   122→          initial={{ opacity: 0, y: 30 }}
+   123→          animate={{ opacity: 1, y: 0 }}
+   124→          transition={{ duration: 0.8, delay: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+   125→          className="mb-4"
+   126→        >
+   127→          <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/10 backdrop-blur-md border border-white/20 text-[11px] font-medium tracking-[0.2em] uppercase text-white/90">
+   128→            <Sparkles className="w-3 h-3" />
+   129→            New Season 2025
+   130→          </span>
+   131→        </motion.div>
+   132→
+   133→        <motion.h1
+   134→          initial={{ opacity: 0, y: 40 }}
+   135→          animate={{ opacity: 1, y: 0 }}
+   136→          transition={{ duration: 0.9, delay: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
+   137→          className="text-[40px] sm:text-[56px] md:text-[72px] lg:text-[88px] font-medium tracking-[-0.03em] text-white leading-[0.95] mb-4 sm:mb-6"
+   138→        >
+   139→          Redefine
+   140→          <br />
+   141→          <span className="italic font-normal text-white/80">Your Style</span>
+   142→        </motion.h1>
+   143→
+   144→        <motion.p
+   145→          initial={{ opacity: 0, y: 30 }}
+   146→          animate={{ opacity: 1, y: 0 }}
+   147→          transition={{ duration: 0.7, delay: 0.55, ease: [0.25, 0.1, 0.25, 1] }}
+   148→          className="text-[14px] sm:text-[16px] text-white/70 max-w-[420px] mb-8 sm:mb-10 leading-relaxed"
+   149→        >
+   150→          Considered essentials crafted from the world&apos;s finest materials.
+   151→          Less noise, more substance.
+   152→        </motion.p>
+   153→
+   154→        {/* Decorative line between text and CTA */}
+   155→        <motion.div
+   156→          initial={{ opacity: 0, scaleX: 0 }}
+   157→          animate={{ opacity: 1, scaleX: 1 }}
+   158→          transition={{ duration: 0.8, delay: 0.65, ease: [0.25, 0.1, 0.25, 1] }}
+   159→          className="w-16 h-px bg-[#E8E8E8]/30 mb-8 sm:mb-10"
+   160→        />
+   161→
+   162→        <motion.div
+   163→          initial={{ opacity: 0, y: 20 }}
+   164→          animate={{ opacity: 1, y: 0 }}
+   165→          transition={{ duration: 0.6, delay: 0.7, ease: [0.25, 0.1, 0.25, 1] }}
+   166→          className="flex flex-col sm:flex-row gap-3 sm:gap-4"
+   167→        >
+   168→          <motion.button
+   169→            whileHover={{ scale: 1.02 }}
+   170→            whileTap={{ scale: 0.98 }}
+   171→            onClick={() => useStore.getState().navigate("shop")}
+   172→            className="px-8 py-4 bg-white text-[#111] text-[12px] font-medium tracking-[0.2em] uppercase hover:bg-[#F0EFED] transition-colors flex items-center justify-center gap-2 min-w-[200px]"
+   173→          >
+   174→            Shop Collection <ArrowRight className="w-4 h-4" />
+   175→          </motion.button>
+   176→          <motion.button
+   177→            whileHover={{ scale: 1.02 }}
+   178→            whileTap={{ scale: 0.98 }}
+   179→            className="px-8 py-4 border border-white/40 text-white text-[12px] font-medium tracking-[0.2em] uppercase hover:bg-white/10 backdrop-blur-sm transition-colors flex items-center justify-center gap-2 min-w-[200px]"
+   180→          >
+   181→            Our Story
+   182→          </motion.button>
+   183→        </motion.div>
+   184→
+   185→        {/* Scroll Indicator */}
+   186→        <motion.div
+   187→          initial={{ opacity: 0 }}
+   188→          animate={{ opacity: 1 }}
+   189→          transition={{ delay: 1.2, duration: 0.6 }}
+   190→          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
+   191→        >
+   192→          <span className="text-[10px] tracking-[0.3em] uppercase text-white/40">Scroll</span>
+   193→          <motion.div
+   194→            animate={{ y: [0, 6, 0] }}
+   195→            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+   196→            className="w-px h-6 bg-gradient-to-b from-white/40 to-transparent"
+   197→          />
+   198→        </motion.div>
+   199→      </motion.div>
+   200→    </motion.section>
+   201→  );
+   202→}
+   203→
+   204→// ─── Marquee Banner ───────────────────────────────────────────────────
+   205→function MarqueeBanner() {
+   206→  return (
+   207→    <div
+   208→      className="bg-[#111] py-3 overflow-hidden"
+   209→      style={{ maskImage: 'linear-gradient(to right, transparent, black 5%, black 95%, transparent)', WebkitMaskImage: 'linear-gradient(to right, transparent, black 5%, black 95%, transparent)' }}
+   210→    >
+   211→      <div className="animate-marquee flex items-center gap-8 whitespace-nowrap">
+   212→        {[...marqueeItems, ...marqueeItems].map((item, i) => (
+   213→          <span key={i} className="flex items-center gap-8 text-[11px] tracking-[0.15em] uppercase text-[#999]">
+   214→            {item}
+   215→            <span className="text-[#4D5B47]">&#x2022;</span>
+   216→          </span>
+   217→        ))}
+   218→      </div>
+   219→    </div>
+   220→  );
+   221→}
+   222→
+   223→// ─── Categories Section ───────────────────────────────────────────────
+   224→function CategoriesSection() {
+   225→  const { navigate, setFilter, resetFilters } = useStore();
+   226→  const ref = useRef<HTMLDivElement>(null);
+   227→  const isInView = useInView(ref, { once: true, margin: "-80px" });
+   228→
+   229→  const handleCategoryClick = (category: string) => {
+   230→    resetFilters();
+   231→    setFilter("category", [category]);
+   232→    navigate("shop");
+   233→  };
+   234→
+   235→  const categoryColors: Record<string, string> = {
+   236→    "T-Shirts": "bg-[#F0EFED]",
+   237→    "Shirts": "bg-[#E8E6E0]",
+   238→    "Blazers": "bg-[#D9DDD6]",
+   239→    "Sweaters": "bg-[#E5DDD2]",
+   240→    "Jeans": "bg-[#DEE0DE]",
+   241→    "Trousers": "bg-[#E0DDD5]",
+   242→    "Outerwear": "bg-[#D8D5D0]",
+   243→    "Footwear": "bg-[#DDD8CF]",
+   244→    "Bags": "bg-[#D5D0C8]",
+   245→    "Accessories": "bg-[#E2DED6]",
+   246→  };
+   247→
+   248→  return (
+   249→    <section className="py-16 lg:py-24">
+   250→      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+   251→        <ScrollReveal>
+   252→          <div className="flex items-end justify-between mb-10">
+   253→            <div>
+   254→              <span className="text-[11px] font-medium tracking-[0.2em] uppercase text-[#999] block mb-2">Browse</span>
+   255→              <h2 className="text-[28px] sm:text-[36px] font-medium tracking-[-0.02em]">Shop by Category</h2>
+   256→            </div>
+   257→            <button
+   258→              onClick={() => navigate("shop")}
+   259→              className="hidden sm:flex items-center gap-1.5 text-[12px] tracking-widest uppercase text-[#666] hover:text-[#111] transition-colors group"
+   260→            >
+   261→              View All <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+   262→            </button>
+   263→          </div>
+   264→        </ScrollReveal>
+   265→
+   266→        <div ref={ref} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
+   267→          {categories.map((cat, i) => (
+   268→            <motion.button
+   269→              key={cat.name}
+   270→              initial={{ opacity: 0, y: 20 }}
+   271→              animate={isInView ? { opacity: 1, y: 0 } : {}}
+   272→              transition={{ duration: 0.5, delay: i * 0.04, ease: [0.25, 0.1, 0.25, 1] }}
+   273→              onClick={() => handleCategoryClick(cat.name)}
+   274→              className="group relative overflow-hidden p-5 sm:p-6 text-left hover:shadow-md transition-[transform,shadow] duration-300 hover:scale-[1.02]"
+   275→            >
+   276→              <div className={`absolute inset-0 ${categoryColors[cat.name] || "bg-[#F0EFED]"} transition-transform duration-700`} />
+   277→              {/* Bottom border animation line */}
+   278→              <div className="absolute bottom-0 left-0 h-[2px] bg-[#4D5B47] w-0 group-hover:w-full transition-all duration-[400ms] ease-[cubic-bezier(0.25,0.1,0.25,1)]" />
+   279→              <div className="relative z-10">
+   280→                <span className="text-[28px] font-medium tracking-[-0.04em] text-[#D1D1D1] block mb-3 transition-colors duration-300 group-hover:text-[#4D5B47]">
+   281→                  {cat.icon}
+   282→                </span>
+   283→                <h3 className="text-[14px] font-medium text-[#111] mb-0.5">{cat.name}</h3>
+   284→                <p className="text-[11px] text-[#999]">{cat.desc}</p>
+   285→                <span className={`inline-block mt-2 text-[11px] text-[#999] px-2 py-0.5 bg-[#111]/5 ${isInView ? 'badge-pop' : ''}`}>{cat.count} products</span>
+   286→              </div>
+   287→            </motion.button>
+   288→          ))}
+   289→        </div>
+   290→      </div>
+   291→    </section>
+   292→  );
+   293→}
+   294→
+   295→// ─── Product Section (Reusable) ───────────────────────────────────────
+   296→function ProductSection({
+   297→  title,
+   298→  subtitle,
+   299→  fetchParam,
+   300→  viewAllFilter,
+   301→}: {
+   302→  title: string;
+   303→  subtitle: string;
+   304→  fetchParam: string;
+   305→  viewAllFilter?: string;
+   306→}) {
+   307→  const { navigate, setFilter, resetFilters } = useStore();
+   308→  const [products, setProducts] = useState<Product[]>([]);
+   309→  const [loading, setLoading] = useState(true);
+   310→  const ref = useRef<HTMLDivElement>(null);
+   311→  const isInView = useInView(ref, { once: true, margin: "-60px" });
+   312→
+   313→  const fetchProducts = useCallback(async () => {
+   314→    setLoading(true);
+   315→    try {
+   316→      const res = await fetch(`/api/products?${fetchParam}&limit=4`);
+   317→      const data = await res.json();
+   318→      setProducts(data.products || []);
+   319→    } catch (e) {
+   320→      console.error(e);
+   321→    }
+   322→    setLoading(false);
+   323→  }, [fetchParam]);
+   324→
+   325→  useEffect(() => {
+   326→    const id = setTimeout(fetchProducts, 0);
+   327→    return () => clearTimeout(id);
+   328→  }, [fetchProducts]);
+   329→
+   330→  const handleViewAll = () => {
+   331→    resetFilters();
+   332→    if (viewAllFilter) {
+   333→      setFilter("sortBy", viewAllFilter);
+   334→    }
+   335→    navigate("shop");
+   336→  };
+   337→
+   338→  return (
+   339→    <section className="py-12 lg:py-16">
+   340→      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+   341→        <ScrollReveal>
+   342→          <div className="flex items-end justify-between mb-8">
+   343→            <div>
+   344→              <span className="text-[11px] font-medium tracking-[0.2em] uppercase text-[#999] block mb-2">{subtitle}</span>
+   345→              <h2 className="text-[24px] sm:text-[28px] font-medium tracking-[-0.02em]">{title}</h2>
+   346→            </div>
+   347→            <button
+   348→              onClick={handleViewAll}
+   349→              className="hidden sm:flex items-center gap-1.5 text-[12px] tracking-widest uppercase text-[#666] hover:text-[#111] transition-colors group"
+   350→            >
+   351→              View All <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+   352→            </button>
+   353→          </div>
+   354→        </ScrollReveal>
+   355→
+   356→        <div ref={ref}>
+   357→          {loading ? (
+   358→            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
+   359→              {Array.from({ length: 4 }).map((_, i) => (
+   360→                <div key={i} className="space-y-3">
+   361→                  <div className="aspect-[3/4] skeleton-shimmer rounded-[4px]" />
+   362→                  <div className="h-3 w-16 skeleton-shimmer rounded-[4px]" />
+   363→                  <div className="h-4 w-full skeleton-shimmer rounded-[4px]" />
+   364→                  <div className="h-4 w-20 skeleton-shimmer rounded-[4px]" />
+   365→                </div>
+   366→              ))}
+   367→            </div>
+   368→          ) : (
+   369→            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
+   370→              {products.map((p, i) => (
+   371→                <ProductCard
+   372→                  key={p.id}
+   373→                  id={p.id}
+   374→                  name={p.name}
+   375→                  price={p.price}
+   376→                  mrp={p.mrp}
+   377→                  image={p.image}
+   378→                  images={p.images ? JSON.parse(p.images) : undefined}
+   379→                  category={p.category}
+   380→                  brand={p.brand}
+   381→                  rating={p.rating}
+   382→                  reviewCount={p.reviewCount}
+   383→                  discount={p.discount}
+   384→                  isNew={p.isNew}
+   385→                  isTrending={p.isTrending}
+   386→                  isBestSeller={p.isBestSeller}
+   387→                  index={isInView ? i : undefined}
+   388→                />
+   389→              ))}
+   390→            </div>
+   391→          )}
+   392→        </div>
+   393→
+   394→        <div className="sm:hidden mt-6 text-center">
+   395→          <button
+   396→            onClick={handleViewAll}
+   397→            className="px-6 py-2.5 border border-[#E8E8E8] text-[12px] tracking-widest uppercase text-[#111] hover:border-[#999] transition-colors"
+   398→          >
+   399→            View All {title}
+   400→          </button>
+   401→        </div>
+   402→      </div>
+   403→    </section>
+   404→  );
+   405→}
+   406→
+   407→// ─── Editorial Section ────────────────────────────────────────────────
+   408→function EditorialSection() {
+   409→  const imgRef = useRef<HTMLDivElement>(null);
+   410→  const { scrollYProgress } = useScroll({ target: imgRef, offset: ["start end", "end start"] });
+   411→  const imgY = useTransform(scrollYProgress, [0, 1], [30, -30]);
+   412→
+   413→  return (
+   414→    <section className="py-16 lg:py-24 bg-white">
+   415→      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+   416→        <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+   417→          <ScrollReveal direction="left">
+   418→            <motion.div ref={imgRef} className="relative aspect-[4/5] bg-[#F0EFED] overflow-hidden" style={{ y: imgY }}>
+   419→              <Image
+   420→                src="/images/products/product-6.png"
+   421→                alt="MAISON Editorial"
+   422→                fill
+   423→                className="object-cover"
+   424→                sizes="(max-width: 1024px) 100vw, 50vw"
+   425→              />
+   426→              <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/50 to-transparent">
+   427→                <span className="text-[11px] tracking-[0.2em] uppercase text-white/80">SS25 Collection</span>
+   428→              </div>
+   429→            </motion.div>
+   430→          </ScrollReveal>
+   431→
+   432→          <ScrollReveal direction="right" delay={0.15}>
+   433→            <div className="lg:pl-8">
+   434→              <span className="text-[11px] font-medium tracking-[0.2em] uppercase text-[#4D5B47] block mb-4">Our Philosophy</span>
+   435→              {/* Decorative quote mark */}
+   436→              <span className="block text-[64px] leading-none text-[#E8E8E8] font-serif select-none mb-2 -ml-1">&ldquo;</span>
+   437→              <h2 className="text-[28px] sm:text-[36px] lg:text-[42px] font-medium tracking-[-0.02em] text-[#111] leading-[1.1] mb-6">
+   438→                Less noise.
+   439→                <br />
+   440→                <span className="text-[#4D5B47]">More substance.</span>
+   441→              </h2>
+   442→              <div className="space-y-4 text-[14px] text-[#666] leading-relaxed mb-8">
+   443→                <p>
+   444→                  At MAISON, we believe the best style is invisible. No logos screaming for attention,
+   445→                  no trends chasing the moment. Just exceptional materials, considered design, and
+   446→                  pieces that speak for themselves.
+   447→                </p>
+   448→                <p>
+   449→                  Every garment is a result of hundreds of decisions — from the mill where the fabric
+   450→                  is woven to the last stitch. We partner with the same artisans and suppliers as
+   451→                  the world&apos;s most prestigious houses, making true luxury accessible.
+   452→                </p>
+   453→              </div>
+   454→              <motion.button
+   455→                whileHover={{ x: 4 }}
+   456→                onClick={() => useStore.getState().navigate("shop")}
+   457→                className="inline-flex items-center gap-2 text-[12px] font-medium tracking-[0.15em] uppercase text-[#111] hover:text-[#4D5B47] transition-colors group"
+   458→              >
+   459→                Discover Our Collection
+   460→                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+   461→              </motion.button>
+   462→            </div>
+   463→          </ScrollReveal>
+   464→        </div>
+   465→      </div>
+   466→    </section>
+   467→  );
+   468→}
+   469→
+   470→// ─── Flash Deals Section ──────────────────────────────────────────────
+   471→function FlashDealsSection() {
+   472→  const [timeLeft, setTimeLeft] = useState({ hours: 5, minutes: 42, seconds: 18 });
+   473→  const [products, setProducts] = useState<Product[]>([]);
+   474→  const [loading, setLoading] = useState(true);
+   475→  const { navigate } = useStore();
+   476→
+   477→  useEffect(() => {
+   478→    const timer = setInterval(() => {
+   479→      setTimeLeft((prev) => {
+   480→        let { hours, minutes, seconds } = prev;
+   481→        seconds--;
+   482→        if (seconds < 0) { seconds = 59; minutes--; }
+   483→        if (minutes < 0) { minutes = 59; hours--; }
+   484→        if (hours < 0) { hours = 23; minutes = 59; seconds = 59; }
+   485→        return { hours, minutes, seconds };
+   486→      });
+   487→    }, 1000);
+   488→    return () => clearInterval(timer);
+   489→  }, []);
+   490→
+   491→  useEffect(() => {
+   492→    fetch("/api/products?flashDeal=true&limit=4")
+   493→      .then((r) => r.json())
+   494→      .then((data) => { setProducts(data.products || []); setLoading(false); })
+   495→      .catch(() => setLoading(false));
+   496→  }, []);
+   497→
+   498→  const pad = (n: number) => n.toString().padStart(2, "0");
+   499→
+   500→  return (
+   501→    <section className="py-16 lg:py-24 bg-[#111] text-[#F8F8F6]">
+   502→      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+   503→        <ScrollReveal>
+   504→          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between mb-10 gap-4">
+   505→            <div>
+   506→              <div className="flex items-center gap-3 mb-2">
+   507→                <Clock className="w-4 h-4 text-[#B79B7B]" strokeWidth={1.5} />
+   508→                <span className="text-[11px] font-medium tracking-[0.2em] uppercase text-[#B79B7B]">Limited Time</span>
+   509→              </div>
+   510→              <h2 className="text-[28px] sm:text-[36px] font-medium tracking-[-0.02em]">Flash Deals</h2>
+   511→            </div>
+   512→            {/* Countdown */}
+   513→            <div className="flex items-center gap-2">
+   514→              {[
+   515→                { value: timeLeft.hours, label: "HRS" },
+   516→                { value: timeLeft.minutes, label: "MIN" },
+   517→                { value: timeLeft.seconds, label: "SEC" },
+   518→              ].map((unit, i) => (
+   519→                <div key={unit.label} className="flex items-center gap-2">
+   520→                  {i > 0 && <span className="text-[18px] text-[#4D5B47] font-light">:</span>}
+   521→                  <div className="text-center">
+   522→                    <div className="w-12 h-12 sm:w-14 sm:h-14 bg-[#1A1A1A] border border-[#2A2A2A] flex items-center justify-center text-[20px] sm:text-[24px] font-medium tabular-nums">
+   523→                      {pad(unit.value)}
+   524→                    </div>
+   525→                    <span className="text-[9px] tracking-[0.15em] text-[#666] mt-1 block">{unit.label}</span>
+   526→                  </div>
+   527→                </div>
+   528→              ))}
+   529→            </div>
+   530→          </div>
+   531→        </ScrollReveal>
+   532→
+   533→        {loading ? (
+   534→          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+   535→            {Array.from({ length: 4 }).map((_, i) => (
+   536→              <div key={i} className="space-y-3">
+   537→                <div className="aspect-[3/4] bg-[#1A1A1A] rounded-[4px]" />
+   538→                <div className="h-3 w-20 bg-[#1A1A1A] rounded-[4px]" />
+   539→                <div className="h-4 w-full bg-[#1A1A1A] rounded-[4px]" />
+   540→              </div>
+   541→            ))}
+   542→          </div>
+   543→        ) : products.length > 0 ? (
+   544→          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+   545→            {products.map((p, i) => (
+   546→              <motion.div
+   547→                key={p.id}
+   548→                initial={{ opacity: 0, y: 24 }}
+   549→                whileInView={{ opacity: 1, y: 0 }}
+   550→                viewport={{ once: true, margin: "-40px" }}
+   551→                transition={{ duration: 0.5, delay: i * 0.08 }}
+   552→                className="group cursor-pointer"
+   553→                onClick={() => navigate("product", p.id)}
+   554→              >
+   555→                <div className="relative aspect-[3/4] bg-[#1A1A1A] overflow-hidden mb-3 group-hover:[box-shadow:inset_0_0_30px_rgba(0,0,0,0.3)] transition-[box-shadow] duration-500">
+   556→                  <Image
+   557→                    src={p.image}
+   558→                    alt={p.name}
+   559→                    fill
+   560→                    className="object-cover transition-transform duration-700 group-hover:scale-105"
+   561→                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+   562→                  />
+   563→                  <span className="absolute top-3 left-3 px-2.5 py-1 bg-[#C53030] text-[#F8F8F6] text-[11px] font-medium tracking-wide uppercase">
+   564→                    {Math.round(p.discount)}% Off
+   565→                  </span>
+   566→                </div>
+   567→                <p className="text-[11px] text-[#666] tracking-wider uppercase mb-1">{p.brand}</p>
+   568→                <h3 className="text-[13px] text-[#F8F8F6] mb-2 line-clamp-1">{p.name}</h3>
+   569→                <div className="flex items-center gap-2">
+   570→                  <span className="text-[14px] font-medium text-[#F8F8F6]">
+   571→                    {"\u20B9"}{p.price.toLocaleString("en-IN")}
+   572→                  </span>
+   573→                  <span className="text-[12px] text-[#666] line-through">
+   574→                    {"\u20B9"}{p.mrp.toLocaleString("en-IN")}
+   575→                  </span>
+   576→                </div>
+   577→              </motion.div>
+   578→            ))}
+   579→          </div>
+   580→        ) : (
+   581→          <div className="text-center py-12">
+   582→            <p className="text-[14px] text-[#666]">No flash deals available right now</p>
+   583→          </div>
+   584→        )}
+   585→      </div>
+   586→    </section>
+   587→  );
+   588→}
+   589→
+   590→// ─── Testimonials Section ─────────────────────────────────────────────
+   591→function TestimonialsSection() {
+   592→  return (
+   593→    <section className="py-16 lg:py-24">
+   594→      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+   595→        <ScrollReveal>
+   596→          <div className="text-center mb-12">
+   597→            <span className="text-[11px] font-medium tracking-[0.2em] uppercase text-[#999] block mb-2">Testimonials</span>
+   598→            <h2 className="text-[28px] sm:text-[36px] font-medium tracking-[-0.02em]">What Our Clients Say</h2>
+   599→          </div>
+   600→        </ScrollReveal>
+   601→
+   602→        <StaggerContainer className="grid md:grid-cols-3 gap-6">
+   603→          {testimonials.map((t, i) => (
+   604→            <StaggerItem key={t.name}>
+   605→              <div className="p-6 sm:p-8 border border-[#E8E8E8] border-l-[3px] border-l-[#4D5B47] bg-white h-full flex flex-col hover:shadow-md transition-shadow duration-300 group">
+   606→                <Quote className="w-6 h-6 text-[#E8E8E8] mb-4 flex-shrink-0" strokeWidth={1} />
+   607→                <p className="text-[14px] text-[#555] italic leading-[1.8] flex-1 mb-6">
+   608→                  &ldquo;{t.text}&rdquo;
+   609→                </p>
+   610→                <div className="flex items-center gap-0.5 mb-4">
+   611→                  {Array.from({ length: 5 }).map((_, si) => (
+   612→                    <Star
+   613→                      key={si}
+   614→                      className={`w-3.5 h-3.5 ${si < t.rating ? "fill-[#111] text-[#111]" : "text-[#D1D1D1]"}`}
+   615→                    />
+   616→                  ))}
+   617→                </div>
+   618→                <div className="flex items-center gap-3 pt-4 border-t border-[#F0EFED]">
+   619→                  <div className="w-9 h-9 bg-[#F0EFED] rounded-full flex items-center justify-center text-[13px] font-medium text-[#666]">
+   620→                    {t.avatar}
+   621→                  </div>
+   622→                  <div>
+   623→                    <p className="text-[13px] font-medium text-[#111]">{t.name}</p>
+   624→                    <p className="text-[11px] text-[#999]">{t.location}</p>
+   625→                  </div>
+   626→                </div>
+   627→              </div>
+   628→            </StaggerItem>
+   629→          ))}
+   630→        </StaggerContainer>
+   631→      </div>
+   632→    </section>
+   633→  );
+   634→}
+   635→
+   636→// ─── Trust Section ────────────────────────────────────────────────────
+   637→function TrustSection() {
+   638→  return (
+   639→    <section className="py-12 lg:py-16 border-t border-[#E8E8E8]">
+   640→      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+   641→        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 lg:gap-8">
+   642→          {trustItems.map((item, i) => (
+   643→            <ScrollReveal key={item.title} delay={i * 0.08}>
+   644→              <div className="flex flex-col items-center text-center p-4">
+   645→                <motion.div
+   646→                  animate={{ scale: [1, 1.1, 1] }}
+   647→                  transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: i * 0.3 }}
+   648→                  className="w-11 h-11 bg-[#F0EFED] flex items-center justify-center mb-3"
+   649→                >
+   650→                  <item.icon className="w-5 h-5 text-[#4D5B47]" strokeWidth={1.5} />
+   651→                </motion.div>
+   652→                <h4 className="text-[13px] font-medium text-[#111] mb-1">{item.title}</h4>
+   653→                <p className="text-[12px] text-[#999]">{item.desc}</p>
+   654→              </div>
+   655→            </ScrollReveal>
+   656→          ))}
+   657→        </div>
+   658→      </div>
+   659→    </section>
+   660→  );
+   661→}
+   662→
+   663→// ─── Feature Highlight Section ────────────────────────────────────────
+   664→function FeatureHighlight() {
+   665→  return (
+   666→    <section className="py-16 lg:py-24 bg-white">
+   667→      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+   668→        <div className="grid md:grid-cols-3 gap-6">
+   669→          <ScrollReveal delay={0}>
+   670→            <div className="relative aspect-[3/4] bg-[#F0EFED] overflow-hidden group cursor-pointer" onClick={() => useStore.getState().navigate("shop")}>
+   671→              <Image src="/images/products/product-4.png" alt="Knitwear" fill className="object-cover transition-transform duration-700 group-hover:scale-105" sizes="(max-width: 768px) 100vw, 33vw" />
+   672→              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+   673→              <div className="absolute bottom-0 left-0 right-0 p-6">
+   674→                <span className="text-[11px] tracking-[0.2em] uppercase text-white/70 block mb-1">New Season</span>
+   675→                <h3 className="text-[20px] sm:text-[24px] font-medium text-white tracking-[-0.02em]">Knitwear</h3>
+   676→                <p className="text-[13px] text-white/70 mt-1">Cashmere & merino essentials</p>
+   677→                <span className="inline-flex items-center gap-1.5 text-[12px] tracking-widest uppercase text-white mt-3 group-hover:gap-2.5 transition-all">
+   678→                  Explore <ArrowRight className="w-3.5 h-3.5" />
+   679→                </span>
+   680→              </div>
+   681→            </div>
+   682→          </ScrollReveal>
+   683→
+   684→          <ScrollReveal delay={0.1}>
+   685→            <div className="relative aspect-[3/4] bg-[#F0EFED] overflow-hidden group cursor-pointer" onClick={() => useStore.getState().navigate("shop")}>
+   686→              <Image src="/images/products/product-5.png" alt="Footwear" fill className="object-cover transition-transform duration-700 group-hover:scale-105" sizes="(max-width: 768px) 100vw, 33vw" />
+   687→              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+   688→              <div className="absolute bottom-0 left-0 right-0 p-6">
+   689→                <span className="text-[11px] tracking-[0.2em] uppercase text-white/70 block mb-1">Handcrafted</span>
+   690→                <h3 className="text-[20px] sm:text-[24px] font-medium text-white tracking-[-0.02em]">Footwear</h3>
+   691→                <p className="text-[13px] text-white/70 mt-1">Boots, sneakers & more</p>
+   692→                <span className="inline-flex items-center gap-1.5 text-[12px] tracking-widest uppercase text-white mt-3 group-hover:gap-2.5 transition-all">
+   693→                  Explore <ArrowRight className="w-3.5 h-3.5" />
+   694→                </span>
+   695→              </div>
+   696→            </div>
+   697→          </ScrollReveal>
+   698→
+   699→          <ScrollReveal delay={0.2}>
+   700→            <div className="relative aspect-[3/4] bg-[#F0EFED] overflow-hidden group cursor-pointer" onClick={() => useStore.getState().navigate("shop")}>
+   701→              <Image src="/images/products/product-10.png" alt="Outerwear" fill className="object-cover transition-transform duration-700 group-hover:scale-105" sizes="(max-width: 768px) 100vw, 33vw" />
+   702→              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+   703→              <div className="absolute bottom-0 left-0 right-0 p-6">
+   704→                <span className="text-[11px] tracking-[0.2em] uppercase text-white/70 block mb-1">Investment Pieces</span>
+   705→                <h3 className="text-[20px] sm:text-[24px] font-medium text-white tracking-[-0.02em]">Outerwear</h3>
+   706→                <p className="text-[13px] text-white/70 mt-1">Coats & jackets for every season</p>
+   707→                <span className="inline-flex items-center gap-1.5 text-[12px] tracking-widest uppercase text-white mt-3 group-hover:gap-2.5 transition-all">
+   708→                  Explore <ArrowRight className="w-3.5 h-3.5" />
+   709→                </span>
+   710→              </div>
+   711→            </div>
+   712→          </ScrollReveal>
+   713→        </div>
+   714→      </div>
+   715→    </section>
+   716→  );
+   717→}
+   718→
+   719→// ─── Stats Banner ─────────────────────────────────────────────────────
+   720→function StatsBanner() {
+   721→  const stats = [
+   722→    { value: "15K+", label: "Happy Customers" },
+   723→    { value: "16", label: "Premium Products" },
+   724→    { value: "9", label: "In-House Brands" },
+   725→    { value: "4.7", label: "Average Rating" },
+   726→  ];
+   727→
+   728→  return (
+   729→    <section className="py-12 lg:py-16 bg-[#4D5B47] border-t-2 border-t-[#3A4835]">
+   730→      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+   731→        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 lg:gap-8">
+   732→          {stats.map((stat, i) => (
+   733→            <ScrollReveal key={stat.label} delay={i * 0.06}>
+   734→              <div className="text-center">
+   735→                <span className="text-[28px] sm:text-[36px] font-medium tracking-tight text-[#F8F8F6] block">
+   736→                  {stat.value}
+   737→                </span>
+   738→                <span className="text-[11px] tracking-[0.15em] uppercase text-[#F8F8F6]/60">
+   739→                  {stat.label}
+   740→                </span>
+   741→              </div>
+   742→            </ScrollReveal>
+   743→          ))}
+   744→        </div>
+   745→      </div>
+   746→    </section>
+   747→  );
+   748→}
+   749→
+   750→// ─── Recently Viewed Section ─────────────────────────────────────────
+   751→function RecentlyViewedSection() {
+   752→  const { recentlyViewed, navigate } = useStore();
+   753→  const [products, setProducts] = useState<Product[]>([]);
+   754→
+   755→  useEffect(() => {
+   756→    if (recentlyViewed.length === 0) {
+   757→      const t = setTimeout(() => setProducts([]), 0);
+   758→      return () => clearTimeout(t);
+   759→    }
+   760→    const controller = new AbortController();
+   761→    const timer = setTimeout(async () => {
+   762→      try {
+   763→        const res = await fetch(`/api/products?limit=50`, { signal: controller.signal });
+   764→        const data = await res.json();
+   765→        const all = data.products || [];
+   766→        const filtered = all.filter((p: Product) => recentlyViewed.includes(p.id));
+   767→        setProducts(filtered.slice(0, 4));
+   768→      } catch { /* ignore */ }
+   769→    }, 0);
+   770→    return () => { clearTimeout(timer); controller.abort(); };
+   771→  }, [recentlyViewed]);
+   772→
+   773→  if (products.length === 0) return null;
+   774→
+   775→  return (
+   776→    <section className="py-12 lg:py-16 border-t border-[#E8E8E8]">
+   777→      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+   778→        <ScrollReveal>
+   779→          <div className="flex items-end justify-between mb-8">
+   780→            <div>
+   781→              <span className="text-[11px] font-medium tracking-[0.2em] uppercase text-[#999] block mb-2">Your History</span>
+   782→              <h2 className="text-[24px] sm:text-[28px] font-medium tracking-[-0.02em]">Recently Viewed</h2>
+   783→            </div>
+   784→            <button
+   785→              onClick={() => navigate("shop")}
+   786→              className="hidden sm:flex items-center gap-1.5 text-[12px] tracking-widest uppercase text-[#666] hover:text-[#111] transition-colors group"
+   787→            >
+   788→              View All <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+   789→            </button>
+   790→          </div>
+   791→        </ScrollReveal>
+   792→
+   793→        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
+   794→          {products.map((p, i) => (
+   795→            <ProductCard
+   796→              key={p.id}
+   797→              id={p.id}
+   798→              name={p.name}
+   799→              price={p.price}
+   800→              mrp={p.mrp}
+   801→              image={p.image}
+   802→              images={p.images ? JSON.parse(p.images) : undefined}
+   803→              category={p.category}
+   804→              brand={p.brand}
+   805→              rating={p.rating}
+   806→              reviewCount={p.reviewCount}
+   807→              discount={p.discount}
+   808→              isNew={p.isNew}
+   809→              isTrending={p.isTrending}
+   810→              isBestSeller={p.isBestSeller}
+   811→              index={i}
+   812→            />
+   813→          ))}
+   814→        </div>
+   815→      </div>
+   816→    </section>
+   817→  );
+   818→}
+   819→
+   820→// ─── Gradient Divider ──────────────────────────────────────────────────
+   821→function GradientDivider() {
+   822→  return (
+   823→    <div className="flex items-center justify-center py-2">
+   824→      <div
+   825→        className="w-full max-w-[600px] h-px"
+   826→        style={{
+   827→          background: "linear-gradient(to right, transparent, #E8E8E8 20%, #E8E8E8 80%, transparent)",
+   828→        }}
+   829→      />
+   830→    </div>
+   831→  );
+   832→}
+   833→
+   834→// ─── Main HomePage ────────────────────────────────────────────────────
+   835→export default function HomePage() {
+   836→  const { navigate } = useStore();
+   837→
+   838→  return (
+   839→    <main>
+   840→      <HeroSection />
+   841→      <MarqueeBanner />
+   842→      <CategoriesSection />
+   843→      <GradientDivider />
+   844→      <ProductSection
+   845→        title="New Arrivals"
+   846→        subtitle="Just In"
+   847→        fetchParam="new=true&sort=newest"
+   848→        viewAllFilter="newest"
+   849→      />
+   850→      <EditorialSection />
+   851→      <GradientDivider />
+   852→      <FeatureHighlight />
+   853→      <ProductSection
+   854→        title="Trending Now"
+   855→        subtitle="Popular"
+   856→        fetchParam="trending=true&sort=popularity"
+   857→        viewAllFilter="popularity"
+   858→      />
+   859→      <GradientDivider />
+   860→      <FlashDealsSection />
+   861→      <ProductSection
+   862→        title="Best Sellers"
+   863→        subtitle="Most Loved"
+   864→        fetchParam="bestSeller=true&sort=popularity"
+   865→        viewAllFilter="popularity"
+   866→      />
+   867→      <GradientDivider />
+   868→      <StatsBanner />
+   869→      <TestimonialsSection />
+   870→      <GradientDivider />
+   871→      <RecentlyViewedSection />
+   872→      <TrustSection />
+   873→      {/* Footer gradient accent line */}
+   874→      <div
+   875→        className="h-1"
+   876→        style={{
+   877→          background: "linear-gradient(to right, transparent, #4D5B47 30%, #4D5B47 70%, transparent)",
+   878→        }}
+   879→      />
+   880→    </main>
+   881→  );
+   882→}

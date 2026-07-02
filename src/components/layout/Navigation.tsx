@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, ShoppingBag, Heart, User, Menu, X, ChevronDown, GitCompareArrows } from "lucide-react";
 import { useStore } from "@/lib/store";
@@ -69,16 +69,41 @@ export function Navigation() {
   const { navigate, toggleCart, getCartCount, wishlistItems, setSearchOpen, setMobileMenuOpen, resetFilters, setFilter, compareItems, setCompareOpen } = useStore();
   const [scrolled, setScrolled] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [cartBadgeKey, setCartBadgeKey] = useState(0);
+  const [showSearchTooltip, setShowSearchTooltip] = useState(false);
   const dropdownTimeout = useRef<NodeJS.Timeout | null>(null);
+  const prevCartCount = useRef(0);
   const cartCount = getCartCount();
 
+  // Sticky nav: threshold at 100px
   useEffect(() => {
     const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
+      setScrolled(window.scrollY > 100);
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // Cart badge pulse animation
+  useEffect(() => {
+    if (cartCount > prevCartCount.current && prevCartCount.current >= 0) {
+      setCartBadgeKey((k) => k + 1);
+    }
+    prevCartCount.current = cartCount;
+  }, [cartCount]);
+
+  // Ctrl+K keyboard shortcut for search
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+      e.preventDefault();
+      setSearchOpen(true);
+    }
+  }, [setSearchOpen]);
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleKeyDown]);
 
   const handleDropdownClick = (item: DropdownItem) => {
     resetFilters();
@@ -105,7 +130,7 @@ export function Navigation() {
         transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1] }}
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           scrolled
-            ? "bg-[#F8F8F6]/95 backdrop-blur-md border-b border-[#E8E8E8]"
+            ? "bg-[#F8F8F6]/95 backdrop-blur-md border-b border-[#E8E8E8] shadow-sm"
             : "bg-transparent"
         }`}
       >
@@ -139,10 +164,12 @@ export function Navigation() {
                     >
                       <button
                         onClick={() => handleNavClick(link.page, link.filter)}
-                        className="px-3 py-2 text-[13px] font-normal tracking-wide text-[#111] hover:text-[#666] transition-colors flex items-center gap-1"
+                        className="group relative px-3 py-2 text-[13px] font-normal tracking-wide text-[#111] hover:text-[#666] transition-colors flex items-center gap-1"
                       >
                         {link.label}
                         <ChevronDown className={`w-3.5 h-3.5 opacity-50 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                        {/* Underline animation */}
+                        <span className="absolute bottom-0 left-3 right-3 h-[2px] bg-[#4D5B47] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out" />
                       </button>
 
                       <AnimatePresence>
@@ -202,13 +229,34 @@ export function Navigation() {
 
             {/* Right - Actions */}
             <div className="flex items-center gap-1 sm:gap-2">
-              <button
-                onClick={() => setSearchOpen(true)}
-                className="w-10 h-10 flex items-center justify-center hover:opacity-60 transition-opacity"
-                aria-label="Search"
+              {/* Search with tooltip */}
+              <div
+                className="relative"
+                onMouseEnter={() => setShowSearchTooltip(true)}
+                onMouseLeave={() => setShowSearchTooltip(false)}
               >
-                <Search className="w-[18px] h-[18px]" strokeWidth={1.5} />
-              </button>
+                <button
+                  onClick={() => setSearchOpen(true)}
+                  className="w-10 h-10 flex items-center justify-center hover:opacity-60 transition-opacity"
+                  aria-label="Search"
+                >
+                  <Search className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                </button>
+                <AnimatePresence>
+                  {showSearchTooltip && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 4 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute top-full right-0 mt-1.5 px-2.5 py-1 bg-[#111] text-[#F8F8F6] text-[11px] whitespace-nowrap pointer-events-none"
+                    >
+                      Search (Ctrl+K)
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
               <button
                 onClick={() => navigate("wishlist")}
                 className="w-10 h-10 flex items-center justify-center hover:opacity-60 transition-opacity relative"
@@ -216,11 +264,12 @@ export function Navigation() {
               >
                 <Heart className="w-[18px] h-[18px]" strokeWidth={1.5} />
                 {wishlistItems.length > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-[#111] text-[#F8F8F6] text-[9px] font-medium flex items-center justify-center">
+                  <span className="absolute top-1 right-1 w-[18px] h-[18px] bg-[#111] text-[#F8F8F6] text-[10px] font-bold flex items-center justify-center">
                     {wishlistItems.length}
                   </span>
                 )}
               </button>
+
               <button
                 onClick={toggleCart}
                 className="w-10 h-10 flex items-center justify-center hover:opacity-60 transition-opacity relative"
@@ -228,11 +277,15 @@ export function Navigation() {
               >
                 <ShoppingBag className="w-[18px] h-[18px]" strokeWidth={1.5} />
                 {cartCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-[#111] text-[#F8F8F6] text-[9px] font-medium flex items-center justify-center">
+                  <span
+                    key={cartBadgeKey}
+                    className="absolute top-1 right-1 w-[18px] h-[18px] bg-[#111] text-[#F8F8F6] text-[10px] font-bold flex items-center justify-center badge-pop"
+                  >
                     {cartCount}
                   </span>
                 )}
               </button>
+
               <button
                 onClick={() => navigate("account")}
                 className="hidden sm:flex w-10 h-10 items-center justify-center hover:opacity-60 transition-opacity"
@@ -240,6 +293,7 @@ export function Navigation() {
               >
                 <User className="w-[18px] h-[18px]" strokeWidth={1.5} />
               </button>
+
               {compareItems.length > 0 && (
                 <button
                   onClick={() => setCompareOpen(true)}
@@ -257,7 +311,7 @@ export function Navigation() {
         </div>
       </motion.header>
 
-      {/* Mobile Menu Overlay */}
+      {/* Mobile Menu */}
       <AnimatePresence>
         {useStore.getState().isMobileMenuOpen && <MobileMenuOverlay />}
       </AnimatePresence>
@@ -266,10 +320,12 @@ export function Navigation() {
 }
 
 function MobileMenuOverlay() {
-  const { setMobileMenuOpen, navigate } = useStore();
+  const { setMobileMenuOpen, navigate, getCartCount, wishlistItems } = useStore();
+  const cartCount = getCartCount();
 
   return (
     <>
+      {/* Dark overlay */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -278,60 +334,135 @@ function MobileMenuOverlay() {
         className="fixed inset-0 bg-black/40 z-[60] lg:hidden"
         onClick={() => setMobileMenuOpen(false)}
       />
+
+      {/* Full-height slide-in panel from the right */}
       <motion.div
-        initial={{ x: "-100%" }}
+        initial={{ x: "100%" }}
         animate={{ x: 0 }}
-        exit={{ x: "-100%" }}
+        exit={{ x: "100%" }}
         transition={{ type: "spring", damping: 30, stiffness: 300 }}
-        className="fixed top-0 left-0 bottom-0 w-[300px] bg-[#F8F8F6] z-[70] lg:hidden overflow-y-auto"
+        className="fixed top-0 right-0 bottom-0 w-[320px] max-w-[85vw] bg-[#F8F8F6] z-[70] lg:hidden overflow-y-auto flex flex-col"
       >
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-[18px] font-medium tracking-[0.15em]">MAISON</h2>
-            <button onClick={() => setMobileMenuOpen(false)} className="w-10 h-10 flex items-center justify-center">
-              <X className="w-5 h-5" strokeWidth={1.5} />
-            </button>
-          </div>
+        {/* Top section: Logo + Close */}
+        <div className="flex items-center justify-between px-6 h-16 shrink-0">
+          <h2 className="text-[18px] font-medium tracking-[0.15em] text-[#111]">MAISON</h2>
+          <button
+            onClick={() => setMobileMenuOpen(false)}
+            className="w-10 h-10 flex items-center justify-center"
+            aria-label="Close menu"
+          >
+            <X className="w-5 h-5" strokeWidth={1.5} />
+          </button>
+        </div>
 
-          <nav className="space-y-1">
-            {navLinks.map((link, i) => (
-              <motion.button
-                key={link.label}
-                initial={{ opacity: 0, x: -16 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.05 + 0.1 }}
-                onClick={() => {
-                  navigate(link.page);
-                  setMobileMenuOpen(false);
-                }}
-                className="block w-full text-left py-3 px-0 text-[15px] text-[#111] border-b border-[#E8E8E8] hover:text-[#666] transition-colors"
-              >
-                {link.label}
-              </motion.button>
-            ))}
-          </nav>
+        {/* Divider */}
+        <div className="border-b border-[#E8E8E8]" />
 
-          <div className="mt-8 space-y-1">
-            {[
-              { label: "My Account", page: "account" as const },
-              { label: "Wishlist", page: "wishlist" as const },
-              { label: "Track Order", page: "order-tracking" as const },
-            ].map((item, i) => (
-              <motion.button
-                key={item.label}
-                initial={{ opacity: 0, x: -16 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.05 + 0.4 }}
-                onClick={() => {
+        {/* Navigation links */}
+        <nav className="flex-1 px-6 py-2">
+          {navLinks.map((link, i) => (
+            <motion.button
+              key={link.label}
+              initial={{ opacity: 0, x: 16 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.04 + 0.1 }}
+              onClick={() => {
+                navigate(link.page);
+                setMobileMenuOpen(false);
+              }}
+              className="group flex items-center justify-between w-full text-left py-3.5 text-[15px] text-[#111] border-b border-[#E8E8E8] hover:pl-2 transition-all duration-200"
+            >
+              <span>{link.label}</span>
+              <ChevronDown className="w-3.5 h-3.5 opacity-30 -rotate-90" strokeWidth={1.5} />
+            </motion.button>
+          ))}
+
+          {/* Divider */}
+          <div className="h-4" />
+
+          {/* Secondary links */}
+          {[
+            { label: "My Account", page: "account" as const, icon: <User className="w-4 h-4" strokeWidth={1.5} /> },
+            { label: "Wishlist", page: "wishlist" as const, icon: <Heart className="w-4 h-4" strokeWidth={1.5} />, count: wishlistItems.length },
+            { label: "Cart", page: "shop" as const, icon: <ShoppingBag className="w-4 h-4" strokeWidth={1.5} />, count: cartCount, action: "cart" as const },
+            { label: "Help & Support", page: "home" as const, icon: null },
+          ].map((item, i) => (
+            <motion.button
+              key={item.label}
+              initial={{ opacity: 0, x: 16 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.04 + 0.35 }}
+              onClick={() => {
+                if (item.action === "cart") {
+                  useStore.getState().toggleCart();
+                } else {
                   navigate(item.page);
-                  setMobileMenuOpen(false);
-                }}
-                className="block w-full text-left py-3 px-0 text-[14px] text-[#666] border-b border-[#E8E8E8] hover:text-[#111] transition-colors"
-              >
+                }
+                setMobileMenuOpen(false);
+              }}
+              className="group flex items-center justify-between w-full text-left py-3 text-[14px] text-[#666] border-b border-[#E8E8E8] hover:text-[#111] hover:pl-2 transition-all duration-200"
+            >
+              <span className="flex items-center gap-3">
+                {item.icon}
                 {item.label}
-              </motion.button>
-            ))}
+              </span>
+              {item.count !== undefined && item.count > 0 && (
+                <span className="text-[11px] text-[#999] bg-[#E8E8E8] px-2 py-0.5 font-medium">
+                  {item.count}
+                </span>
+              )}
+            </motion.button>
+          ))}
+        </nav>
+
+        {/* Bottom section: Social media */}
+        <div className="shrink-0 px-6 pb-6">
+          {/* Divider */}
+          <div className="border-b border-[#E8E8E8] mb-5" />
+
+          {/* Social icons row */}
+          <div className="flex items-center gap-5">
+            <a
+              href="#"
+              onClick={(e) => { e.preventDefault(); setMobileMenuOpen(false); }}
+              className="text-[#999] hover:text-[#111] transition-colors"
+              aria-label="Instagram"
+            >
+              {/* Instagram icon */}
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="2" width="20" height="20" rx="4" />
+                <circle cx="12" cy="12" r="5" />
+                <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
+              </svg>
+            </a>
+            <a
+              href="#"
+              onClick={(e) => { e.preventDefault(); setMobileMenuOpen(false); }}
+              className="text-[#999] hover:text-[#111] transition-colors"
+              aria-label="Twitter / X"
+            >
+              {/* X (Twitter) icon */}
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 4l6.5 8L4 20h2l5.5-6.8L16 20h4l-6.8-8.5L20 4h-2l-5.2 6.3L8 4H4z" />
+              </svg>
+            </a>
+            <a
+              href="#"
+              onClick={(e) => { e.preventDefault(); setMobileMenuOpen(false); }}
+              className="text-[#999] hover:text-[#111] transition-colors"
+              aria-label="Pinterest"
+            >
+              {/* Pinterest icon */}
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M9 18c.5-1.5 1.5-3.5 1.5-5a2 2 0 1 1 2 2c-1 0-1.5-.5-1.5-1.5a4 4 0 1 1 4 4c-2.5 0-4-1.5-4-4 0-1.5.5-3 1.5-4.5" />
+              </svg>
+            </a>
           </div>
+
+          <p className="mt-4 text-[11px] text-[#999] tracking-wide">
+            © 2025 MAISON. All rights reserved.
+          </p>
         </div>
       </motion.div>
     </>

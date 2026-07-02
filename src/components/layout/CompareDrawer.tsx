@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, GitCompareArrows, Star, Trash2 } from "lucide-react";
 import { useStore } from "@/lib/store";
-import Image from "next/image";
 
 interface ProductData {
   id: string;
@@ -150,7 +149,7 @@ function CompareContent({ ids }: { ids: string[] }) {
             </button>
             <div className="cursor-pointer" onClick={() => { setCompareOpen(false); navigate("product", product.id); }}>
               <div className="relative aspect-[3/4] bg-[#F0EFED] overflow-hidden mb-3">
-                <Image src={product.image} alt={product.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="25vw" />
+                <img src={product.image} alt={product.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               </div>
               <p className="text-[11px] font-medium tracking-wider uppercase text-[#999] mb-1">{product.brand}</p>
               <h3 className="text-[14px] font-normal leading-tight text-[#111] line-clamp-2 min-h-[2.5em]">{product.name}</h3>

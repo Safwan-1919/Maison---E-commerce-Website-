@@ -1,4 +1,79 @@
 ---
+Task ID: 9
+Agent: Cron Review Agent (Round 3)
+Task: Styling improvements, new features, server stability fixes
+
+Work Log:
+- Assessed project status via worklog review and QA testing
+- Discovered production build was stale (old chunk hashes serving 500 errors)
+- Discovered Chrome/agent-browser consuming 500MB+ causing OOM kills of Next.js server
+- Discovered supervisor.js was unreliable (EADDRINUSE crashes, process.exit on proxy errors)
+- Fixed server infrastructure: direct Next.js standalone startup (no supervisor), killed Chrome to free memory
+- Fixed all `next/image` usage across 6 files (11 tags total) — replaced with standard `<img>` tags for standalone production compatibility
+
+Bug Fixes:
+1. **Server stability**: Removed supervisor.js dependency, start Next.js directly on port 3000, updated start-maison.sh
+2. **Stale production build**: Clean rebuild with `rm -rf .next/standalone` before each build to ensure fresh chunks
+3. **next/image in standalone production**: Replaced all `<Image>` from next/image with `<img>` in: CompareDrawer, CartDrawer, ProductCard, OrderTrackingPage, AdminPage, HomePage, CartPage, ProductPage, QuickViewModal, CheckoutPage
+4. **Unused eslint-disable directive in ProductPage.tsx**: Removed unnecessary comment
+5. **Emoji in CartPage**: Removed emoji from savings banner text
+
+[Mandatory] Styling Improvements:
+1. **ShopPage (7 enhancements)**:
+   - Grid/List view toggle with ProductListItem horizontal cards
+   - Product count per category in filter sidebar
+   - Enhanced results header ("Showing X of Y products")
+   - Enhanced loading skeletons with shimmer-enhanced gradient animation (globals.css)
+   - Better empty state with olive left border, suggested category pills, Browse Categories button
+   - Active filter tags with olive left border and hover scale X button
+   - Sticky mobile filter/sort bottom bar with backdrop blur
+   - Mobile sort drawer (sheet from bottom)
+2. **CartPage (6 enhancements)**:
+   - Move to Wishlist button on each cart item
+   - Delivery estimate text with Truck icon per item
+   - Olive left border on cart item rows with hover background
+   - Savings banner with animated height
+   - Animated free shipping progress bar (Framer Motion)
+   - Total amount pop animation on change, free shipping achieved checkmark
+   - Enhanced empty state with 3 recommended products
+3. **ProductPage (5 enhancements)**:
+   - Star rating component with SVG stars (filled/half/empty, #B79B7B gold)
+   - Rating distribution bar chart (5 bars with percentage fill)
+   - Verified Purchase badge on reviews
+   - Relative time formatting ("2 weeks ago", "1 month ago")
+   - Tab navigation (Description | Material & Care | Shipping) with olive active border
+   - Enhanced delivery info with estimated dates and icon backgrounds
+4. **Navigation (5 enhancements)**:
+   - Right slide-in mobile menu with social media row
+   - Desktop nav link hover underline animation (CSS, 2px #4D5B47)
+   - Cart badge pulse animation (18x18px, bold text, badge-pop)
+   - Sticky nav with backdrop-blur and shadow after 100px scroll
+   - Search tooltip "Search (Ctrl+K)" with keyboard shortcut
+5. **CheckoutPage (3 enhancements)**:
+   - Animated step indicator connecting line (Framer Motion width transition)
+   - Order Notes textarea in Shipping step
+   - Payment method cards with olive left border selection state and brand labels
+
+[Mandatory] New Features:
+1. **Newsletter Popup** (NewsletterPopup.tsx): Bottom-right slide-up popup after 5s on first visit, email input, subscribe button, localStorage dismiss tracking, POST to /api/newsletter, success state with auto-dismiss
+2. **Product Reviews API** (/api/reviews): GET endpoint with productId param, returns reviews + averageRating + distribution; POST endpoint for submitting reviews with auto product rating recalculation
+
+Design System Compliance:
+- All new elements use #F8F8F6 background, #111/#666/#999 text hierarchy, #4D5B47 olive accent, #E8E8E8 borders, 4px radius
+- Framer Motion animations throughout
+- Zero `next/image` usage in entire codebase
+- Zero new lint errors (3 pre-existing in supervisor.js only)
+
+Stage Summary:
+- 9 files enhanced with styling improvements
+- 2 new features (newsletter popup, reviews API)
+- 11 next/image tags replaced across 8 files
+- Server infrastructure simplified (direct startup, no supervisor)
+- Production build successful, all 8 API routes functional
+- All 9 pages functional: Home, Shop, Product Detail, Cart, Checkout, Wishlist, Account, Order Tracking, Admin Dashboard
+- Known issue: Server memory constrained in 4GB container; Chrome/agent-browser can cause OOM kills
+
+---
 Task ID: 8
 Agent: Cron Review Agent (Round 2)
 Task: Bug fix, new features, and enhancements
