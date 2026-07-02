@@ -11,12 +11,18 @@ export function SearchOverlay() {
   const { isSearchOpen, setSearchOpen, setSearchQuery, navigate } = useStore();
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const prevOpenRef = useRef(false);
 
   useEffect(() => {
-    if (isSearchOpen) {
-      setTimeout(() => inputRef.current?.focus(), 100);
-      setQuery("");
+    if (isSearchOpen && !prevOpenRef.current) {
+      const id = setTimeout(() => {
+        inputRef.current?.focus();
+        setQuery("");
+      }, 0);
+      prevOpenRef.current = isSearchOpen;
+      return () => clearTimeout(id);
     }
+    prevOpenRef.current = isSearchOpen;
   }, [isSearchOpen]);
 
   const handleSearch = (searchTerm?: string) => {

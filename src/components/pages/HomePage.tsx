@@ -68,7 +68,10 @@ function HeroSection() {
   const { navigate } = useStore();
   const [loaded, setLoaded] = useState(false);
 
-  useEffect(() => { setLoaded(true); }, []);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setLoaded(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   return (
     <section className="relative min-h-[100vh] flex items-center overflow-hidden bg-[#111]">
@@ -251,14 +254,17 @@ function ProductSection({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
+    let cancelled = false;
     fetch(fetchUrl)
       .then((r) => r.json())
       .then((data) => {
-        setProducts(data.products || []);
-        setLoading(false);
+        if (!cancelled) {
+          setProducts(data.products || []);
+          setLoading(false);
+        }
       })
-      .catch(() => setLoading(false));
+      .catch(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [fetchUrl]);
 
   const handleViewAll = () => {

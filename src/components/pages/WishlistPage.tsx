@@ -31,10 +31,10 @@ export default function WishlistPage() {
 
   useEffect(() => {
     if (wishlistItems.length === 0) {
-      setLoading(false);
+      queueMicrotask(() => setLoading(false));
       return;
     }
-    setLoading(true);
+    queueMicrotask(() => setLoading(true));
     fetch("/api/products?limit=50")
       .then((r) => r.json())
       .then((data) => {

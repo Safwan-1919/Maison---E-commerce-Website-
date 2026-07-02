@@ -277,7 +277,7 @@ export default function ShopPage() {
   const limit = 20;
 
   const fetchProducts = useCallback(async () => {
-    setLoading(true);
+    queueMicrotask(() => setLoading(true));
     const params = new URLSearchParams();
     if (filters.category.length === 1) params.set("category", filters.category[0]);
     if (filters.brands.length === 1) params.set("brand", filters.brands[0]);
@@ -323,7 +323,7 @@ export default function ShopPage() {
     setLoading(false);
   }, [filters, searchQuery, page]);
 
-  useEffect(() => { fetchProducts(); }, [fetchProducts]);
+  useEffect(() => { const id = setTimeout(fetchProducts, 0); return () => clearTimeout(id); }, [fetchProducts]);
 
   const sortOptions = [
     { label: "Popularity", value: "popularity" },

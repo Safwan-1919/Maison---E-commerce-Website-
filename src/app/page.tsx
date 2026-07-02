@@ -1,52 +1,58 @@
-'use client'
+"use client";
 
-import { useStore } from "@/lib/store"
-import { CartPage } from "@/components/pages/CartPage"
-import { CheckoutPage } from "@/components/pages/CheckoutPage"
-import { WishlistPage } from "@/components/pages/WishlistPage"
-import { Navigation } from "@/components/layout/Navigation"
-import { CartDrawer } from "@/components/layout/CartDrawer"
-import { Footer } from "@/components/layout/Footer"
-import { Notification } from "@/components/layout/Notification"
-import { SearchOverlay } from "@/components/layout/SearchOverlay"
+import { AnimatePresence, motion } from "framer-motion";
+import { useStore } from "@/lib/store";
+import HomePage from "@/components/pages/HomePage";
+import ShopPage from "@/components/pages/ShopPage";
+import ProductPage from "@/components/pages/ProductPage";
+import CartPage from "@/components/pages/CartPage";
+import CheckoutPage from "@/components/pages/CheckoutPage";
+import WishlistPage from "@/components/pages/WishlistPage";
+import AccountPage from "@/components/pages/AccountPage";
+import OrderTrackingPage from "@/components/pages/OrderTrackingPage";
+import AdminPage from "@/components/pages/AdminPage";
+import { Navigation } from "@/components/layout/Navigation";
+import { CartDrawer } from "@/components/layout/CartDrawer";
+import { Footer } from "@/components/layout/Footer";
+import { Notification } from "@/components/layout/Notification";
+import { SearchOverlay } from "@/components/layout/SearchOverlay";
+
+const pageConfig: Record<string, { component: React.ComponentType; showNav: boolean; showFooter: boolean }> = {
+  home: { component: HomePage, showNav: true, showFooter: true },
+  shop: { component: ShopPage, showNav: true, showFooter: true },
+  product: { component: ProductPage, showNav: true, showFooter: true },
+  cart: { component: CartPage, showNav: true, showFooter: true },
+  checkout: { component: CheckoutPage, showNav: true, showFooter: false },
+  wishlist: { component: WishlistPage, showNav: true, showFooter: true },
+  account: { component: AccountPage, showNav: true, showFooter: true },
+  "order-tracking": { component: OrderTrackingPage, showNav: true, showFooter: true },
+  admin: { component: AdminPage, showNav: true, showFooter: true },
+};
 
 export default function Home() {
-  const { currentPage } = useStore()
-
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'cart':
-        return <CartPage />
-      case 'checkout':
-        return <CheckoutPage />
-      case 'wishlist':
-        return <WishlistPage />
-      default:
-        return (
-          <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
-            <div className="w-24 h-24 relative">
-              <img
-                src="https://z-cdn.chatglm.cn/z-ai/static/logo.svg"
-                alt="MAISON"
-                className="w-full h-full object-contain"
-              />
-            </div>
-            <p className="text-[14px] text-[#666]">Welcome to MAISON</p>
-          </div>
-        )
-    }
-  }
+  const { currentPage } = useStore();
+  const config = pageConfig[currentPage] || pageConfig.home;
+  const PageComponent = config.component;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8F8F6]">
-      <Navigation />
+      {config.showNav && <Navigation />}
       <SearchOverlay />
       <CartDrawer />
       <Notification />
-      <main className="flex-1">
-        {renderPage()}
-      </main>
-      <Footer />
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentPage}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+          className="flex-1"
+        >
+          <PageComponent />
+        </motion.div>
+      </AnimatePresence>
+      {config.showFooter && <Footer />}
     </div>
-  )
+  );
 }
