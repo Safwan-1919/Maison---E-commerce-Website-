@@ -174,3 +174,116 @@ Stage Summary:
 - New Product Comparison feature: store integration, CompareDrawer, floating bar, nav icon, ProductCard button
 - Enhanced CSS animations and micro-interactions
 - All 9 pages verified working with zero errors
+---
+Task ID: 5-c
+Agent: Wishlist Enhancement Agent
+Task: Add share functionality, stats bar, and sort to WishlistPage
+
+Work Log:
+- Read existing WishlistPage.tsx (127 lines) and store.ts to understand current structure
+- Read ShopPage.tsx sort dropdown pattern for consistent UI
+- Confirmed framer-motion and all lucide-react icons available
+- Added "Share Wishlist" button with Share2 icon next to existing "Clear All" button in header
+- Built custom share modal with Framer Motion animations (backdrop fade, modal scale+slide entrance)
+- Modal includes: title, copy-link button with clipboard API (fallback for older browsers), "Copied!" success state with Check icon and accent color
+- Added 3 social share buttons: WhatsApp (MessageCircle icon), Twitter/X (SVG X logo), Email (Mail icon) — each opens correct share URL
+- Added stats bar above product grid showing: Total Items, Total Value (₹ formatted, en-IN locale), Avg. Discount % — with subtle border dividers
+- Enhanced empty state: changed CTA button text to "Start Shopping" with accent color (#4D5B47) background
+- Added sort dropdown (matching ShopPage pattern) with options: Recently Added, Price: Low to High, Price: High to Low, Discount
+- Sort dropdown uses AnimatePresence with backdrop overlay, consistent z-index layering
+- Products default to wishlist order (most recently added first) for "Recently Added" sort
+- Removed unused imports (ScrollReveal, ShoppingBag) for clean lint
+- Verified zero ESLint errors, clean dev server compilation
+
+Stage Summary:
+- WishlistPage now has 4 new features: Share modal with copy+social links, stats bar, sort dropdown, enhanced empty CTA
+- All existing functionality preserved (clear all, filter by wishlist, product grid, animations)
+- Design system strictly followed: #F8F8F6 bg, #111 text, #4D5B47 accent, #E8E8E8 borders, 4px radius
+
+---
+Task ID: 5-b
+Agent: Size Guide Feature Agent
+Task: Build Size Guide Modal with measurement tables and integration
+
+Work Log:
+- Read ProductPage.tsx to understand existing inline SizeGuide component and "Size Guide" button structure
+- Read store.ts to understand Zustand state management patterns (persist, partialize)
+- Added `sizeGuideOpen: boolean` and `setSizeGuideOpen: (open: boolean) => void` to StoreState interface in store.ts
+- Added implementation `sizeGuideOpen: false` and `setSizeGuideOpen` in store — NOT included in partialize (not persisted)
+- Created `/src/components/shared/SizeGuideModal.tsx` with full-screen overlay modal:
+  - Title "Size Guide" with subtitle "Find your perfect fit"
+  - 3-category tab toggle: Tops, Bottoms, Shoes (inline-flex with active black bg)
+  - Measurement tables: Tops (Size, Chest/Bust, Waist, Hip, Shoulder), Bottoms (Size, Waist, Hip), Shoes (Size US, Foot Length, Foot Width)
+  - Sizes: XS/S/M/L/XL/XXL for Tops & Bottoms; 7/8/9/10/11/12 for Shoes
+  - Alternating row backgrounds (#F8F8F6 / white), em-dash for N/A values
+  - "How to Measure" section with 3 steps (Ruler/MoveVertical/CircleDot icons) for Tops & Bottoms only
+  - Bottom note: "Measurements may vary slightly between styles. When in doubt, we recommend sizing up."
+  - Close button (X icon) top right, click-outside-to-close via overlay onClick
+  - Used `useSyncExternalStore` for responsive desktop detection (avoids set-state-in-effect lint error)
+  - Framer Motion: mobile slides up from bottom (y: 100% → 0), desktop fades in with scale (scale: 0.96 → 1)
+- Updated ProductPage.tsx: removed inline SizeGuide component and local showSizeGuide state, wired button to `setSizeGuideOpen(true)` from store
+- Imported and rendered `<SizeGuideModal />` in page.tsx next to CompareDrawer
+- Zero ESLint errors, clean dev server compilation
+
+Stage Summary:
+- New SizeGuideModal component at /src/components/shared/SizeGuideModal.tsx (~270 lines)
+- Store extended with non-persisted sizeGuideOpen/setSizeGuideOpen state
+- ProductPage Size Guide button now opens full-screen modal instead of inline table
+- Responsive: slides up from bottom on mobile, centered with shadow on desktop
+- All 3 size categories (Tops/Bottoms/Shoes) with appropriate measurement columns
+- Zero lint errors, zero runtime errors
+
+---
+Task ID: 5-a
+Agent: Styling Enhancement Agent
+Task: Enhance HomePage with premium micro-interactions and styling details
+
+Work Log:
+- Read full HomePage.tsx (826 lines), ProductCard.tsx, worklog.md, and globals.css to understand project context
+- Identified all 9 enhancement targets across HeroSection, MarqueeBanner, CategoriesSection, ProductSection/FlashDeals, EditorialSection, TestimonialsSection, TrustSection, StatsBanner, and section dividers
+
+Hero Section:
+- Added animated pulsing gradient overlay at bottom using motion.div with animate opacity [0.3, 0.5, 0.3] over 4s infinite loop
+- Added thin decorative line (w-16 h-px, #E8E8E8/30) between hero text and CTA buttons with scaleX 0→1 entry animation
+
+Marquee Banner:
+- Added CSS mask-image with linear-gradient fade on both edges (transparent → black 5% → black 95% → transparent) with WebkitMaskImage fallback
+
+Category Cards:
+- Added hover:scale-[1.02] to the card button itself (moved from background div)
+- Added 2px #4D5B47 bottom border line that slides from 0→100% width on hover via group-hover CSS transition (400ms)
+- Added badge-pop animation class to count badge (inline-block, bg-[#111]/5 pill) triggered on first isInView
+
+Product Cards:
+- Added inner box-shadow on hover (inset 0 0 30px rgba(0,0,0,0.08)) to image container in ProductCard.tsx with 500ms transition
+- Changed ADD TO BAG button hidden state from translateY(8) to translateY(-4) in ProductCard.tsx for subtle drop-in effect
+- Added same inner shadow to FlashDealsSection inline product cards (inset 0 0 30px rgba(0,0,0,0.3) for dark bg)
+
+Editorial Section:
+- Replaced static div with motion.div using useScroll/useTransform for parallax vertical movement (30px → -30px) on editorial image
+- Added decorative opening quote mark (64px, #E8E8E8, font-serif) before the philosophy text heading
+
+Testimonials Section:
+- Added 3px solid #4D5B47 left border accent on each testimonial card
+- Made quote text italic with increased line-height from leading-relaxed to leading-[1.8]
+
+Trust Section:
+- Wrapped trust icons in motion.div with pulse animation (scale 1→1.1→1 over 2.5s, infinite, staggered 0.3s delay per icon)
+
+Stats Banner:
+- Added border-t-2 border-t-[#3A4835] (darker olive) as visible accent line above the olive background section
+
+Section Dividers:
+- Created GradientDivider component: 1px line with linear-gradient (transparent → #E8E8E8 20% → #E8E8E8 80% → transparent), max-w-600px, centered
+- Placed 5 dividers between: Categories→New Arrivals, Editorial→FeatureHighlight, Trending→FlashDeals, BestSellers→Stats, Testimonials→RecentlyViewed
+
+Footer Enhancement:
+- Added 1px h-1 gradient accent line before closing </main> using linear-gradient (transparent → #4D5B47 30% → #4D5B47 70% → transparent)
+
+Stage Summary:
+- 9 styling enhancements implemented across HomePage.tsx and ProductCard.tsx
+- All changes use MAISON design system colors (#F8F8F6, #111, #4D5B47, #B79B7B, #E8E8E8)
+- Framer Motion used for: hero gradient pulse, decorative line entry, editorial parallax, trust icon pulse
+- CSS transitions used for: marquee mask, category hover scale/border, product card inner shadow, ADD TO BAG translateY
+- Zero new TypeScript errors, zero new lint errors, build passes successfully
+- All existing content and functionality preserved intact

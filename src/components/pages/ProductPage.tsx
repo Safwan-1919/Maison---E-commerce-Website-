@@ -130,41 +130,6 @@ function ImageGallery({ images, productName }: { images: string[]; productName: 
   );
 }
 
-function SizeGuide() {
-  const sizeData = [
-    { size: "XS", chest: '36"', waist: '30"' },
-    { size: "S", chest: '38"', waist: '32"' },
-    { size: "M", chest: '40"', waist: '34"' },
-    { size: "L", chest: '42"', waist: '36"' },
-    { size: "XL", chest: '44"', waist: '38"' },
-    { size: "XXL", chest: '46"', waist: '40"' },
-  ];
-
-  return (
-    <div className="mt-4">
-      <p className="text-[12px] text-[#999] mb-3">All measurements are in inches</p>
-      <table className="w-full text-[12px]">
-        <thead>
-          <tr className="border-b border-[#E8E8E8]">
-            <th className="text-left py-2 text-[#999] font-medium">Size</th>
-            <th className="text-left py-2 text-[#999] font-medium">Chest</th>
-            <th className="text-left py-2 text-[#999] font-medium">Waist</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sizeData.map((s) => (
-            <tr key={s.size} className="border-b border-[#F0EFED]">
-              <td className="py-2 font-medium">{s.size}</td>
-              <td className="py-2 text-[#666]">{s.chest}</td>
-              <td className="py-2 text-[#666]">{s.waist}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
 function CollapsibleSection({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
@@ -194,14 +159,13 @@ function CollapsibleSection({ title, children, defaultOpen = false }: { title: s
 }
 
 export default function ProductPage() {
-  const { selectedProductId, navigate, goBack, addToCart, toggleWishlist, isInWishlist, addToRecentlyViewed } = useStore();
+  const { selectedProductId, navigate, goBack, addToCart, toggleWishlist, isInWishlist, addToRecentlyViewed, setSizeGuideOpen } = useStore();
   const [product, setProduct] = useState<Product | null>(null);
   const [similar, setSimilar] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
-  const [showSizeGuide, setShowSizeGuide] = useState(false);
 
   const fetchProduct = useCallback(async () => {
     if (!selectedProductId) return;
@@ -387,14 +351,14 @@ export default function ProductPage() {
                     </p>
                     {sizes[0] !== "ONE SIZE" && (
                       <button
-                        onClick={() => setShowSizeGuide(!showSizeGuide)}
+                        onClick={() => setSizeGuideOpen(true)}
                         className="flex items-center gap-1 text-[11px] text-[#4D5B47] hover:text-[#111] transition-colors"
                       >
                         <Ruler className="w-3 h-3" /> Size Guide
                       </button>
                     )}
                   </div>
-                  {showSizeGuide && <SizeGuide />}
+
                   <div className="flex flex-wrap gap-2">
                     {sizes.map((size) => (
                       <button

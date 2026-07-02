@@ -68,8 +68,14 @@ export async function GET(request: NextRequest) {
       db.product.count({ where }),
     ]);
 
+    // Add computed image field from images array
+    const enrichedProducts = products.map((p) => {
+      const imgs = typeof p.images === "string" ? JSON.parse(p.images) : (Array.isArray(p.images) ? p.images : []);
+      return { ...p, image: imgs[0] || "" };
+    });
+
     return NextResponse.json({
-      products,
+      products: enrichedProducts,
       total,
       page,
       totalPages: Math.ceil(total / limit),

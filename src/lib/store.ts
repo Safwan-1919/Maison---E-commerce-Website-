@@ -94,6 +94,10 @@ interface StoreState {
   isInCompare: (productId: string) => boolean;
   setCompareOpen: (open: boolean) => void;
 
+  // Size Guide
+  sizeGuideOpen: boolean;
+  setSizeGuideOpen: (open: boolean) => void;
+
   // Notification
   notification: { message: string; type: 'success' | 'error' | 'info' } | null;
   showNotification: (message: string, type?: 'success' | 'error' | 'info') => void;
@@ -257,6 +261,10 @@ export const useStore = create<StoreState>()(
       clearCompare: () => set({ compareItems: [] }),
       isInCompare: (productId) => get().compareItems.includes(productId),
       setCompareOpen: (open) => set({ isCompareOpen: open }),
+
+      // Size Guide
+      sizeGuideOpen: false,
+      setSizeGuideOpen: (open) => set({ sizeGuideOpen: open }),
 
       // Notification
       notification: null,

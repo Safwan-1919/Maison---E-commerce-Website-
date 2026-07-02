@@ -94,7 +94,7 @@ export function ProductCard({
       onClick={() => navigate("product", id)}
     >
       {/* Image Container */}
-      <div className="relative aspect-[3/4] bg-[#F0EFED] overflow-hidden mb-3">
+      <div className="relative aspect-[3/4] bg-[#F0EFED] overflow-hidden mb-3 group-hover:[box-shadow:inset_0_0_30px_rgba(0,0,0,0.08)] transition-[box-shadow] duration-500">
         {imgError ? (
           <div className="absolute inset-0 bg-gradient-to-br from-[#E8E8E8] to-[#D1D1D1] flex items-center justify-center">
             <ShoppingBag className="w-8 h-8 text-[#999]" strokeWidth={1} />
@@ -178,7 +178,7 @@ export function ProductCard({
         {/* Quick Add - Desktop hover */}
         <motion.div
           initial={false}
-          animate={{ opacity: isHovered ? 1 : 0, y: isHovered ? 0 : 8 }}
+          animate={{ opacity: isHovered ? 1 : 0, y: isHovered ? 0 : -4 }}
           transition={{ duration: 0.25, delay: 0.05 }}
           className="absolute bottom-0 left-0 right-0 p-3 md:block hidden"
         >

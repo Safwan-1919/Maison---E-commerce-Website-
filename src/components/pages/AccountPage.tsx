@@ -306,7 +306,7 @@ const fadeUp = {
   initial: { opacity: 0, y: 12 },
   animate: { opacity: 1, y: 0 },
   exit: { opacity: 0, y: -8 },
-  transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] },
+  transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] as const },
 };
 
 
@@ -620,6 +620,7 @@ function OrdersTab() {
   const handleReorder = (order: Order) => {
     order.items.forEach((item) => {
       addToCart({
+        id: `${item.id}-${item.size || "M"}-${item.color || "Default"}-reorder`,
         productId: item.id,
         name: item.name,
         price: item.price,

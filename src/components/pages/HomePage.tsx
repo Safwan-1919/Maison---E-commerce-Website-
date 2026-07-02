@@ -104,6 +104,13 @@ function HeroSection() {
         {/* Gradient Overlays */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/50" />
         <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-black/30" />
+        {/* Animated pulsing gradient at bottom */}
+        <motion.div
+          className="absolute bottom-0 left-0 right-0 h-40"
+          animate={{ opacity: [0.3, 0.5, 0.3] }}
+          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          style={{ background: "linear-gradient(to top, rgba(0,0,0,0.6), transparent)" }}
+        />
       </motion.div>
 
       {/* Content */}
@@ -143,6 +150,14 @@ function HeroSection() {
           Considered essentials crafted from the world&apos;s finest materials.
           Less noise, more substance.
         </motion.p>
+
+        {/* Decorative line between text and CTA */}
+        <motion.div
+          initial={{ opacity: 0, scaleX: 0 }}
+          animate={{ opacity: 1, scaleX: 1 }}
+          transition={{ duration: 0.8, delay: 0.65, ease: [0.25, 0.1, 0.25, 1] }}
+          className="w-16 h-px bg-[#E8E8E8]/30 mb-8 sm:mb-10"
+        />
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -189,7 +204,10 @@ function HeroSection() {
 // ─── Marquee Banner ───────────────────────────────────────────────────
 function MarqueeBanner() {
   return (
-    <div className="bg-[#111] py-3 overflow-hidden">
+    <div
+      className="bg-[#111] py-3 overflow-hidden"
+      style={{ maskImage: 'linear-gradient(to right, transparent, black 5%, black 95%, transparent)', WebkitMaskImage: 'linear-gradient(to right, transparent, black 5%, black 95%, transparent)' }}
+    >
       <div className="animate-marquee flex items-center gap-8 whitespace-nowrap">
         {[...marqueeItems, ...marqueeItems].map((item, i) => (
           <span key={i} className="flex items-center gap-8 text-[11px] tracking-[0.15em] uppercase text-[#999]">
@@ -253,16 +271,18 @@ function CategoriesSection() {
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.5, delay: i * 0.04, ease: [0.25, 0.1, 0.25, 1] }}
               onClick={() => handleCategoryClick(cat.name)}
-              className="group relative overflow-hidden p-5 sm:p-6 text-left hover:shadow-md transition-shadow duration-300"
+              className="group relative overflow-hidden p-5 sm:p-6 text-left hover:shadow-md transition-[transform,shadow] duration-300 hover:scale-[1.02]"
             >
-              <div className={`absolute inset-0 ${categoryColors[cat.name] || "bg-[#F0EFED]"} transition-transform duration-700 group-hover:scale-[1.02]`} />
+              <div className={`absolute inset-0 ${categoryColors[cat.name] || "bg-[#F0EFED]"} transition-transform duration-700`} />
+              {/* Bottom border animation line */}
+              <div className="absolute bottom-0 left-0 h-[2px] bg-[#4D5B47] w-0 group-hover:w-full transition-all duration-[400ms] ease-[cubic-bezier(0.25,0.1,0.25,1)]" />
               <div className="relative z-10">
                 <span className="text-[28px] font-medium tracking-[-0.04em] text-[#D1D1D1] block mb-3 transition-colors duration-300 group-hover:text-[#4D5B47]">
                   {cat.icon}
                 </span>
                 <h3 className="text-[14px] font-medium text-[#111] mb-0.5">{cat.name}</h3>
                 <p className="text-[11px] text-[#999]">{cat.desc}</p>
-                <span className="text-[11px] text-[#999] mt-2 block">{cat.count} products</span>
+                <span className={`inline-block mt-2 text-[11px] text-[#999] px-2 py-0.5 bg-[#111]/5 ${isInView ? 'badge-pop' : ''}`}>{cat.count} products</span>
               </div>
             </motion.button>
           ))}
@@ -386,12 +406,16 @@ function ProductSection({
 
 // ─── Editorial Section ────────────────────────────────────────────────
 function EditorialSection() {
+  const imgRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: imgRef, offset: ["start end", "end start"] });
+  const imgY = useTransform(scrollYProgress, [0, 1], [30, -30]);
+
   return (
     <section className="py-16 lg:py-24 bg-white">
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
           <ScrollReveal direction="left">
-            <div className="relative aspect-[4/5] bg-[#F0EFED] overflow-hidden">
+            <motion.div ref={imgRef} className="relative aspect-[4/5] bg-[#F0EFED] overflow-hidden" style={{ y: imgY }}>
               <Image
                 src="/images/products/product-6.png"
                 alt="MAISON Editorial"
@@ -402,12 +426,14 @@ function EditorialSection() {
               <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/50 to-transparent">
                 <span className="text-[11px] tracking-[0.2em] uppercase text-white/80">SS25 Collection</span>
               </div>
-            </div>
+            </motion.div>
           </ScrollReveal>
 
           <ScrollReveal direction="right" delay={0.15}>
             <div className="lg:pl-8">
               <span className="text-[11px] font-medium tracking-[0.2em] uppercase text-[#4D5B47] block mb-4">Our Philosophy</span>
+              {/* Decorative quote mark */}
+              <span className="block text-[64px] leading-none text-[#E8E8E8] font-serif select-none mb-2 -ml-1">&ldquo;</span>
               <h2 className="text-[28px] sm:text-[36px] lg:text-[42px] font-medium tracking-[-0.02em] text-[#111] leading-[1.1] mb-6">
                 Less noise.
                 <br />
@@ -526,7 +552,7 @@ function FlashDealsSection() {
                 className="group cursor-pointer"
                 onClick={() => navigate("product", p.id)}
               >
-                <div className="relative aspect-[3/4] bg-[#1A1A1A] overflow-hidden mb-3">
+                <div className="relative aspect-[3/4] bg-[#1A1A1A] overflow-hidden mb-3 group-hover:[box-shadow:inset_0_0_30px_rgba(0,0,0,0.3)] transition-[box-shadow] duration-500">
                   <Image
                     src={p.image}
                     alt={p.name}
@@ -576,9 +602,9 @@ function TestimonialsSection() {
         <StaggerContainer className="grid md:grid-cols-3 gap-6">
           {testimonials.map((t, i) => (
             <StaggerItem key={t.name}>
-              <div className="p-6 sm:p-8 border border-[#E8E8E8] bg-white h-full flex flex-col hover:shadow-md transition-shadow duration-300 group">
+              <div className="p-6 sm:p-8 border border-[#E8E8E8] border-l-[3px] border-l-[#4D5B47] bg-white h-full flex flex-col hover:shadow-md transition-shadow duration-300 group">
                 <Quote className="w-6 h-6 text-[#E8E8E8] mb-4 flex-shrink-0" strokeWidth={1} />
-                <p className="text-[14px] text-[#555] leading-relaxed flex-1 mb-6">
+                <p className="text-[14px] text-[#555] italic leading-[1.8] flex-1 mb-6">
                   &ldquo;{t.text}&rdquo;
                 </p>
                 <div className="flex items-center gap-0.5 mb-4">
@@ -616,9 +642,13 @@ function TrustSection() {
           {trustItems.map((item, i) => (
             <ScrollReveal key={item.title} delay={i * 0.08}>
               <div className="flex flex-col items-center text-center p-4">
-                <div className="w-11 h-11 bg-[#F0EFED] flex items-center justify-center mb-3">
+                <motion.div
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: i * 0.3 }}
+                  className="w-11 h-11 bg-[#F0EFED] flex items-center justify-center mb-3"
+                >
                   <item.icon className="w-5 h-5 text-[#4D5B47]" strokeWidth={1.5} />
-                </div>
+                </motion.div>
                 <h4 className="text-[13px] font-medium text-[#111] mb-1">{item.title}</h4>
                 <p className="text-[12px] text-[#999]">{item.desc}</p>
               </div>
@@ -696,7 +726,7 @@ function StatsBanner() {
   ];
 
   return (
-    <section className="py-12 lg:py-16 bg-[#4D5B47]">
+    <section className="py-12 lg:py-16 bg-[#4D5B47] border-t-2 border-t-[#3A4835]">
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 lg:gap-8">
           {stats.map((stat, i) => (
@@ -787,6 +817,20 @@ function RecentlyViewedSection() {
   );
 }
 
+// ─── Gradient Divider ──────────────────────────────────────────────────
+function GradientDivider() {
+  return (
+    <div className="flex items-center justify-center py-2">
+      <div
+        className="w-full max-w-[600px] h-px"
+        style={{
+          background: "linear-gradient(to right, transparent, #E8E8E8 20%, #E8E8E8 80%, transparent)",
+        }}
+      />
+    </div>
+  );
+}
+
 // ─── Main HomePage ────────────────────────────────────────────────────
 export default function HomePage() {
   const { navigate } = useStore();
@@ -796,6 +840,7 @@ export default function HomePage() {
       <HeroSection />
       <MarqueeBanner />
       <CategoriesSection />
+      <GradientDivider />
       <ProductSection
         title="New Arrivals"
         subtitle="Just In"
@@ -803,6 +848,7 @@ export default function HomePage() {
         viewAllFilter="newest"
       />
       <EditorialSection />
+      <GradientDivider />
       <FeatureHighlight />
       <ProductSection
         title="Trending Now"
@@ -810,6 +856,7 @@ export default function HomePage() {
         fetchParam="trending=true&sort=popularity"
         viewAllFilter="popularity"
       />
+      <GradientDivider />
       <FlashDealsSection />
       <ProductSection
         title="Best Sellers"
@@ -817,10 +864,19 @@ export default function HomePage() {
         fetchParam="bestSeller=true&sort=popularity"
         viewAllFilter="popularity"
       />
+      <GradientDivider />
       <StatsBanner />
       <TestimonialsSection />
+      <GradientDivider />
       <RecentlyViewedSection />
       <TrustSection />
+      {/* Footer gradient accent line */}
+      <div
+        className="h-1"
+        style={{
+          background: "linear-gradient(to right, transparent, #4D5B47 30%, #4D5B47 70%, transparent)",
+        }}
+      />
     </main>
   );
 }

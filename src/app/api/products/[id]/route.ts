@@ -21,6 +21,10 @@ export async function GET(
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
+    // Compute image from images array
+    const imgs = typeof product.images === "string" ? JSON.parse(product.images) : (Array.isArray(product.images) ? product.images : []);
+    const enrichedProduct = { ...product, image: imgs[0] || "" };
+
     // Get similar products
     const similar = await db.product.findMany({
       where: {
@@ -38,7 +42,12 @@ export async function GET(
       orderBy: { reviewCount: "desc" },
     });
 
-    return NextResponse.json({ product, similar });
+    const enrichedSimilar = similar.map((p) => {
+      const pImgs = typeof p.images === "string" ? JSON.parse(p.images) : (Array.isArray(p.images) ? p.images : []);
+      return { ...p, image: pImgs[0] || "" };
+    });
+
+    return NextResponse.json({ product: enrichedProduct, similar: enrichedSimilar });
   } catch (error) {
     console.error("Product fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch product" }, { status: 500 });

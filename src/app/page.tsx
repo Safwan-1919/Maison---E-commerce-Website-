@@ -20,6 +20,7 @@ import { Notification } from "@/components/layout/Notification";
 import { SearchOverlay } from "@/components/layout/SearchOverlay";
 import { QuickViewModal } from "@/components/shared/QuickViewModal";
 import { CompareDrawer } from "@/components/layout/CompareDrawer";
+import { SizeGuideModal } from "@/components/shared/SizeGuideModal";
 import { GitCompareArrows, X } from "lucide-react";
 
 const pageConfig: Record<string, { component: React.ComponentType; showNav: boolean; showFooter: boolean }> = {
@@ -77,6 +78,7 @@ export default function Home() {
       <Notification />
       <QuickViewModal />
       <CompareDrawer />
+      <SizeGuideModal />
 
       {/* Floating Compare Bar */}
       <AnimatePresence>
