@@ -19,6 +19,8 @@ import { Footer } from "@/components/layout/Footer";
 import { Notification } from "@/components/layout/Notification";
 import { SearchOverlay } from "@/components/layout/SearchOverlay";
 import { QuickViewModal } from "@/components/shared/QuickViewModal";
+import { CompareDrawer } from "@/components/layout/CompareDrawer";
+import { GitCompareArrows, X } from "lucide-react";
 
 const pageConfig: Record<string, { component: React.ComponentType; showNav: boolean; showFooter: boolean }> = {
   home: { component: HomePage, showNav: true, showFooter: true },
@@ -63,7 +65,7 @@ function BackToTop() {
 }
 
 export default function Home() {
-  const { currentPage } = useStore();
+  const { currentPage, compareItems, setCompareOpen, clearCompare } = useStore();
   const config = pageConfig[currentPage] || pageConfig.home;
   const PageComponent = config.component;
 
@@ -74,6 +76,56 @@ export default function Home() {
       <CartDrawer />
       <Notification />
       <QuickViewModal />
+      <CompareDrawer />
+
+      {/* Floating Compare Bar */}
+      <AnimatePresence>
+        {compareItems.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 80 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 80 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] bg-[#111] text-[#F8F8F6] px-5 py-3 flex items-center gap-4 shadow-2xl"
+          >
+            <GitCompareArrows className="w-4 h-4" strokeWidth={1.5} />
+            <span className="text-[12px] font-medium tracking-wide">
+              {compareItems.length} item{compareItems.length !== 1 ? "s" : ""} to compare
+            </span>
+            <div className="flex items-center gap-1.5">
+              {compareItems.slice(0, 3).map((id, i) => (
+                <div
+                  key={`${id}-${i}`}
+                  className="w-6 h-6 bg-[#333] border border-[#555] overflow-hidden"
+                >
+                  <img
+                    src={`/api/products/${id}/image`}
+                    alt=""
+                    className="w-full h-full object-cover"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  />
+                </div>
+              ))}
+              {compareItems.length > 3 && (
+                <span className="text-[11px] text-[#999]">+{compareItems.length - 3}</span>
+              )}
+            </div>
+            <button
+              onClick={() => setCompareOpen(true)}
+              className="ml-2 px-4 py-1.5 bg-[#F8F8F6] text-[#111] text-[11px] font-medium tracking-widest uppercase hover:bg-white transition-colors"
+            >
+              Compare
+            </button>
+            <button
+              onClick={clearCompare}
+              className="w-6 h-6 flex items-center justify-center hover:bg-[#333] transition-colors rounded-full"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence mode="wait">
         <motion.div
           key={currentPage}

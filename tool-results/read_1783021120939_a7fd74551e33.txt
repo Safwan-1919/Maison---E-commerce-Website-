@@ -1,0 +1,858 @@
+     1→     1→"use client";
+     2→     2→
+     3→     3→import { useState, useEffect } from "react";
+     4→     4→import { motion, AnimatePresence } from "framer-motion";
+     5→     5→import {
+     6→     6→  User,
+     7→     7→  Package,
+     8→     8→  MapPin,
+     9→     9→  Settings,
+    10→    10→  ChevronDown,
+    11→    11→  ChevronUp,
+    12→    12→  Check,
+    13→    13→  Trash2,
+    14→    14→  Pencil,
+    15→    15→  Plus,
+    16→    16→  LogOut,
+    17→    17→  Bell,
+    18→    18→  Mail,
+    19→    19→  Moon,
+    20→    20→  Sun,
+    21→    21→  AlertTriangle,
+    22→    22→} from "lucide-react";
+    23→    23→import { useStore } from "@/lib/store";
+    24→    24→import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    25→    25→import { Input } from "@/components/ui/input";
+    26→    26→import { Label } from "@/components/ui/label";
+    27→    27→import { Button } from "@/components/ui/button";
+    28→    28→import { Badge } from "@/components/ui/badge";
+    29→    29→import { Switch } from "@/components/ui/switch";
+    30→    30→import { Separator } from "@/components/ui/separator";
+    31→    31→import { Skeleton } from "@/components/ui/skeleton";
+    32→    32→import {
+    33→    33→  AlertDialog,
+    34→    34→  AlertDialogAction,
+    35→    35→  AlertDialogCancel,
+    36→    36→  AlertDialogContent,
+    37→    37→  AlertDialogDescription,
+    38→    38→  AlertDialogFooter,
+    39→    39→  AlertDialogHeader,
+    40→    40→  AlertDialogTitle,
+    41→    41→  AlertDialogTrigger,
+    42→    42→} from "@/components/ui/alert-dialog";
+    43→    43→import {
+    44→    44→  Dialog,
+    45→    45→  DialogContent,
+    46→    46→  DialogHeader,
+    47→    47→  DialogTitle,
+    48→    48→  DialogTrigger,
+    49→    49→} from "@/components/ui/dialog";
+    50→    50→import { Textarea } from "@/components/ui/textarea";
+    51→    51→
+    52→    52→// ── Types ───────────────────────────────────────────────────────────────────
+    53→    53→interface OrderItem {
+    54→    54→  id: string;
+    55→    55→  name: string;
+    56→    56→  price: number;
+    57→    57→  quantity: number;
+    58→    58→  size?: string;
+    59→    59→  color?: string;
+    60→    60→  image?: string;
+    61→    61→}
+    62→    62→
+    63→    63→interface Order {
+    64→    64→  id: string;
+    65→    65→  orderNumber: string;
+    66→    66→  items: OrderItem[];
+    67→    67→  status: string;
+    68→    68→  total: number;
+    69→    69→  subtotal: number;
+    70→    70→  discount: number;
+    71→    71→  shipping: number;
+    72→    72→  shippingAddress: string;
+    73→    73→  paymentMethod: string;
+    74→    74→  paymentStatus: string;
+    75→    75→  createdAt: string;
+    76→    76→  updatedAt: string;
+    77→    77→}
+    78→    78→
+    79→    79→interface Address {
+    80→    80→  id: string;
+    81→    81→  name: string;
+    82→    82→  street: string;
+    83→    83→  city: string;
+    84→    84→  state: string;
+    85→    85→  zip: string;
+    86→    86→  phone: string;
+    87→    87→  isDefault: boolean;
+    88→    88→}
+    89→    89→
+    90→    90→// ── Constants ───────────────────────────────────────────────────────────────
+    91→    91→const STATUS_COLORS: Record<string, string> = {
+    92→    92→  confirmed: "bg-[#4D5B47] text-white",
+    93→    93→  shipped: "bg-[#B79B7B] text-white",
+    94→    94→  delivered: "bg-[#111111] text-white",
+    95→    95→  cancelled: "bg-[#C53030] text-white",
+    96→    96→  pending: "bg-[#F0EFED] text-[#666666]",
+    97→    97→  processing: "bg-[#F0EFED] text-[#666666]",
+    98→    98→};
+    99→    99→
+   100→   100→const MOCK_ORDERS: Order[] = [
+   101→   101→  {
+   102→   102→    id: "1",
+   103→   103→    orderNumber: "MSN-K4X9P2",
+   104→   104→    status: "delivered",
+   105→   105→    total: 12490,
+   106→   106→    subtotal: 12990,
+   107→   107→    discount: 500,
+   108→   108→    shipping: 0,
+   109→   109→    shippingAddress: JSON.stringify({
+   110→   110→      name: "Arjun Mehta",
+   111→   111→      street: "42, Altamount Road",
+   112→   112→      city: "Mumbai",
+   113→   113→      state: "Maharashtra",
+   114→   114→      zip: "400026",
+   115→   115→    }),
+   116→   116→    paymentMethod: "card",
+   117→   117→    paymentStatus: "completed",
+   118→   118→    createdAt: "2025-01-15T10:30:00Z",
+   119→   119→    updatedAt: "2025-01-20T14:00:00Z",
+   120→   120→    items: [
+   121→   121→      { id: "i1", name: "Italian Wool Overcoat", price: 8990, quantity: 1, size: "M", color: "Charcoal", image: "" },
+   122→   122→      { id: "i2", name: "Merino Crew Neck Tee", price: 2000, quantity: 2, size: "L", color: "Ivory", image: "" },
+   123→   123→    ],
+   124→   124→  },
+   125→   125→  {
+   126→   126→    id: "2",
+   127→   127→    orderNumber: "MSN-R7W3N1",
+   128→   128→    status: "shipped",
+   129→   129→    total: 6490,
+   130→   130→    subtotal: 6490,
+   131→   131→    discount: 0,
+   132→   132→    shipping: 0,
+   133→   133→    shippingAddress: JSON.stringify({
+   134→   134→      name: "Arjun Mehta",
+   135→   135→      street: "42, Altamount Road",
+   136→   136→      city: "Mumbai",
+   137→   137→      state: "Maharashtra",
+   138→   138→      zip: "400026",
+   139→   139→    }),
+   140→   140→    paymentMethod: "upi",
+   141→   141→    paymentStatus: "completed",
+   142→   142→    createdAt: "2025-02-08T15:45:00Z",
+   143→   143→    updatedAt: "2025-02-10T09:20:00Z",
+   144→   144→    items: [
+   145→   145→      { id: "i3", name: "Linen Relaxed Trousers", price: 4490, quantity: 1, size: "32", color: "Sand", image: "" },
+   146→   146→      { id: "i4", name: "Leather Minimal Belt", price: 2000, quantity: 1, size: "M", color: "Black", image: "" },
+   147→   147→    ],
+   148→   148→  },
+   149→   149→  {
+   150→   150→    id: "3",
+   151→   151→    orderNumber: "MSN-P2Q8T5",
+   152→   152→    status: "confirmed",
+   153→   153→    total: 3490,
+   154→   154→    subtotal: 3490,
+   155→   155→    discount: 0,
+   156→   156→    shipping: 0,
+   157→   157→    shippingAddress: JSON.stringify({
+   158→   158→      name: "Arjun Mehta",
+   159→   159→      street: "7, Juhu Tara Road",
+   160→   160→      city: "Mumbai",
+   161→   161→      state: "Maharashtra",
+   162→   162→      zip: "400049",
+   163→   163→    }),
+   164→   164→    paymentMethod: "card",
+   165→   165→    paymentStatus: "completed",
+   166→   166→    createdAt: "2025-02-12T11:00:00Z",
+   167→   167→    updatedAt: "2025-02-12T11:05:00Z",
+   168→   168→    items: [
+   169→   169→      { id: "i5", name: "Cashmere V-Neck Sweater", price: 3490, quantity: 1, size: "S", color: "Olive", image: "" },
+   170→   170→    ],
+   171→   171→  },
+   172→   172→  {
+   173→   173→    id: "4",
+   174→   174→    orderNumber: "MSN-L5M1X8",
+   175→   175→    status: "cancelled",
+   176→   176→    total: 5490,
+   177→   177→    subtotal: 5490,
+   178→   178→    discount: 0,
+   179→   179→    shipping: 0,
+   180→   180→    shippingAddress: JSON.stringify({
+   181→   181→      name: "Arjun Mehta",
+   182→   182→      street: "42, Altamount Road",
+   183→   183→      city: "Mumbai",
+   184→   184→      state: "Maharashtra",
+   185→   185→      zip: "400026",
+   186→   186→    }),
+   187→   187→    paymentMethod: "card",
+   188→   188→    paymentStatus: "refunded",
+   189→   189→    createdAt: "2024-12-28T09:15:00Z",
+   190→   190→    updatedAt: "2024-12-30T16:30:00Z",
+   191→   191→    items: [
+   192→   192→      { id: "i6", name: "Structured Blazer", price: 5490, quantity: 1, size: "L", color: "Navy", image: "" },
+   193→   193→    ],
+   194→   194→  },
+   195→   195→];
+   196→   196→
+   197→   197→const INITIAL_ADDRESSES: Address[] = [
+   198→   198→  {
+   199→   199→    id: "a1",
+   200→   200→    name: "Arjun Mehta",
+   201→   201→    street: "42, Altamount Road",
+   202→   202→    city: "Mumbai",
+   203→   203→    state: "Maharashtra",
+   204→   204→    zip: "400026",
+   205→   205→    phone: "+91 98765 43210",
+   206→   206→    isDefault: true,
+   207→   207→  },
+   208→   208→  {
+   209→   209→    id: "a2",
+   210→   210→    name: "Arjun Mehta",
+   211→   211→    street: "7, Juhu Tara Road, Juhu",
+   212→   212→    city: "Mumbai",
+   213→   213→    state: "Maharashtra",
+   214→   214→    zip: "400049",
+   215→   215→    phone: "+91 98765 43210",
+   216→   216→    isDefault: false,
+   217→   217→  },
+   218→   218→  {
+   219→   219→    id: "a3",
+   220→   220→    name: "Office - Arjun Mehta",
+   221→   221→    street: "14th Floor, BKC Tower",
+   222→   222→    city: "Mumbai",
+   223→   223→    state: "Maharashtra",
+   224→   224→    zip: "400051",
+   225→   225→    phone: "+91 87654 32109",
+   226→   226→    isDefault: false,
+   227→   227→  },
+   228→   228→];
+   229→   229→
+   230→   230→const formatCurrency = (amount: number) =>
+   231→   231→  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);
+   232→   232→
+   233→   233→const formatDate = (dateStr: string) =>
+   234→   234→  new Date(dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+   235→   235→
+   236→   236→const fadeUp = {
+   237→   237→  initial: { opacity: 0, y: 12 },
+   238→   238→  animate: { opacity: 1, y: 0 },
+   239→   239→  exit: { opacity: 0, y: -8 },
+   240→   240→  transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] },
+   241→   241→};
+   242→   242→
+   243→   243→// ── Profile Tab ─────────────────────────────────────────────────────────────
+   244→   244→function ProfileTab() {
+   245→   245→  const [name, setName] = useState("Arjun Mehta");
+   246→   246→  const [email, setEmail] = useState("arjun.mehta@email.com");
+   247→   247→  const [phone, setPhone] = useState("+91 98765 43210");
+   248→   248→  const [saving, setSaving] = useState(false);
+   249→   249→  const { showNotification } = useStore();
+   250→   250→
+   251→   251→  const handleSave = async () => {
+   252→   252→    setSaving(true);
+   253→   253→    await new Promise((r) => setTimeout(r, 800));
+   254→   254→    setSaving(false);
+   255→   255→    showNotification("Profile updated successfully", "success");
+   256→   256→  };
+   257→   257→
+   258→   258→  return (
+   259→   259→    <motion.div {...fadeUp} className="space-y-8">
+   260→   260→      {/* Avatar Section */}
+   261→   261→      <div className="flex items-center gap-6">
+   262→   262→        <div className="w-20 h-20 rounded-full bg-[#4D5B47] flex items-center justify-center text-white text-2xl font-medium select-none shrink-0">
+   263→   263→          AM
+   264→   264→        </div>
+   265→   265→        <div>
+   266→   266→          <h3 className="text-lg font-medium text-[#111]">Arjun Mehta</h3>
+   267→   267→          <p className="text-sm text-[#666] mt-0.5">Member since January 2024</p>
+   268→   268→        </div>
+   269→   269→      </div>
+   270→   270→
+   271→   271→      <Separator className="bg-[#E8E8E8]" />
+   272→   272→
+   273→   273→      {/* Form */}
+   274→   274→      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl">
+   275→   275→        <div className="space-y-2">
+   276→   276→          <Label htmlFor="name" className="text-[13px] uppercase tracking-wider text-[#666]">
+   277→   277→            Full Name
+   278→   278→          </Label>
+   279→   279→          <Input
+   280→   280→            id="name"
+   281→   281→            value={name}
+   282→   282→            onChange={(e) => setName(e.target.value)}
+   283→   283→            className="rounded-[4px] border-[#E8E8E8] h-11"
+   284→   284→          />
+   285→   285→        </div>
+   286→   286→        <div className="space-y-2">
+   287→   287→          <Label htmlFor="email" className="text-[13px] uppercase tracking-wider text-[#666]">
+   288→   288→            Email
+   289→   289→          </Label>
+   290→   290→          <Input
+   291→   291→            id="email"
+   292→   292→            type="email"
+   293→   293→            value={email}
+   294→   294→            onChange={(e) => setEmail(e.target.value)}
+   295→   295→            className="rounded-[4px] border-[#E8E8E8] h-11"
+   296→   296→          />
+   297→   297→        </div>
+   298→   298→        <div className="space-y-2">
+   299→   299→          <Label htmlFor="phone" className="text-[13px] uppercase tracking-wider text-[#666]">
+   300→   300→            Phone
+   301→   301→          </Label>
+   302→   302→          <Input
+   303→   303→            id="phone"
+   304→   304→            value={phone}
+   305→   305→            onChange={(e) => setPhone(e.target.value)}
+   306→   306→            className="rounded-[4px] border-[#E8E8E8] h-11"
+   307→   307→          />
+   308→   308→        </div>
+   309→   309→      </div>
+   310→   310→
+   311→   311→      <Button
+   312→   312→        onClick={handleSave}
+   313→   313→        disabled={saving}
+   314→   314→        className="rounded-[4px] bg-[#111] hover:bg-[#333] text-white h-11 px-8"
+   315→   315→      >
+   316→   316→        {saving ? (
+   317→   317→          <motion.div
+   318→   318→            animate={{ rotate: 360 }}
+   319→   319→            transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+   320→   320→            className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
+   321→   321→          />
+   322→   322→        ) : (
+   323→   323→          "Save Changes"
+   324→   324→        )}
+   325→   325→      </Button>
+   326→   326→    </motion.div>
+   327→   327→  );
+   328→   328→}
+   329→   329→
+   330→   330→// ── Orders Tab ──────────────────────────────────────────────────────────────
+   331→   331→function OrdersTab() {
+   332→   332→  const [orders, setOrders] = useState<Order[]>([]);
+   333→   333→  const [loading, setLoading] = useState(true);
+   334→   334→  const [expandedId, setExpandedId] = useState<string | null>(null);
+   335→   335→
+   336→   336→  useEffect(() => {
+   337→   337→    const fetchOrders = async () => {
+   338→   338→      try {
+   339→   339→        const res = await fetch("/api/orders");
+   340→   340→        const data = await res.json();
+   341→   341→        if (data.orders && data.orders.length > 0) {
+   342→   342→          setOrders(data.orders);
+   343→   343→        } else {
+   344→   344→          setOrders(MOCK_ORDERS);
+   345→   345→        }
+   346→   346→      } catch {
+   347→   347→        setOrders(MOCK_ORDERS);
+   348→   348→      } finally {
+   349→   349→        setLoading(false);
+   350→   350→      }
+   351→   351→    };
+   352→   352→    fetchOrders();
+   353→   353→  }, []);
+   354→   354→
+   355→   355→  if (loading) {
+   356→   356→    return (
+   357→   357→      <div className="space-y-4">
+   358→   358→        {[1, 2, 3].map((i) => (
+   359→   359→          <Skeleton key={i} className="h-24 w-full rounded-[4px] skeleton-shimmer" />
+   360→   360→        ))}
+   361→   361→      </div>
+   362→   362→    );
+   363→   363→  }
+   364→   364→
+   365→   365→  if (orders.length === 0) {
+   366→   366→    return (
+   367→   367→      <motion.div {...fadeUp} className="flex flex-col items-center justify-center py-16 text-center">
+   368→   368→        <div className="w-16 h-16 rounded-full bg-[#F0EFED] flex items-center justify-center mb-4">
+   369→   369→          <Package className="w-7 h-7 text-[#999]" strokeWidth={1.5} />
+   370→   370→        </div>
+   371→   371→        <h3 className="text-base font-medium text-[#111] mb-1">No orders yet</h3>
+   372→   372→        <p className="text-sm text-[#666] max-w-xs">
+   373→   373→          Your order history will appear here once you make a purchase.
+   374→   374→        </p>
+   375→   375→      </motion.div>
+   376→   376→    );
+   377→   377→  }
+   378→   378→
+   379→   379→  return (
+   380→   380→    <div className="space-y-3">
+   381→   381→      {orders.map((order, idx) => {
+   382→   382→        const isExpanded = expandedId === order.id;
+   383→   383→        return (
+   384→   384→          <motion.div
+   385→   385→            key={order.id}
+   386→   386→            initial={{ opacity: 0, y: 12 }}
+   387→   387→            animate={{ opacity: 1, y: 0 }}
+   388→   388→            transition={{ delay: idx * 0.05, duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+   389→   389→          >
+   390→   390→            <button
+   391→   391→              onClick={() => setExpandedId(isExpanded ? null : order.id)}
+   392→   392→              className="w-full text-left bg-white rounded-[4px] border border-[#E8E8E8] p-4 hover:border-[#999] transition-colors"
+   393→   393→            >
+   394→   394→              <div className="flex items-center justify-between gap-4">
+   395→   395→                <div className="flex-1 min-w-0">
+   396→   396→                  <div className="flex items-center gap-3 mb-1">
+   397→   397→                    <span className="text-sm font-medium text-[#111]">{order.orderNumber}</span>
+   398→   398→                    <Badge className={`rounded-[4px] text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 border-0 ${STATUS_COLORS[order.status] || STATUS_COLORS.pending}`}>
+   399→   399→                      {order.status}
+   400→   400→                    </Badge>
+   401→   401→                  </div>
+   402→   402→                  <p className="text-xs text-[#666]">
+   403→   403→                    {formatDate(order.createdAt)} &middot; {order.items?.length || 0} item{(order.items?.length || 0) > 1 ? "s" : ""}
+   404→   404→                  </p>
+   405→   405→                </div>
+   406→   406→                <div className="flex items-center gap-3 shrink-0">
+   407→   407→                  <span className="text-sm font-medium text-[#111]">{formatCurrency(order.total)}</span>
+   408→   408→                  {isExpanded ? (
+   409→   409→                    <ChevronUp className="w-4 h-4 text-[#999]" />
+   410→   410→                  ) : (
+   411→   411→                    <ChevronDown className="w-4 h-4 text-[#999]" />
+   412→   412→                  )}
+   413→   413→                </div>
+   414→   414→              </div>
+   415→   415→            </button>
+   416→   416→
+   417→   417→            <AnimatePresence>
+   418→   418→              {isExpanded && (
+   419→   419→                <motion.div
+   420→   420→                  initial={{ height: 0, opacity: 0 }}
+   421→   421→                  animate={{ height: "auto", opacity: 1 }}
+   422→   422→                  exit={{ height: 0, opacity: 0 }}
+   423→   423→                  transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+   424→   424→                  className="overflow-hidden"
+   425→   425→                >
+   426→   426→                  <div className="bg-white border border-t-0 border-[#E8E8E8] rounded-b-[4px] p-4">
+   427→   427→                    <div className="space-y-3">
+   428→   428→                      {order.items?.map((item) => (
+   429→   429→                        <div key={item.id} className="flex items-center gap-3">
+   430→   430→                          <div className="w-14 h-14 rounded-[4px] bg-[#F0EFED] shrink-0 flex items-center justify-center">
+   431→   431→                            <Package className="w-5 h-5 text-[#999]" strokeWidth={1} />
+   432→   432→                          </div>
+   433→   433→                          <div className="flex-1 min-w-0">
+   434→   434→                            <p className="text-sm font-medium text-[#111] line-clamp-1">{item.name}</p>
+   435→   435→                            <p className="text-xs text-[#666]">
+   436→   436→                              {item.size && `Size: ${item.size}`}
+   437→   437→                              {item.size && item.color && " · "}
+   438→   438→                              {item.color && `Color: ${item.color}`}
+   439→   439→                              {" · Qty: "}{item.quantity}
+   440→   440→                            </p>
+   441→   441→                          </div>
+   442→   442→                          <span className="text-sm text-[#111] shrink-0">
+   443→   443→                            {formatCurrency(item.price * item.quantity)}
+   444→   444→                          </span>
+   445→   445→                        </div>
+   446→   446→                      ))}
+   447→   447→                    </div>
+   448→   448→
+   449→   449→                    <Separator className="bg-[#E8E8E8] my-4" />
+   450→   450→
+   451→   451→                    <div className="flex items-center justify-between text-sm">
+   452→   452→                      <div className="text-[#666]">
+   453→   453→                        <p>Payment: <span className="text-[#111] font-medium capitalize">{order.paymentMethod}</span></p>
+   454→   454→                        <p>Payment Status: <span className="text-[#111] font-medium capitalize">{order.paymentStatus}</span></p>
+   455→   455→                      </div>
+   456→   456→                      <div className="text-right space-y-0.5">
+   457→   457→                        {order.discount > 0 && (
+   458→   458→                          <p className="text-xs text-[#C53030]">- {formatCurrency(order.discount)}</p>
+   459→   459→                        )}
+   460→   460→                        {order.shipping > 0 && (
+   461→   461→                          <p className="text-xs text-[#666]">+ {formatCurrency(order.shipping)} shipping</p>
+   462→   462→                        )}
+   463→   463→                        <p className="font-medium text-[#111]">Total: {formatCurrency(order.total)}</p>
+   464→   464→                      </div>
+   465→   465→                    </div>
+   466→   466→                  </div>
+   467→   467→                </motion.div>
+   468→   468→              )}
+   469→   469→            </AnimatePresence>
+   470→   470→          </motion.div>
+   471→   471→        );
+   472→   472→      })}
+   473→   473→    </div>
+   474→   474→  );
+   475→   475→}
+   476→   476→
+   477→   477→// ── Addresses Tab ───────────────────────────────────────────────────────────
+   478→   478→function AddressesTab() {
+   479→   479→  const [addresses, setAddresses] = useState<Address[]>(INITIAL_ADDRESSES);
+   480→   480→  const [dialogOpen, setDialogOpen] = useState(false);
+   481→   481→  const [editingId, setEditingId] = useState<string | null>(null);
+   482→   482→  const [form, setForm] = useState({ name: "", street: "", city: "", state: "", zip: "", phone: "" });
+   483→   483→  const { showNotification } = useStore();
+   484→   484→
+   485→   485→  const openNew = () => {
+   486→   486→    setEditingId(null);
+   487→   487→    setForm({ name: "", street: "", city: "", state: "", zip: "", phone: "" });
+   488→   488→    setDialogOpen(true);
+   489→   489→  };
+   490→   490→
+   491→   491→  const openEdit = (addr: Address) => {
+   492→   492→    setEditingId(addr.id);
+   493→   493→    setForm({ name: addr.name, street: addr.street, city: addr.city, state: addr.state, zip: addr.zip, phone: addr.phone });
+   494→   494→    setDialogOpen(true);
+   495→   495→  };
+   496→   496→
+   497→   497→  const handleSave = () => {
+   498→   498→    if (!form.name || !form.street || !form.city) return;
+   499→   499→    if (editingId) {
+   500→   500→      setAddresses((prev) =>
+   501→   501→        prev.map((a) => (a.id === editingId ? { ...a, ...form } : a))
+   502→   502→      );
+   503→   503→      showNotification("Address updated", "success");
+   504→   504→    } else {
+   505→   505→      const newAddr: Address = {
+   506→   506→        id: `a${Date.now()}`,
+   507→   507→        ...form,
+   508→   508→        isDefault: addresses.length === 0,
+   509→   509→      };
+   510→   510→      setAddresses((prev) => [...prev, newAddr]);
+   511→   511→      showNotification("Address added", "success");
+   512→   512→    }
+   513→   513→    setDialogOpen(false);
+   514→   514→  };
+   515→   515→
+   516→   516→  const handleDelete = (id: string) => {
+   517→   517→    setAddresses((prev) => prev.filter((a) => a.id !== id));
+   518→   518→    showNotification("Address removed", "info");
+   519→   519→  };
+   520→   520→
+   521→   521→  const setDefault = (id: string) => {
+   522→   522→    setAddresses((prev) => prev.map((a) => ({ ...a, isDefault: a.id === id })));
+   523→   523→    showNotification("Default address updated", "success");
+   524→   524→  };
+   525→   525→
+   526→   526→  return (
+   527→   527→    <motion.div {...fadeUp} className="space-y-4">
+   528→   528→      <div className="flex items-center justify-between">
+   529→   529→        <h3 className="text-base font-medium text-[#111]">Saved Addresses</h3>
+   530→   530→        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+   531→   531→          <DialogTrigger asChild>
+   532→   532→            <Button
+   533→   533→              onClick={openNew}
+   534→   534→              variant="outline"
+   535→   535→              className="rounded-[4px] border-[#E8E8E8] h-9 text-xs uppercase tracking-wider"
+   536→   536→            >
+   537→   537→              <Plus className="w-3.5 h-3.5" />
+   538→   538→              Add New
+   539→   539→            </Button>
+   540→   540→          </DialogTrigger>
+   541→   541→          <DialogContent className="rounded-[4px] max-w-md">
+   542→   542→            <DialogHeader>
+   543→   543→              <DialogTitle className="text-base font-medium">
+   544→   544→                {editingId ? "Edit Address" : "Add New Address"}
+   545→   545→              </DialogTitle>
+   546→   546→            </DialogHeader>
+   547→   547→            <div className="space-y-4 pt-2">
+   548→   548→              <div className="space-y-2">
+   549→   549→                <Label className="text-[13px] uppercase tracking-wider text-[#666]">Full Name</Label>
+   550→   550→                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="rounded-[4px] border-[#E8E8E8] h-10" />
+   551→   551→              </div>
+   552→   552→              <div className="space-y-2">
+   553→   553→                <Label className="text-[13px] uppercase tracking-wider text-[#666]">Street Address</Label>
+   554→   554→                <Textarea value={form.street} onChange={(e) => setForm({ ...form, street: e.target.value })} className="rounded-[4px] border-[#E8E8E8] min-h-[60px]" />
+   555→   555→              </div>
+   556→   556→              <div className="grid grid-cols-2 gap-4">
+   557→   557→                <div className="space-y-2">
+   558→   558→                  <Label className="text-[13px] uppercase tracking-wider text-[#666]">City</Label>
+   559→   559→                  <Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className="rounded-[4px] border-[#E8E8E8] h-10" />
+   560→   560→                </div>
+   561→   561→                <div className="space-y-2">
+   562→   562→                  <Label className="text-[13px] uppercase tracking-wider text-[#666]">State</Label>
+   563→   563→                  <Input value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} className="rounded-[4px] border-[#E8E8E8] h-10" />
+   564→   564→                </div>
+   565→   565→              </div>
+   566→   566→              <div className="grid grid-cols-2 gap-4">
+   567→   567→                <div className="space-y-2">
+   568→   568→                  <Label className="text-[13px] uppercase tracking-wider text-[#666]">PIN Code</Label>
+   569→   569→                  <Input value={form.zip} onChange={(e) => setForm({ ...form, zip: e.target.value })} className="rounded-[4px] border-[#E8E8E8] h-10" />
+   570→   570→                </div>
+   571→   571→                <div className="space-y-2">
+   572→   572→                  <Label className="text-[13px] uppercase tracking-wider text-[#666]">Phone</Label>
+   573→   573→                  <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="rounded-[4px] border-[#E8E8E8] h-10" />
+   574→   574→                </div>
+   575→   575→              </div>
+   576→   576→              <Button onClick={handleSave} className="rounded-[4px] bg-[#111] hover:bg-[#333] text-white h-10 w-full">
+   577→   577→                {editingId ? "Update Address" : "Save Address"}
+   578→   578→              </Button>
+   579→   579→            </div>
+   580→   580→          </DialogContent>
+   581→   581→        </Dialog>
+   582→   582→      </div>
+   583→   583→
+   584→   584→      <div className="space-y-3">
+   585→   585→        {addresses.map((addr, idx) => (
+   586→   586→          <motion.div
+   587→   587→            key={addr.id}
+   588→   588→            initial={{ opacity: 0, y: 12 }}
+   589→   589→            animate={{ opacity: 1, y: 0 }}
+   590→   590→            transition={{ delay: idx * 0.05, duration: 0.3 }}
+   591→   591→            className="bg-white rounded-[4px] border border-[#E8E8E8] p-4"
+   592→   592→          >
+   593→   593→            <div className="flex items-start justify-between gap-4">
+   594→   594→              <div className="flex-1">
+   595→   595→                <div className="flex items-center gap-2 mb-1">
+   596→   596→                  <span className="text-sm font-medium text-[#111]">{addr.name}</span>
+   597→   597→                  {addr.isDefault && (
+   598→   598→                    <Badge className="rounded-[4px] text-[10px] uppercase tracking-wider bg-[#4D5B47] text-white border-0 px-2 py-0.5">
+   599→   599→                      Default
+   600→   600→                    </Badge>
+   601→   601→                  )}
+   602→   602→                </div>
+   603→   603→                <p className="text-sm text-[#666] leading-relaxed">
+   604→   604→                  {addr.street}
+   605→   605→                  <br />
+   606→   606→                  {addr.city}, {addr.state} — {addr.zip}
+   607→   607→                </p>
+   608→   608→                <p className="text-xs text-[#999] mt-1">{addr.phone}</p>
+   609→   609→              </div>
+   610→   610→              <div className="flex items-center gap-1 shrink-0">
+   611→   611→                {!addr.isDefault && (
+   612→   612→                  <Button
+   613→   613→                    variant="ghost"
+   614→   614→                    size="icon"
+   615→   615→                    onClick={() => setDefault(addr.id)}
+   616→   616→                    className="rounded-[4px] h-8 w-8"
+   617→   617→                    title="Set as default"
+   618→   618→                  >
+   619→   619→                    <Check className="w-3.5 h-3.5 text-[#666]" />
+   620→   620→                  </Button>
+   621→   621→                )}
+   622→   622→                <Button
+   623→   623→                  variant="ghost"
+   624→   624→                  size="icon"
+   625→   625→                  onClick={() => openEdit(addr)}
+   626→   626→                  className="rounded-[4px] h-8 w-8"
+   627→   627→                  title="Edit"
+   628→   628→                >
+   629→   629→                  <Pencil className="w-3.5 h-3.5 text-[#666]" />
+   630→   630→                </Button>
+   631→   631→                <Button
+   632→   632→                  variant="ghost"
+   633→   633→                  size="icon"
+   634→   634→                  onClick={() => handleDelete(addr.id)}
+   635→   635→                  className="rounded-[4px] h-8 w-8 hover:text-[#C53030]"
+   636→   636→                  title="Delete"
+   637→   637→                >
+   638→   638→                  <Trash2 className="w-3.5 h-3.5" />
+   639→   639→                </Button>
+   640→   640→              </div>
+   641→   641→            </div>
+   642→   642→          </motion.div>
+   643→   643→        ))}
+   644→   644→      </div>
+   645→   645→    </motion.div>
+   646→   646→  );
+   647→   647→}
+   648→   648→
+   649→   649→// ── Settings Tab ────────────────────────────────────────────────────────────
+   650→   650→function SettingsTab() {
+   651→   651→  const [orderUpdates, setOrderUpdates] = useState(true);
+   652→   652→  const [promoEmails, setPromoEmails] = useState(false);
+   653→   653→  const [newsletter, setNewsletter] = useState(true);
+   654→   654→  const [theme, setTheme] = useState<"light" | "dark">("light");
+   655→   655→  const { showNotification } = useStore();
+   656→   656→
+   657→   657→  const toggleTheme = () => {
+   658→   658→    const next = theme === "light" ? "dark" : "light";
+   659→   659→    setTheme(next);
+   660→   660→    showNotification(`Theme set to ${next}`, "info");
+   661→   661→  };
+   662→   662→
+   663→   663→  return (
+   664→   664→    <motion.div {...fadeUp} className="space-y-8">
+   665→   665→      {/* Notifications */}
+   666→   666→      <div>
+   667→   667→        <h3 className="text-base font-medium text-[#111] mb-4">Notifications</h3>
+   668→   668→        <div className="space-y-4">
+   669→   669→          <div className="flex items-center justify-between bg-white rounded-[4px] border border-[#E8E8E8] p-4">
+   670→   670→            <div className="flex items-center gap-3">
+   671→   671→              <div className="w-9 h-9 rounded-[4px] bg-[#F0EFED] flex items-center justify-center">
+   672→   672→                <Package className="w-4 h-4 text-[#666]" strokeWidth={1.5} />
+   673→   673→              </div>
+   674→   674→              <div>
+   675→   675→                <p className="text-sm font-medium text-[#111]">Order Updates</p>
+   676→   676→                <p className="text-xs text-[#666]">Get notified about your order status</p>
+   677→   677→              </div>
+   678→   678→            </div>
+   679→   679→            <Switch checked={orderUpdates} onCheckedChange={setOrderUpdates} className="data-[state=checked]:bg-[#4D5B47]" />
+   680→   680→          </div>
+   681→   681→
+   682→   682→          <div className="flex items-center justify-between bg-white rounded-[4px] border border-[#E8E8E8] p-4">
+   683→   683→            <div className="flex items-center gap-3">
+   684→   684→              <div className="w-9 h-9 rounded-[4px] bg-[#F0EFED] flex items-center justify-center">
+   685→   685→                <Bell className="w-4 h-4 text-[#666]" strokeWidth={1.5} />
+   686→   686→              </div>
+   687→   687→              <div>
+   688→   688→                <p className="text-sm font-medium text-[#111]">Promotional Emails</p>
+   689→   689→                <p className="text-xs text-[#666]">Receive offers and sale alerts</p>
+   690→   690→              </div>
+   691→   691→            </div>
+   692→   692→            <Switch checked={promoEmails} onCheckedChange={setPromoEmails} className="data-[state=checked]:bg-[#4D5B47]" />
+   693→   693→          </div>
+   694→   694→
+   695→   695→          <div className="flex items-center justify-between bg-white rounded-[4px] border border-[#E8E8E8] p-4">
+   696→   696→            <div className="flex items-center gap-3">
+   697→   697→              <div className="w-9 h-9 rounded-[4px] bg-[#F0EFED] flex items-center justify-center">
+   698→   698→                <Mail className="w-4 h-4 text-[#666]" strokeWidth={1.5} />
+   699→   699→              </div>
+   700→   700→              <div>
+   701→   701→                <p className="text-sm font-medium text-[#111]">Newsletter</p>
+   702→   702→                <p className="text-xs text-[#666]">Weekly style picks and editorials</p>
+   703→   703→              </div>
+   704→   704→            </div>
+   705→   705→            <Switch checked={newsletter} onCheckedChange={setNewsletter} className="data-[state=checked]:bg-[#4D5B47]" />
+   706→   706→          </div>
+   707→   707→        </div>
+   708→   708→      </div>
+   709→   709→
+   710→   710→      <Separator className="bg-[#E8E8E8]" />
+   711→   711→
+   712→   712→      {/* Theme */}
+   713→   713→      <div>
+   714→   714→        <h3 className="text-base font-medium text-[#111] mb-4">Appearance</h3>
+   715→   715→        <div className="bg-white rounded-[4px] border border-[#E8E8E8] p-4">
+   716→   716→          <div className="flex items-center justify-between">
+   717→   717→            <div className="flex items-center gap-3">
+   718→   718→              <div className="w-9 h-9 rounded-[4px] bg-[#F0EFED] flex items-center justify-center">
+   719→   719→                {theme === "light" ? (
+   720→   720→                  <Sun className="w-4 h-4 text-[#666]" strokeWidth={1.5} />
+   721→   721→                ) : (
+   722→   722→                  <Moon className="w-4 h-4 text-[#666]" strokeWidth={1.5} />
+   723→   723→                )}
+   724→   724→              </div>
+   725→   725→              <div>
+   726→   726→                <p className="text-sm font-medium text-[#111]">Theme</p>
+   727→   727→                <p className="text-xs text-[#666]">Current: {theme === "light" ? "Light Mode" : "Dark Mode"}</p>
+   728→   728→              </div>
+   729→   729→            </div>
+   730→   730→            <Button
+   731→   731→              variant="outline"
+   732→   732→              onClick={toggleTheme}
+   733→   733→              className="rounded-[4px] border-[#E8E8E8] h-9 text-xs uppercase tracking-wider"
+   734→   734→            >
+   735→   735→              {theme === "light" ? "Switch to Dark" : "Switch to Light"}
+   736→   736→            </Button>
+   737→   737→          </div>
+   738→   738→        </div>
+   739→   739→      </div>
+   740→   740→
+   741→   741→      <Separator className="bg-[#E8E8E8]" />
+   742→   742→
+   743→   743→      {/* Danger Zone */}
+   744→   744→      <div>
+   745→   745→        <h3 className="text-base font-medium text-[#C53030] mb-4">Danger Zone</h3>
+   746→   746→        <div className="space-y-3">
+   747→   747→          <AlertDialog>
+   748→   748→            <AlertDialogTrigger asChild>
+   749→   749→              <Button
+   750→   750→                variant="outline"
+   751→   751→                className="rounded-[4px] border-[#C53030]/30 text-[#C53030] hover:bg-[#C53030]/5 h-10 text-xs uppercase tracking-wider"
+   752→   752→              >
+   753→   753→                <AlertTriangle className="w-3.5 h-3.5" />
+   754→   754→                Delete Account
+   755→   755→              </Button>
+   756→   756→            </AlertDialogTrigger>
+   757→   757→            <AlertDialogContent className="rounded-[4px]">
+   758→   758→              <AlertDialogHeader>
+   759→   759→                <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+   760→   760→                <AlertDialogDescription>
+   761→   761→                  This action cannot be undone. All your data including orders, addresses, and preferences will be permanently removed.
+   762→   762→                </AlertDialogDescription>
+   763→   763→              </AlertDialogHeader>
+   764→   764→              <AlertDialogFooter>
+   765→   765→                <AlertDialogCancel className="rounded-[4px]">Cancel</AlertDialogCancel>
+   766→   766→                <AlertDialogAction className="rounded-[4px] bg-[#C53030] hover:bg-[#C53030]/90 text-white">
+   767→   767→                  Delete Account
+   768→   768→                </AlertDialogAction>
+   769→   769→              </AlertDialogFooter>
+   770→   770→            </AlertDialogContent>
+   771→   771→          </AlertDialog>
+   772→   772→
+   773→   773→          <Button
+   774→   774→            variant="outline"
+   775→   775→            className="rounded-[4px] border-[#E8E8E8] h-10 text-xs uppercase tracking-wider"
+   776→   776→            onClick={() => showNotification("Logged out", "info")}
+   777→   777→          >
+   778→   778→            <LogOut className="w-3.5 h-3.5" />
+   779→   779→            Log Out
+   780→   780→          </Button>
+   781→   781→        </div>
+   782→   782→      </div>
+   783→   783→    </motion.div>
+   784→   784→  );
+   785→   785→}
+   786→   786→
+   787→   787→// ── Main Account Page ───────────────────────────────────────────────────────
+   788→   788→export default function AccountPage() {
+   789→   789→  const [activeTab, setActiveTab] = useState("profile");
+   790→   790→
+   791→   791→  return (
+   792→   792→    <div className="min-h-screen bg-[#F8F8F6]">
+   793→   793→      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
+   794→   794→        {/* Header */}
+   795→   795→        <motion.div
+   796→   796→          initial={{ opacity: 0, y: 16 }}
+   797→   797→          animate={{ opacity: 1, y: 0 }}
+   798→   798→          transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+   799→   799→          className="mb-8"
+   800→   800→        >
+   801→   801→          <h1 className="text-2xl sm:text-3xl font-medium text-[#111] tracking-tight">My Account</h1>
+   802→   802→          <p className="text-sm text-[#666] mt-1">Manage your profile, orders, and settings</p>
+   803→   803→        </motion.div>
+   804→   804→
+   805→   805→        {/* Tabs */}
+   806→   806→        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+   807→   807→          <TabsList className="bg-white rounded-[4px] border border-[#E8E8E8] p-1 h-auto w-full sm:w-auto mb-8 overflow-x-auto scrollbar-none">
+   808→   808→            <TabsTrigger
+   809→   809→              value="profile"
+   810→   810→              className="rounded-[4px] flex-1 sm:flex-initial gap-2 px-4 h-10 text-xs uppercase tracking-wider font-medium data-[state=active]:bg-[#111] data-[state=active]:text-white data-[state=active]:shadow-none"
+   811→   811→            >
+   812→   812→              <User className="w-3.5 h-3.5" />
+   813→   813→              <span className="hidden sm:inline">Profile</span>
+   814→   814→              <span className="sm:hidden">Profile</span>
+   815→   815→            </TabsTrigger>
+   816→   816→            <TabsTrigger
+   817→   817→              value="orders"
+   818→   818→              className="rounded-[4px] flex-1 sm:flex-initial gap-2 px-4 h-10 text-xs uppercase tracking-wider font-medium data-[state=active]:bg-[#111] data-[state=active]:text-white data-[state=active]:shadow-none"
+   819→   819→            >
+   820→   820→              <Package className="w-3.5 h-3.5" />
+   821→   821→              <span className="hidden sm:inline">Orders</span>
+   822→   822→              <span className="sm:hidden">Orders</span>
+   823→   823→            </TabsTrigger>
+   824→   824→            <TabsTrigger
+   825→   825→              value="addresses"
+   826→   826→              className="rounded-[4px] flex-1 sm:flex-initial gap-2 px-4 h-10 text-xs uppercase tracking-wider font-medium data-[state=active]:bg-[#111] data-[state=active]:text-white data-[state=active]:shadow-none"
+   827→   827→            >
+   828→   828→              <MapPin className="w-3.5 h-3.5" />
+   829→   829→              <span className="hidden sm:inline">Addresses</span>
+   830→   830→              <span className="sm:hidden">Address</span>
+   831→   831→            </TabsTrigger>
+   832→   832→            <TabsTrigger
+   833→   833→              value="settings"
+   834→   834→              className="rounded-[4px] flex-1 sm:flex-initial gap-2 px-4 h-10 text-xs uppercase tracking-wider font-medium data-[state=active]:bg-[#111] data-[state=active]:text-white data-[state=active]:shadow-none"
+   835→   835→            >
+   836→   836→              <Settings className="w-3.5 h-3.5" />
+   837→   837→              <span className="hidden sm:inline">Settings</span>
+   838→   838→              <span className="sm:hidden">Settings</span>
+   839→   839→            </TabsTrigger>
+   840→   840→          </TabsList>
+   841→   841→
+   842→   842→          <TabsContent value="profile">
+   843→   843→            <ProfileTab />
+   844→   844→          </TabsContent>
+   845→   845→          <TabsContent value="orders">
+   846→   846→            <OrdersTab />
+   847→   847→          </TabsContent>
+   848→   848→          <TabsContent value="addresses">
+   849→   849→            <AddressesTab />
+   850→   850→          </TabsContent>
+   851→   851→          <TabsContent value="settings">
+   852→   852→            <SettingsTab />
+   853→   853→          </TabsContent>
+   854→   854→        </Tabs>
+   855→   855→      </div>
+   856→   856→    </div>
+   857→   857→  );
+   858→   858→}

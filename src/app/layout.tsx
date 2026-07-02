@@ -25,6 +25,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `
+          // Remove attributes injected by browser extensions before React hydrates
+          document.querySelectorAll('[fdprocessedid]').forEach(function(el){el.removeAttribute('fdprocessedid')});
+          // Observer to catch extensions that inject attributes after initial load
+          new MutationObserver(function(mutations){mutations.forEach(function(m){m.addedNodes.forEach(function(n){if(n.nodeType===1&&n.hasAttribute&&n.hasAttribute('fdprocessedid')){n.removeAttribute('fdprocessedid')}if(n.querySelectorAll){n.querySelectorAll('[fdprocessedid]').forEach(function(e){e.removeAttribute('fdprocessedid')})}})})}).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['fdprocessedid']});
+        `}} />
+      </head>
       <body className="antialiased">
         <Providers>
           {children}

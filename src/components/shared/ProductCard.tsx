@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, ShoppingBag, Star, Eye } from "lucide-react";
+import { Heart, ShoppingBag, Star, Eye, GitCompareArrows } from "lucide-react";
 import { useStore } from "@/lib/store";
 import Image from "next/image";
 
@@ -44,8 +44,9 @@ export function ProductCard({
 }: ProductCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [imgError, setImgError] = useState(false);
-  const { navigate, addToCart, toggleWishlist, isInWishlist, setQuickViewProductId } = useStore();
+  const { navigate, addToCart, toggleWishlist, isInWishlist, setQuickViewProductId, addToCompare, isInCompare, setCompareOpen } = useStore();
   const inWishlist = isInWishlist(id);
+  const inCompare = isInCompare(id);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -68,6 +69,11 @@ export function ProductCard({
   const handleQuickView = (e: React.MouseEvent) => {
     e.stopPropagation();
     setQuickViewProductId(id);
+  };
+
+  const handleCompare = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    addToCompare(id);
   };
 
   const currentImage = isHovered && images && images[1] ? images[1] : image;
@@ -142,6 +148,15 @@ export function ProductCard({
             className="w-9 h-9 bg-[#F8F8F6] flex items-center justify-center hover:bg-white transition-colors shadow-sm"
           >
             <Eye className="w-4 h-4" stroke="#111" strokeWidth={1.5} />
+          </motion.button>
+          <motion.button
+            initial={false}
+            animate={{ opacity: isHovered ? 1 : 0, y: isHovered ? 0 : -4 }}
+            transition={{ duration: 0.2, delay: 0.1 }}
+            onClick={handleCompare}
+            className={`w-9 h-9 flex items-center justify-center transition-colors shadow-sm ${inCompare ? 'bg-[#111] text-white' : 'bg-[#F8F8F6] hover:bg-white'}`}
+          >
+            <GitCompareArrows className="w-4 h-4" stroke={inCompare ? '#F8F8F6' : '#111'} strokeWidth={1.5} />
           </motion.button>
         </div>
 

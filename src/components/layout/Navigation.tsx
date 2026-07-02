@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, ShoppingBag, Heart, User, Menu, X, ChevronDown } from "lucide-react";
+import { Search, ShoppingBag, Heart, User, Menu, X, ChevronDown, GitCompareArrows } from "lucide-react";
 import { useStore } from "@/lib/store";
 
 const navLinks = [
@@ -66,7 +66,7 @@ const dropdownData: Record<string, { featured?: DropdownItem; items: DropdownIte
 };
 
 export function Navigation() {
-  const { navigate, toggleCart, getCartCount, wishlistItems, setSearchOpen, setMobileMenuOpen, resetFilters, setFilter } = useStore();
+  const { navigate, toggleCart, getCartCount, wishlistItems, setSearchOpen, setMobileMenuOpen, resetFilters, setFilter, compareItems, setCompareOpen } = useStore();
   const [scrolled, setScrolled] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const dropdownTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -240,6 +240,18 @@ export function Navigation() {
               >
                 <User className="w-[18px] h-[18px]" strokeWidth={1.5} />
               </button>
+              {compareItems.length > 0 && (
+                <button
+                  onClick={() => setCompareOpen(true)}
+                  className="hidden sm:flex w-10 h-10 items-center justify-center hover:opacity-60 transition-opacity relative"
+                  aria-label="Compare"
+                >
+                  <GitCompareArrows className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                  <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-[#4D5B47] text-[#F8F8F6] text-[9px] font-medium flex items-center justify-center">
+                    {compareItems.length}
+                  </span>
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -85,6 +85,15 @@ interface StoreState {
   quickViewProductId: string | null;
   setQuickViewProductId: (id: string | null) => void;
 
+  // Product Comparison
+  compareItems: string[];
+  isCompareOpen: boolean;
+  addToCompare: (productId: string) => void;
+  removeFromCompare: (productId: string) => void;
+  clearCompare: () => void;
+  isInCompare: (productId: string) => boolean;
+  setCompareOpen: (open: boolean) => void;
+
   // Notification
   notification: { message: string; type: 'success' | 'error' | 'info' } | null;
   showNotification: (message: string, type?: 'success' | 'error' | 'info') => void;
@@ -223,6 +232,32 @@ export const useStore = create<StoreState>()(
       quickViewProductId: null,
       setQuickViewProductId: (id) => set({ quickViewProductId: id }),
 
+      // Product Comparison
+      compareItems: [],
+      isCompareOpen: false,
+      addToCompare: (productId) => {
+        set((state) => {
+          if (state.compareItems.includes(productId)) {
+            get().showNotification('Removed from comparison', 'info');
+            return { compareItems: state.compareItems.filter((id) => id !== productId) };
+          }
+          if (state.compareItems.length >= 4) {
+            get().showNotification('You can compare up to 4 products', 'error');
+            return state;
+          }
+          get().showNotification('Added to comparison', 'success');
+          return { compareItems: [...state.compareItems, productId] };
+        });
+      },
+      removeFromCompare: (productId) => {
+        set((state) => ({
+          compareItems: state.compareItems.filter((id) => id !== productId),
+        }));
+      },
+      clearCompare: () => set({ compareItems: [] }),
+      isInCompare: (productId) => get().compareItems.includes(productId),
+      setCompareOpen: (open) => set({ isCompareOpen: open }),
+
       // Notification
       notification: null,
       showNotification: (message, type = 'success') => {
@@ -237,6 +272,7 @@ export const useStore = create<StoreState>()(
         cartItems: state.cartItems,
         wishlistItems: state.wishlistItems,
         recentlyViewed: state.recentlyViewed,
+        compareItems: state.compareItems,
       }),
     }
   )

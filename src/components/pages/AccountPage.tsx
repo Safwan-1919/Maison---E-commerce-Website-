@@ -19,6 +19,20 @@ import {
   Moon,
   Sun,
   AlertTriangle,
+  Gift,
+  Crown,
+  Star,
+  Clock,
+  RefreshCw,
+  Shield,
+  Smartphone,
+  Camera,
+  TrendingDown,
+  Sparkles,
+  RotateCcw,
+  Truck,
+
+  ShoppingBag,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -192,6 +206,30 @@ const MOCK_ORDERS: Order[] = [
       { id: "i6", name: "Structured Blazer", price: 5490, quantity: 1, size: "L", color: "Navy", image: "" },
     ],
   },
+  {
+    id: "5",
+    orderNumber: "MSN-T9Y2J6",
+    status: "processing",
+    total: 8970,
+    subtotal: 8970,
+    discount: 0,
+    shipping: 0,
+    shippingAddress: JSON.stringify({
+      name: "Arjun Mehta",
+      street: "42, Altamount Road",
+      city: "Mumbai",
+      state: "Maharashtra",
+      zip: "400026",
+    }),
+    paymentMethod: "card",
+    paymentStatus: "completed",
+    createdAt: "2025-02-14T08:30:00Z",
+    updatedAt: "2025-02-14T09:00:00Z",
+    items: [
+      { id: "i7", name: "Tailored Wool Blazer", price: 6990, quantity: 1, size: "M", color: "Charcoal", image: "" },
+      { id: "i8", name: "Oxford Button-Down Shirt", price: 1990, quantity: 1, size: "M", color: "White", image: "" },
+    ],
+  },
 ];
 
 const INITIAL_ADDRESSES: Address[] = [
@@ -227,6 +265,37 @@ const INITIAL_ADDRESSES: Address[] = [
   },
 ];
 
+const RECENT_ACTIVITY = [
+  { id: "a1", type: "order", label: "Order MSN-T9Y2J6 placed", detail: "2 items · ₹8,970", time: "2 hours ago", icon: ShoppingBag },
+  { id: "a2", type: "review", label: "Wrote a review for Italian Wool Overcoat", detail: "★★★★★ · Great quality!", time: "3 days ago", icon: Star },
+  { id: "a3", type: "reward", label: "Earned 150 loyalty points", detail: "From order MSN-R7W3N1", time: "6 days ago", icon: Gift },
+  { id: "a4", type: "order", label: "Order MSN-P2Q8T5 delivered", detail: "Cashmere V-Neck Sweater", time: "1 week ago", icon: Package },
+  { id: "a5", type: "wishlist", label: "Added Structured Blazer to wishlist", detail: "Navy · Size L", time: "2 weeks ago", icon: Sparkles },
+];
+
+const TIER_CONFIG = {
+  Silver: { min: 0, max: 3000, color: "#999999", nextTier: "Gold", nextMin: 3000, icon: Shield },
+  Gold: { min: 3000, max: 10000, color: "#B79B7B", nextTier: "Platinum", nextMin: 10000, icon: Crown },
+  Platinum: { min: 10000, max: 100000, color: "#4D5B47", nextTier: null, nextMin: null, icon: Crown },
+};
+
+const DELIVERY_ESTIMATES: Record<string, string> = {
+  "400026": "Usually delivers in 2-3 business days",
+  "400049": "Usually delivers in 3-5 business days",
+  "400051": "Usually delivers in 2-4 business days",
+};
+
+const getDeliveryEstimate = (zip: string) =>
+  DELIVERY_ESTIMATES[zip] || "Usually delivers in 3-5 business days";
+
+const getEstimatedDelivery = (order: Order) => {
+  if (order.status === "delivered" || order.status === "cancelled") return null;
+  const created = new Date(order.createdAt);
+  const estimated = new Date(created);
+  estimated.setDate(estimated.getDate() + (order.status === "confirmed" ? 7 : order.status === "processing" ? 5 : 3));
+  return estimated.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+};
+
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);
 
@@ -240,12 +309,135 @@ const fadeUp = {
   transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] },
 };
 
+
+// ── Loyalty Points Section ──────────────────────────────────────────────────
+function LoyaltySection() {
+  const points = 2450;
+  const currentTier = "Silver" as keyof typeof TIER_CONFIG;
+  const config = TIER_CONFIG[currentTier];
+  const progressPercent = Math.min(((points - config.min) / (config.max - config.min)) * 100, 100);
+  const TierIcon = config.icon;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
+      className="bg-white rounded-[4px] border border-[#E8E8E8] p-5"
+    >
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div
+            className="w-10 h-10 rounded-[4px] flex items-center justify-center"
+            style={{ backgroundColor: config.color + "15" }}
+          >
+            <TierIcon className="w-5 h-5" style={{ color: config.color }} strokeWidth={1.5} />
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-wider text-[#999] font-medium">Loyalty Points</p>
+            <p className="text-2xl font-medium text-[#111] mt-0.5">
+              {points.toLocaleString("en-IN")}
+            </p>
+          </div>
+        </div>
+        <Badge
+          className="rounded-[4px] text-[10px] uppercase tracking-wider font-semibold px-2.5 py-1 border-0"
+          style={{ backgroundColor: config.color + "15", color: config.color }}
+        >
+          <Crown className="w-3 h-3 mr-1" />
+          {currentTier}
+        </Badge>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-[#666]">Progress to {config.nextTier}</span>
+          <span className="text-[#999] font-medium">
+            {points.toLocaleString()} / {config.nextMin?.toLocaleString()} pts
+          </span>
+        </div>
+        <div className="relative h-1.5 bg-[#F0EFED] rounded-full overflow-hidden">
+          <motion.div
+            className="absolute inset-y-0 left-0 rounded-full"
+            style={{ backgroundColor: config.color }}
+            initial={{ width: 0 }}
+            animate={{ width: `${progressPercent}%` }}
+            transition={{ duration: 1, delay: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+          />
+        </div>
+        <p className="text-[11px] text-[#999]">
+          Earn {((config.nextMin || 100000) - points).toLocaleString()} more points to unlock{" "}
+          <span className="font-medium" style={{ color: config.color }}>{config.nextTier}</span> benefits
+        </p>
+      </div>
+
+      <div className="mt-4 pt-4 border-t border-[#E8E8E8] flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <Gift className="w-3.5 h-3.5 text-[#B79B7B]" strokeWidth={1.5} />
+          <span className="text-xs text-[#666]">Earn 2x points on weekends</span>
+        </div>
+        <div className="w-px h-3 bg-[#E8E8E8]" />
+        <div className="flex items-center gap-2">
+          <Star className="w-3.5 h-3.5 text-[#B79B7B]" strokeWidth={1.5} />
+          <span className="text-xs text-[#666]">Birthday bonus: +500 pts</span>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Recent Activity Timeline ────────────────────────────────────────────────
+function RecentActivityTimeline() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, delay: 0.1, ease: [0.25, 0.1, 0.25, 1] }}
+      className="bg-white rounded-[4px] border border-[#E8E8E8] p-5"
+    >
+      <h3 className="text-sm font-medium text-[#111] mb-4">Recent Activity</h3>
+      <div className="space-y-0">
+        {RECENT_ACTIVITY.map((activity, idx) => {
+          const Icon = activity.icon;
+          return (
+            <motion.div
+              key={activity.id}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.15 + idx * 0.06, duration: 0.25 }}
+              className="relative flex gap-3 pb-4 last:pb-0"
+            >
+              {/* Timeline line */}
+              {idx < RECENT_ACTIVITY.length - 1 && (
+                <div className="absolute left-[11px] top-[26px] bottom-0 w-px bg-[#E8E8E8]" />
+              )}
+              {/* Icon dot */}
+              <div className="relative z-10 w-[22px] h-[22px] rounded-full bg-[#F0EFED] flex items-center justify-center shrink-0 mt-0.5">
+                <Icon className="w-3 h-3 text-[#666]" strokeWidth={1.5} />
+              </div>
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-[#111] leading-snug">{activity.label}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-xs text-[#999]">{activity.detail}</span>
+                </div>
+                <span className="text-[11px] text-[#ccc] mt-0.5 block">{activity.time}</span>
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+    </motion.div>
+  );
+}
+
 // ── Profile Tab ─────────────────────────────────────────────────────────────
 function ProfileTab() {
   const [name, setName] = useState("Arjun Mehta");
   const [email, setEmail] = useState("arjun.mehta@email.com");
   const [phone, setPhone] = useState("+91 98765 43210");
   const [saving, setSaving] = useState(false);
+  const [avatarHover, setAvatarHover] = useState(false);
   const { showNotification } = useStore();
 
   const handleSave = async () => {
@@ -255,22 +447,70 @@ function ProfileTab() {
     showNotification("Profile updated successfully", "success");
   };
 
+  const initials = name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
   return (
-    <motion.div {...fadeUp} className="space-y-8">
-      {/* Avatar Section */}
-      <div className="flex items-center gap-6">
-        <div className="w-20 h-20 rounded-full bg-[#4D5B47] flex items-center justify-center text-white text-2xl font-medium select-none shrink-0">
-          AM
+    <motion.div {...fadeUp} className="space-y-6">
+      {/* Avatar Section - Enhanced */}
+      <motion.div
+        className="flex items-center gap-6"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+      >
+        <div
+          className="relative group cursor-pointer"
+          onMouseEnter={() => setAvatarHover(true)}
+          onMouseLeave={() => setAvatarHover(false)}
+        >
+          <div className="w-24 h-24 rounded-[4px] bg-[#4D5B47] flex items-center justify-center text-white text-3xl font-medium select-none shrink-0">
+            {initials}
+          </div>
+          <AnimatePresence>
+            {avatarHover && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="absolute inset-0 bg-[#111]/60 rounded-[4px] flex flex-col items-center justify-center gap-1"
+              >
+                <Camera className="w-5 h-5 text-white" strokeWidth={1.5} />
+                <span className="text-[10px] uppercase tracking-wider text-white/90 font-medium">
+                  Edit Photo
+                </span>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
         <div>
-          <h3 className="text-lg font-medium text-[#111]">Arjun Mehta</h3>
+          <h3 className="text-lg font-medium text-[#111]">{name}</h3>
           <p className="text-sm text-[#666] mt-0.5">Member since January 2024</p>
+          <div className="flex items-center gap-2 mt-2">
+            <Badge className="rounded-[4px] text-[10px] uppercase tracking-wider bg-[#B79B7B]/15 text-[#B79B7B] border-0 px-2 py-0.5">
+              <Crown className="w-2.5 h-2.5 mr-1" />
+              Silver Member
+            </Badge>
+          </div>
         </div>
-      </div>
+      </motion.div>
 
       <Separator className="bg-[#E8E8E8]" />
 
-      {/* Form */}
+      {/* Loyalty Points Section */}
+      <LoyaltySection />
+
+      {/* Recent Activity Timeline */}
+      <RecentActivityTimeline />
+
+      <Separator className="bg-[#E8E8E8]" />
+
+      {/* Form - Unchanged */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl">
         <div className="space-y-2">
           <Label htmlFor="name" className="text-[13px] uppercase tracking-wider text-[#666]">
@@ -332,6 +572,8 @@ function OrdersTab() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState("all");
+  const { navigate, addToCart, showNotification } = useStore();
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -351,6 +593,44 @@ function OrdersTab() {
     };
     fetchOrders();
   }, []);
+
+  const statusCounts = orders.reduce<Record<string, number>>((acc, o) => {
+    const s = o.status.toLowerCase();
+    acc[s] = (acc[s] || 0) + 1;
+    return acc;
+  }, {});
+
+  const filterOptions = [
+    { key: "all", label: "All" },
+    { key: "processing", label: "Processing" },
+    { key: "shipped", label: "Shipped" },
+    { key: "delivered", label: "Delivered" },
+    { key: "cancelled", label: "Cancelled" },
+    { key: "confirmed", label: "Confirmed" },
+  ];
+
+  const filteredOrders =
+    activeFilter === "all" ? orders : orders.filter((o) => o.status.toLowerCase() === activeFilter);
+
+  const handleTrackOrder = (orderNumber: string) => {
+    navigate("order-tracking");
+    showNotification(`Tracking ${orderNumber}`, "info");
+  };
+
+  const handleReorder = (order: Order) => {
+    order.items.forEach((item) => {
+      addToCart({
+        productId: item.id,
+        name: item.name,
+        price: item.price,
+        mrp: item.price,
+        image: item.image || "/images/placeholder.jpg",
+        size: item.size || "M",
+        color: item.color || "Default",
+      });
+    });
+    showNotification(`${order.items.length} item(s) added to cart`, "success");
+  };
 
   if (loading) {
     return (
@@ -377,99 +657,181 @@ function OrdersTab() {
   }
 
   return (
-    <div className="space-y-3">
-      {orders.map((order, idx) => {
-        const isExpanded = expandedId === order.id;
-        return (
-          <motion.div
-            key={order.id}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.05, duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-          >
+    <div className="space-y-4">
+      {/* Filter Bar */}
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="flex flex-wrap gap-2"
+      >
+        {filterOptions.map((opt) => {
+          const count = opt.key === "all" ? orders.length : statusCounts[opt.key] || 0;
+          if (opt.key !== "all" && count === 0) return null;
+          return (
             <button
-              onClick={() => setExpandedId(isExpanded ? null : order.id)}
-              className="w-full text-left bg-white rounded-[4px] border border-[#E8E8E8] p-4 hover:border-[#999] transition-colors"
+              key={opt.key}
+              onClick={() => setActiveFilter(opt.key)}
+              className={`inline-flex items-center gap-1.5 px-3 h-9 rounded-[4px] text-xs uppercase tracking-wider font-medium border transition-all duration-200 ${
+                activeFilter === opt.key
+                  ? "bg-[#111] text-white border-[#111]"
+                  : "bg-white text-[#666] border-[#E8E8E8] hover:border-[#999] hover:text-[#111]"
+              }`}
             >
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3 mb-1">
-                    <span className="text-sm font-medium text-[#111]">{order.orderNumber}</span>
-                    <Badge className={`rounded-[4px] text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 border-0 ${STATUS_COLORS[order.status] || STATUS_COLORS.pending}`}>
-                      {order.status}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-[#666]">
-                    {formatDate(order.createdAt)} &middot; {order.items?.length || 0} item{(order.items?.length || 0) > 1 ? "s" : ""}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <span className="text-sm font-medium text-[#111]">{formatCurrency(order.total)}</span>
-                  {isExpanded ? (
-                    <ChevronUp className="w-4 h-4 text-[#999]" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4 text-[#999]" />
-                  )}
-                </div>
-              </div>
+              {opt.label}
+              <span
+                className={`text-[10px] min-w-[18px] h-[18px] rounded-[4px] flex items-center justify-center font-semibold ${
+                  activeFilter === opt.key
+                    ? "bg-white/20 text-white"
+                    : "bg-[#F0EFED] text-[#999]"
+                }`}
+              >
+                {count}
+              </span>
             </button>
+          );
+        })}
+      </motion.div>
 
-            <AnimatePresence>
-              {isExpanded && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
-                  className="overflow-hidden"
-                >
-                  <div className="bg-white border border-t-0 border-[#E8E8E8] rounded-b-[4px] p-4">
-                    <div className="space-y-3">
-                      {order.items?.map((item) => (
-                        <div key={item.id} className="flex items-center gap-3">
-                          <div className="w-14 h-14 rounded-[4px] bg-[#F0EFED] shrink-0 flex items-center justify-center">
-                            <Package className="w-5 h-5 text-[#999]" strokeWidth={1} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-[#111] line-clamp-1">{item.name}</p>
-                            <p className="text-xs text-[#666]">
-                              {item.size && `Size: ${item.size}`}
-                              {item.size && item.color && " · "}
-                              {item.color && `Color: ${item.color}`}
-                              {" · Qty: "}{item.quantity}
-                            </p>
-                          </div>
-                          <span className="text-sm text-[#111] shrink-0">
-                            {formatCurrency(item.price * item.quantity)}
-                          </span>
-                        </div>
-                      ))}
+      {/* Orders List */}
+      <div className="space-y-3">
+        {filteredOrders.map((order, idx) => {
+          const isExpanded = expandedId === order.id;
+          const estDelivery = getEstimatedDelivery(order);
+          return (
+            <motion.div
+              key={order.id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.05, duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+            >
+              <button
+                onClick={() => setExpandedId(isExpanded ? null : order.id)}
+                className="w-full text-left bg-white rounded-[4px] border border-[#E8E8E8] p-4 hover:border-[#999] transition-colors"
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-1 flex-wrap">
+                      <span className="text-sm font-medium text-[#111]">{order.orderNumber}</span>
+                      <Badge className={`rounded-[4px] text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 border-0 ${STATUS_COLORS[order.status] || STATUS_COLORS.pending}`}>
+                        {order.status}
+                      </Badge>
+                      {estDelivery && (
+                        <span className="text-[11px] text-[#4D5B47] font-medium flex items-center gap-1">
+                          <Truck className="w-3 h-3" strokeWidth={1.5} />
+                          Est. {estDelivery}
+                        </span>
+                      )}
                     </div>
-
-                    <Separator className="bg-[#E8E8E8] my-4" />
-
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="text-[#666]">
-                        <p>Payment: <span className="text-[#111] font-medium capitalize">{order.paymentMethod}</span></p>
-                        <p>Payment Status: <span className="text-[#111] font-medium capitalize">{order.paymentStatus}</span></p>
-                      </div>
-                      <div className="text-right space-y-0.5">
-                        {order.discount > 0 && (
-                          <p className="text-xs text-[#C53030]">- {formatCurrency(order.discount)}</p>
-                        )}
-                        {order.shipping > 0 && (
-                          <p className="text-xs text-[#666]">+ {formatCurrency(order.shipping)} shipping</p>
-                        )}
-                        <p className="font-medium text-[#111]">Total: {formatCurrency(order.total)}</p>
-                      </div>
-                    </div>
+                    <p className="text-xs text-[#666]">
+                      {formatDate(order.createdAt)} &middot; {order.items?.length || 0} item{(order.items?.length || 0) > 1 ? "s" : ""}
+                    </p>
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        );
-      })}
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="text-sm font-medium text-[#111]">{formatCurrency(order.total)}</span>
+                    {isExpanded ? (
+                      <ChevronUp className="w-4 h-4 text-[#999]" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-[#999]" />
+                    )}
+                  </div>
+                </div>
+              </button>
+
+              <AnimatePresence>
+                {isExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+                    className="overflow-hidden"
+                  >
+                    <div className="bg-white border border-t-0 border-[#E8E8E8] rounded-b-[4px] p-4">
+                      <div className="space-y-3">
+                        {order.items?.map((item) => (
+                          <div key={item.id} className="flex items-center gap-3">
+                            <div className="w-14 h-14 rounded-[4px] bg-[#F0EFED] shrink-0 flex items-center justify-center">
+                              <Package className="w-5 h-5 text-[#999]" strokeWidth={1} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-[#111] line-clamp-1">{item.name}</p>
+                              <p className="text-xs text-[#666]">
+                                {item.size && `Size: ${item.size}`}
+                                {item.size && item.color && " · "}
+                                {item.color && `Color: ${item.color}`}
+                                {" · Qty: "}{item.quantity}
+                              </p>
+                            </div>
+                            <span className="text-sm text-[#111] shrink-0">
+                              {formatCurrency(item.price * item.quantity)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <Separator className="bg-[#E8E8E8] my-4" />
+
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="text-[#666]">
+                          <p>Payment: <span className="text-[#111] font-medium capitalize">{order.paymentMethod}</span></p>
+                          <p>Payment Status: <span className="text-[#111] font-medium capitalize">{order.paymentStatus}</span></p>
+                        </div>
+                        <div className="text-right space-y-0.5">
+                          {order.discount > 0 && (
+                            <p className="text-xs text-[#C53030]">- {formatCurrency(order.discount)}</p>
+                          )}
+                          {order.shipping > 0 && (
+                            <p className="text-xs text-[#666]">+ {formatCurrency(order.shipping)} shipping</p>
+                          )}
+                          <p className="font-medium text-[#111]">Total: {formatCurrency(order.total)}</p>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-2 mt-4 pt-4 border-t border-[#E8E8E8]">
+                        {(order.status === "confirmed" || order.status === "shipped" || order.status === "processing") && (
+                          <Button
+                            variant="outline"
+                            onClick={() => handleTrackOrder(order.orderNumber)}
+                            className="rounded-[4px] border-[#4D5B47] text-[#4D5B47] hover:bg-[#4D5B47]/5 h-9 text-xs uppercase tracking-wider"
+                          >
+                            <Truck className="w-3.5 h-3.5 mr-1.5" />
+                            Track Order
+                          </Button>
+                        )}
+                        {order.status !== "cancelled" && (
+                          <Button
+                            variant="outline"
+                            onClick={() => handleReorder(order)}
+                            className="rounded-[4px] border-[#E8E8E8] h-9 text-xs uppercase tracking-wider hover:border-[#999]"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+                            Reorder
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {filteredOrders.length === 0 && !loading && (
+        <motion.div {...fadeUp} className="flex flex-col items-center justify-center py-12 text-center">
+          <Package className="w-8 h-8 text-[#ccc] mb-3" strokeWidth={1.5} />
+          <p className="text-sm text-[#666]">No {activeFilter} orders found</p>
+          <button
+            onClick={() => setActiveFilter("all")}
+            className="text-xs text-[#4D5B47] font-medium uppercase tracking-wider mt-2 hover:underline"
+          >
+            View all orders
+          </button>
+        </motion.div>
+      )}
     </div>
   );
 }
@@ -480,6 +842,7 @@ function AddressesTab() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", street: "", city: "", state: "", zip: "", phone: "" });
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const { showNotification } = useStore();
 
   const openNew = () => {
@@ -588,11 +951,23 @@ function AddressesTab() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: idx * 0.05, duration: 0.3 }}
-            className="bg-white rounded-[4px] border border-[#E8E8E8] p-4"
+            className="bg-white rounded-[4px] border border-[#E8E8E8] p-4 hover:border-[#999] transition-colors"
+            onMouseEnter={() => setHoveredId(addr.id)}
+            onMouseLeave={() => setHoveredId(null)}
           >
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
+                  {/* Animated Map Pin */}
+                  <motion.div
+                    animate={hoveredId === addr.id ? { y: -2 } : { y: 0 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                  >
+                    <MapPin
+                      className="w-4 h-4 text-[#4D5B47]"
+                      strokeWidth={1.5}
+                    />
+                  </motion.div>
                   <span className="text-sm font-medium text-[#111]">{addr.name}</span>
                   {addr.isDefault && (
                     <Badge className="rounded-[4px] text-[10px] uppercase tracking-wider bg-[#4D5B47] text-white border-0 px-2 py-0.5">
@@ -600,23 +975,29 @@ function AddressesTab() {
                     </Badge>
                   )}
                 </div>
-                <p className="text-sm text-[#666] leading-relaxed">
+                <p className="text-sm text-[#666] leading-relaxed pl-6">
                   {addr.street}
                   <br />
                   {addr.city}, {addr.state} — {addr.zip}
                 </p>
-                <p className="text-xs text-[#999] mt-1">{addr.phone}</p>
+                <p className="text-xs text-[#999] mt-1 pl-6">{addr.phone}</p>
+                {/* Delivery Estimate */}
+                <div className="flex items-center gap-1.5 mt-2 pl-6">
+                  <Truck className="w-3 h-3 text-[#B79B7B]" strokeWidth={1.5} />
+                  <span className="text-[11px] text-[#B79B7B] font-medium">{getDeliveryEstimate(addr.zip)}</span>
+                </div>
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 {!addr.isDefault && (
                   <Button
                     variant="ghost"
-                    size="icon"
+                    size="sm"
                     onClick={() => setDefault(addr.id)}
-                    className="rounded-[4px] h-8 w-8"
+                    className="rounded-[4px] h-8 px-2.5 text-[10px] uppercase tracking-wider text-[#4D5B47] hover:text-[#4D5B47] hover:bg-[#4D5B47]/5"
                     title="Set as default"
                   >
-                    <Check className="w-3.5 h-3.5 text-[#666]" />
+                    <Check className="w-3 h-3 mr-1" />
+                    <span className="hidden sm:inline">Set Default</span>
                   </Button>
                 )}
                 <Button
@@ -651,7 +1032,15 @@ function SettingsTab() {
   const [orderUpdates, setOrderUpdates] = useState(true);
   const [promoEmails, setPromoEmails] = useState(false);
   const [newsletter, setNewsletter] = useState(true);
+  const [priceDropAlerts, setPriceDropAlerts] = useState(true);
+  const [newArrivals, setNewArrivals] = useState(false);
+  const [restockAlerts, setRestockAlerts] = useState(true);
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [connectedAccounts, setConnectedAccounts] = useState({
+    google: true,
+    apple: false,
+    facebook: false,
+  });
   const { showNotification } = useStore();
 
   const toggleTheme = () => {
@@ -660,57 +1049,135 @@ function SettingsTab() {
     showNotification(`Theme set to ${next}`, "info");
   };
 
+  const toggleAccount = (provider: keyof typeof connectedAccounts) => {
+    const newState = !connectedAccounts[provider];
+    setConnectedAccounts((prev) => ({ ...prev, [provider]: newState }));
+    showNotification(
+      newState ? `${provider.charAt(0).toUpperCase() + provider.slice(1)} connected` : `${provider.charAt(0).toUpperCase() + provider.slice(1)} disconnected`,
+      newState ? "success" : "info"
+    );
+  };
+
+  const notificationPreferences = [
+    {
+      key: "orderUpdates" as const,
+      label: "Order Updates",
+      description: "Get notified about your order status",
+      icon: Package,
+      checked: orderUpdates,
+      onChange: setOrderUpdates,
+    },
+    {
+      key: "promoEmails" as const,
+      label: "Promotional Emails",
+      description: "Receive offers and sale alerts",
+      icon: Bell,
+      checked: promoEmails,
+      onChange: setPromoEmails,
+    },
+    {
+      key: "priceDropAlerts" as const,
+      label: "Price Drop Alerts",
+      description: "Get notified when wishlist items go on sale",
+      icon: TrendingDown,
+      checked: priceDropAlerts,
+      onChange: setPriceDropAlerts,
+    },
+    {
+      key: "newArrivals" as const,
+      label: "New Arrivals",
+      description: "Be the first to know about new collections",
+      icon: Sparkles,
+      checked: newArrivals,
+      onChange: setNewArrivals,
+    },
+    {
+      key: "restockAlerts" as const,
+      label: "Restock Alerts",
+      description: "Get notified when out-of-stock items return",
+      icon: RefreshCw,
+      checked: restockAlerts,
+      onChange: setRestockAlerts,
+    },
+    {
+      key: "newsletter" as const,
+      label: "Newsletter",
+      description: "Weekly style picks and editorials",
+      icon: Mail,
+      checked: newsletter,
+      onChange: setNewsletter,
+    },
+  ];
+
+  const connectedAccountList = [
+    {
+      provider: "google" as const,
+      label: "Google",
+      icon: "G",
+      color: "#4285F4",
+      bgColor: "#4285F410",
+    },
+    {
+      provider: "apple" as const,
+      label: "Apple",
+      icon: "",
+      color: "#111",
+      bgColor: "#11111108",
+      isApple: true,
+    },
+    {
+      provider: "facebook" as const,
+      label: "Facebook",
+      icon: "f",
+      color: "#1877F2",
+      bgColor: "#1877F210",
+    },
+  ];
+
   return (
     <motion.div {...fadeUp} className="space-y-8">
-      {/* Notifications */}
-      <div>
-        <h3 className="text-base font-medium text-[#111] mb-4">Notifications</h3>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between bg-white rounded-[4px] border border-[#E8E8E8] p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-[4px] bg-[#F0EFED] flex items-center justify-center">
-                <Package className="w-4 h-4 text-[#666]" strokeWidth={1.5} />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-[#111]">Order Updates</p>
-                <p className="text-xs text-[#666]">Get notified about your order status</p>
-              </div>
-            </div>
-            <Switch checked={orderUpdates} onCheckedChange={setOrderUpdates} className="data-[state=checked]:bg-[#4D5B47]" />
-          </div>
-
-          <div className="flex items-center justify-between bg-white rounded-[4px] border border-[#E8E8E8] p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-[4px] bg-[#F0EFED] flex items-center justify-center">
-                <Bell className="w-4 h-4 text-[#666]" strokeWidth={1.5} />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-[#111]">Promotional Emails</p>
-                <p className="text-xs text-[#666]">Receive offers and sale alerts</p>
-              </div>
-            </div>
-            <Switch checked={promoEmails} onCheckedChange={setPromoEmails} className="data-[state=checked]:bg-[#4D5B47]" />
-          </div>
-
-          <div className="flex items-center justify-between bg-white rounded-[4px] border border-[#E8E8E8] p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-[4px] bg-[#F0EFED] flex items-center justify-center">
-                <Mail className="w-4 h-4 text-[#666]" strokeWidth={1.5} />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-[#111]">Newsletter</p>
-                <p className="text-xs text-[#666]">Weekly style picks and editorials</p>
-              </div>
-            </div>
-            <Switch checked={newsletter} onCheckedChange={setNewsletter} className="data-[state=checked]:bg-[#4D5B47]" />
-          </div>
+      {/* Notification Preferences */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+      >
+        <h3 className="text-base font-medium text-[#111] mb-4">Notification Preferences</h3>
+        <div className="space-y-3">
+          {notificationPreferences.map((pref, idx) => {
+            const Icon = pref.icon;
+            return (
+              <motion.div
+                key={pref.key}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.08 + idx * 0.04, duration: 0.25 }}
+                className="flex items-center justify-between bg-white rounded-[4px] border border-[#E8E8E8] p-4"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-[4px] bg-[#F0EFED] flex items-center justify-center">
+                    <Icon className="w-4 h-4 text-[#666]" strokeWidth={1.5} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-[#111]">{pref.label}</p>
+                    <p className="text-xs text-[#666]">{pref.description}</p>
+                  </div>
+                </div>
+                <Switch checked={pref.checked} onCheckedChange={pref.onChange} className="data-[state=checked]:bg-[#4D5B47]" />
+              </motion.div>
+            );
+          })}
         </div>
-      </div>
+      </motion.div>
 
       <Separator className="bg-[#E8E8E8]" />
 
       {/* Theme */}
-      <div>
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+      >
         <h3 className="text-base font-medium text-[#111] mb-4">Appearance</h3>
         <div className="bg-white rounded-[4px] border border-[#E8E8E8] p-4">
           <div className="flex items-center justify-between">
@@ -736,50 +1203,113 @@ function SettingsTab() {
             </Button>
           </div>
         </div>
-      </div>
+      </motion.div>
+
+      <Separator className="bg-[#E8E8E8]" />
+
+      {/* Connected Accounts */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+      >
+        <h3 className="text-base font-medium text-[#111] mb-4">Connected Accounts</h3>
+        <div className="space-y-3">
+          {connectedAccountList.map((account, idx) => (
+            <motion.div
+              key={account.provider}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.45 + idx * 0.05, duration: 0.25 }}
+              className="flex items-center justify-between bg-white rounded-[4px] border border-[#E8E8E8] p-4"
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-9 h-9 rounded-[4px] flex items-center justify-center"
+                  style={{ backgroundColor: account.bgColor }}
+                >
+                  {account.isApple ? (
+                    <Smartphone className="w-4 h-4" style={{ color: account.color }} strokeWidth={1.5} />
+                  ) : (
+                    <span className="text-sm font-bold" style={{ color: account.color }}>
+                      {account.icon}
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-[#111]">{account.label}</p>
+                  <p className="text-xs text-[#666]">
+                    {connectedAccounts[account.provider] ? "Connected" : "Not connected"}
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant={connectedAccounts[account.provider] ? "outline" : "default"}
+                onClick={() => toggleAccount(account.provider)}
+                className={`rounded-[4px] h-8 text-xs uppercase tracking-wider px-3 ${
+                  connectedAccounts[account.provider]
+                    ? "border-[#E8E8E8] text-[#666] hover:border-[#C53030] hover:text-[#C53030] hover:bg-[#C53030]/5"
+                    : "bg-[#111] hover:bg-[#333] text-white"
+                }`}
+              >
+                {connectedAccounts[account.provider] ? "Disconnect" : "Connect"}
+              </Button>
+            </motion.div>
+          ))}
+        </div>
+      </motion.div>
 
       <Separator className="bg-[#E8E8E8]" />
 
       {/* Danger Zone */}
-      <div>
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.6 }}
+      >
         <h3 className="text-base font-medium text-[#C53030] mb-4">Danger Zone</h3>
-        <div className="space-y-3">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="outline"
-                className="rounded-[4px] border-[#C53030]/30 text-[#C53030] hover:bg-[#C53030]/5 h-10 text-xs uppercase tracking-wider"
-              >
-                <AlertTriangle className="w-3.5 h-3.5" />
-                Delete Account
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent className="rounded-[4px]">
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete your account?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This action cannot be undone. All your data including orders, addresses, and preferences will be permanently removed.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="rounded-[4px]">Cancel</AlertDialogCancel>
-                <AlertDialogAction className="rounded-[4px] bg-[#C53030] hover:bg-[#C53030]/90 text-white">
+        <div className="rounded-[4px] border border-[#C53030]/20 p-4 space-y-3">
+          <p className="text-xs text-[#666] mb-2">
+            Once you delete your account, there is no going back. Please be certain.
+          </p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="rounded-[4px] border-[#C53030] text-[#C53030] hover:bg-[#C53030] hover:text-white h-10 text-xs uppercase tracking-wider transition-colors"
+                >
+                  <AlertTriangle className="w-3.5 h-3.5 mr-1.5" />
                   Delete Account
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="rounded-[4px]">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. All your data including orders, addresses, and preferences will be permanently removed.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="rounded-[4px]">Cancel</AlertDialogCancel>
+                  <AlertDialogAction className="rounded-[4px] bg-[#C53030] hover:bg-[#C53030]/90 text-white">
+                    Delete Account
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
 
-          <Button
-            variant="outline"
-            className="rounded-[4px] border-[#E8E8E8] h-10 text-xs uppercase tracking-wider"
-            onClick={() => showNotification("Logged out", "info")}
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            Log Out
-          </Button>
+            <Button
+              variant="outline"
+              className="rounded-[4px] border-[#E8E8E8] h-10 text-xs uppercase tracking-wider"
+              onClick={() => showNotification("Logged out", "info")}
+            >
+              <LogOut className="w-3.5 h-3.5 mr-1.5" />
+              Log Out
+            </Button>
+          </div>
         </div>
-      </div>
+      </motion.div>
     </motion.div>
   );
 }
