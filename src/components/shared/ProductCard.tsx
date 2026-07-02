@@ -44,7 +44,7 @@ export function ProductCard({
 }: ProductCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [imgError, setImgError] = useState(false);
-  const { navigate, addToCart, toggleWishlist, isInWishlist, setShowQuickView, setSelectedProductId } = useStore();
+  const { navigate, addToCart, toggleWishlist, isInWishlist, setQuickViewProductId } = useStore();
   const inWishlist = isInWishlist(id);
 
   const handleAddToCart = (e: React.MouseEvent) => {
@@ -67,7 +67,7 @@ export function ProductCard({
 
   const handleQuickView = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate("product", id);
+    setQuickViewProductId(id);
   };
 
   const currentImage = isHovered && images && images[1] ? images[1] : image;

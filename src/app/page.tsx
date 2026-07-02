@@ -18,6 +18,7 @@ import { CartDrawer } from "@/components/layout/CartDrawer";
 import { Footer } from "@/components/layout/Footer";
 import { Notification } from "@/components/layout/Notification";
 import { SearchOverlay } from "@/components/layout/SearchOverlay";
+import { QuickViewModal } from "@/components/shared/QuickViewModal";
 
 const pageConfig: Record<string, { component: React.ComponentType; showNav: boolean; showFooter: boolean }> = {
   home: { component: HomePage, showNav: true, showFooter: true },
@@ -72,6 +73,7 @@ export default function Home() {
       <SearchOverlay />
       <CartDrawer />
       <Notification />
+      <QuickViewModal />
       <AnimatePresence mode="wait">
         <motion.div
           key={currentPage}

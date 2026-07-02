@@ -13,8 +13,60 @@ const navLinks = [
   { label: "Collections", page: "shop" as const, filter: "collections" },
 ];
 
+const categories = [
+  "T-Shirts",
+  "Shirts",
+  "Blazers",
+  "Sweaters",
+  "Jeans",
+  "Trousers",
+  "Outerwear",
+  "Footwear",
+  "Bags",
+  "Accessories",
+];
+
+type DropdownItem = {
+  label: string;
+  action: "category" | "special";
+  value?: string;
+};
+
+const dropdownData: Record<string, { featured?: DropdownItem; items: DropdownItem[] }> = {
+  "New Arrivals": {
+    featured: { label: "View All New", action: "special" },
+    items: categories.map((c) => ({ label: c, action: "category" as const, value: c })),
+  },
+  Men: {
+    featured: { label: "All Men's", action: "special" },
+    items: categories.map((c) => ({ label: c, action: "category" as const, value: c })),
+  },
+  Women: {
+    featured: { label: "All Women's", action: "special" },
+    items: categories.map((c) => ({ label: c, action: "category" as const, value: c })),
+  },
+  Accessories: {
+    featured: { label: "View All Accessories", action: "special" },
+    items: [
+      { label: "Watches", action: "category", value: "Watches" },
+      { label: "Bags", action: "category", value: "Bags" },
+      { label: "Pocket Squares", action: "category", value: "Pocket Squares" },
+      { label: "Belts", action: "category", value: "Belts" },
+    ],
+  },
+  Collections: {
+    items: [
+      { label: "Best Sellers", action: "special" },
+      { label: "Trending", action: "special" },
+      { label: "New Arrivals", action: "special" },
+      { label: "Under ₹5,000", action: "special" },
+      { label: "Premium (₹10,000+)", action: "special" },
+    ],
+  },
+};
+
 export function Navigation() {
-  const { navigate, toggleCart, getCartCount, wishlistItems, setSearchOpen, setMobileMenuOpen } = useStore();
+  const { navigate, toggleCart, getCartCount, wishlistItems, setSearchOpen, setMobileMenuOpen, resetFilters, setFilter } = useStore();
   const [scrolled, setScrolled] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const dropdownTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -27,6 +79,16 @@ export function Navigation() {
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  const handleDropdownClick = (item: DropdownItem) => {
+    resetFilters();
+    if (item.action === "category" && item.value) {
+      setFilter("category", [item.value]);
+    }
+    navigate("shop");
+    setActiveDropdown(null);
+    setMobileMenuOpen(false);
+  };
 
   const handleNavClick = (page: "shop", filter?: string) => {
     if (filter === "new") {
@@ -60,27 +122,71 @@ export function Navigation() {
               </button>
 
               <nav className="hidden lg:flex items-center gap-1">
-                {navLinks.map((link) => (
-                  <div
-                    key={link.label}
-                    className="relative"
-                    onMouseEnter={() => {
-                      if (dropdownTimeout.current) clearTimeout(dropdownTimeout.current);
-                      setActiveDropdown(link.label);
-                    }}
-                    onMouseLeave={() => {
-                      dropdownTimeout.current = setTimeout(() => setActiveDropdown(null), 200);
-                    }}
-                  >
-                    <button
-                      onClick={() => handleNavClick(link.page, link.filter)}
-                      className="px-3 py-2 text-[13px] font-normal tracking-wide text-[#111] hover:text-[#666] transition-colors flex items-center gap-1"
+                {navLinks.map((link) => {
+                  const dropdown = dropdownData[link.label];
+                  const isOpen = activeDropdown === link.label;
+                  return (
+                    <div
+                      key={link.label}
+                      className="relative"
+                      onMouseEnter={() => {
+                        if (dropdownTimeout.current) clearTimeout(dropdownTimeout.current);
+                        setActiveDropdown(link.label);
+                      }}
+                      onMouseLeave={() => {
+                        dropdownTimeout.current = setTimeout(() => setActiveDropdown(null), 200);
+                      }}
                     >
-                      {link.label}
-                      <ChevronDown className="w-3.5 h-3.5 opacity-50" />
-                    </button>
-                  </div>
-                ))}
+                      <button
+                        onClick={() => handleNavClick(link.page, link.filter)}
+                        className="px-3 py-2 text-[13px] font-normal tracking-wide text-[#111] hover:text-[#666] transition-colors flex items-center gap-1"
+                      >
+                        {link.label}
+                        <ChevronDown className={`w-3.5 h-3.5 opacity-50 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                      </button>
+
+                      <AnimatePresence>
+                        {isOpen && dropdown && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+                            className="absolute top-full left-0 pt-2 overflow-hidden"
+                            onMouseEnter={() => {
+                              if (dropdownTimeout.current) clearTimeout(dropdownTimeout.current);
+                            }}
+                            onMouseLeave={() => {
+                              dropdownTimeout.current = setTimeout(() => setActiveDropdown(null), 200);
+                            }}
+                          >
+                            <div className="bg-white border border-[#E8E8E8] shadow-[0_8px_24px_rgba(0,0,0,0.08)] max-w-[400px] overflow-hidden">
+                              {dropdown.featured && (
+                                <button
+                                  onClick={() => handleDropdownClick(dropdown.featured!)}
+                                  className="block w-full text-left px-5 py-2.5 text-[13px] font-medium text-[#4D5B47] border-b border-[#E8E8E8] hover:bg-[#F8F8F6] transition-colors"
+                                >
+                                  {dropdown.featured.label}
+                                </button>
+                              )}
+                              <div className="grid grid-cols-2">
+                                {dropdown.items.map((item) => (
+                                  <button
+                                    key={item.label}
+                                    onClick={() => handleDropdownClick(item)}
+                                    className="block w-full text-left px-5 py-2.5 text-[13px] text-[#111] border-b border-r border-[#E8E8E8] last:border-b-0 hover:bg-[#F8F8F6] hover:text-[#4D5B47] transition-colors truncate"
+                                  >
+                                    {item.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  );
+                })}
               </nav>
             </div>
 

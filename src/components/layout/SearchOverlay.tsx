@@ -203,7 +203,7 @@ export function SearchOverlay() {
                           <button
                             key={term}
                             onClick={() => handleSearch(term)}
-                            className="px-4 py-2 text-[13px] text-[#666] bg-[#F0EFED] hover:bg-[#E8E8E8E8] hover:text-[#111] transition-colors"
+                            className="px-4 py-2 text-[13px] text-[#666] bg-[#F0EFED] hover:bg-[#E8E8E8] hover:text-[#111] transition-colors"
                           >
                             {term}
                           </button>
@@ -221,7 +221,7 @@ export function SearchOverlay() {
                           <button
                             key={cat.name}
                             onClick={() => handleSearch(cat.name)}
-                            className="flex items-center gap-2 px-4 py-2 text-[13px] text-[#666] bg-[#F0EFED] hover:bg-[#E8E8E8E8] hover:text-[#111] transition-colors"
+                            className="flex items-center gap-2 px-4 py-2 text-[13px] text-[#666] bg-[#F0EFED] hover:bg-[#E8E8E8] hover:text-[#111] transition-colors"
                           >
                             {cat.name}
                             <span className="text-[11px] text-[#999]">({cat.count})</span>

@@ -1,0 +1,858 @@
+     1→"use client";
+     2→
+     3→import { useState, useEffect } from "react";
+     4→import { motion, AnimatePresence } from "framer-motion";
+     5→import {
+     6→  User,
+     7→  Package,
+     8→  MapPin,
+     9→  Settings,
+    10→  ChevronDown,
+    11→  ChevronUp,
+    12→  Check,
+    13→  Trash2,
+    14→  Pencil,
+    15→  Plus,
+    16→  LogOut,
+    17→  Bell,
+    18→  Mail,
+    19→  Moon,
+    20→  Sun,
+    21→  AlertTriangle,
+    22→} from "lucide-react";
+    23→import { useStore } from "@/lib/store";
+    24→import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    25→import { Input } from "@/components/ui/input";
+    26→import { Label } from "@/components/ui/label";
+    27→import { Button } from "@/components/ui/button";
+    28→import { Badge } from "@/components/ui/badge";
+    29→import { Switch } from "@/components/ui/switch";
+    30→import { Separator } from "@/components/ui/separator";
+    31→import { Skeleton } from "@/components/ui/skeleton";
+    32→import {
+    33→  AlertDialog,
+    34→  AlertDialogAction,
+    35→  AlertDialogCancel,
+    36→  AlertDialogContent,
+    37→  AlertDialogDescription,
+    38→  AlertDialogFooter,
+    39→  AlertDialogHeader,
+    40→  AlertDialogTitle,
+    41→  AlertDialogTrigger,
+    42→} from "@/components/ui/alert-dialog";
+    43→import {
+    44→  Dialog,
+    45→  DialogContent,
+    46→  DialogHeader,
+    47→  DialogTitle,
+    48→  DialogTrigger,
+    49→} from "@/components/ui/dialog";
+    50→import { Textarea } from "@/components/ui/textarea";
+    51→
+    52→// ── Types ───────────────────────────────────────────────────────────────────
+    53→interface OrderItem {
+    54→  id: string;
+    55→  name: string;
+    56→  price: number;
+    57→  quantity: number;
+    58→  size?: string;
+    59→  color?: string;
+    60→  image?: string;
+    61→}
+    62→
+    63→interface Order {
+    64→  id: string;
+    65→  orderNumber: string;
+    66→  items: OrderItem[];
+    67→  status: string;
+    68→  total: number;
+    69→  subtotal: number;
+    70→  discount: number;
+    71→  shipping: number;
+    72→  shippingAddress: string;
+    73→  paymentMethod: string;
+    74→  paymentStatus: string;
+    75→  createdAt: string;
+    76→  updatedAt: string;
+    77→}
+    78→
+    79→interface Address {
+    80→  id: string;
+    81→  name: string;
+    82→  street: string;
+    83→  city: string;
+    84→  state: string;
+    85→  zip: string;
+    86→  phone: string;
+    87→  isDefault: boolean;
+    88→}
+    89→
+    90→// ── Constants ───────────────────────────────────────────────────────────────
+    91→const STATUS_COLORS: Record<string, string> = {
+    92→  confirmed: "bg-[#4D5B47] text-white",
+    93→  shipped: "bg-[#B79B7B] text-white",
+    94→  delivered: "bg-[#111111] text-white",
+    95→  cancelled: "bg-[#C53030] text-white",
+    96→  pending: "bg-[#F0EFED] text-[#666666]",
+    97→  processing: "bg-[#F0EFED] text-[#666666]",
+    98→};
+    99→
+   100→const MOCK_ORDERS: Order[] = [
+   101→  {
+   102→    id: "1",
+   103→    orderNumber: "MSN-K4X9P2",
+   104→    status: "delivered",
+   105→    total: 12490,
+   106→    subtotal: 12990,
+   107→    discount: 500,
+   108→    shipping: 0,
+   109→    shippingAddress: JSON.stringify({
+   110→      name: "Arjun Mehta",
+   111→      street: "42, Altamount Road",
+   112→      city: "Mumbai",
+   113→      state: "Maharashtra",
+   114→      zip: "400026",
+   115→    }),
+   116→    paymentMethod: "card",
+   117→    paymentStatus: "completed",
+   118→    createdAt: "2025-01-15T10:30:00Z",
+   119→    updatedAt: "2025-01-20T14:00:00Z",
+   120→    items: [
+   121→      { id: "i1", name: "Italian Wool Overcoat", price: 8990, quantity: 1, size: "M", color: "Charcoal", image: "" },
+   122→      { id: "i2", name: "Merino Crew Neck Tee", price: 2000, quantity: 2, size: "L", color: "Ivory", image: "" },
+   123→    ],
+   124→  },
+   125→  {
+   126→    id: "2",
+   127→    orderNumber: "MSN-R7W3N1",
+   128→    status: "shipped",
+   129→    total: 6490,
+   130→    subtotal: 6490,
+   131→    discount: 0,
+   132→    shipping: 0,
+   133→    shippingAddress: JSON.stringify({
+   134→      name: "Arjun Mehta",
+   135→      street: "42, Altamount Road",
+   136→      city: "Mumbai",
+   137→      state: "Maharashtra",
+   138→      zip: "400026",
+   139→    }),
+   140→    paymentMethod: "upi",
+   141→    paymentStatus: "completed",
+   142→    createdAt: "2025-02-08T15:45:00Z",
+   143→    updatedAt: "2025-02-10T09:20:00Z",
+   144→    items: [
+   145→      { id: "i3", name: "Linen Relaxed Trousers", price: 4490, quantity: 1, size: "32", color: "Sand", image: "" },
+   146→      { id: "i4", name: "Leather Minimal Belt", price: 2000, quantity: 1, size: "M", color: "Black", image: "" },
+   147→    ],
+   148→  },
+   149→  {
+   150→    id: "3",
+   151→    orderNumber: "MSN-P2Q8T5",
+   152→    status: "confirmed",
+   153→    total: 3490,
+   154→    subtotal: 3490,
+   155→    discount: 0,
+   156→    shipping: 0,
+   157→    shippingAddress: JSON.stringify({
+   158→      name: "Arjun Mehta",
+   159→      street: "7, Juhu Tara Road",
+   160→      city: "Mumbai",
+   161→      state: "Maharashtra",
+   162→      zip: "400049",
+   163→    }),
+   164→    paymentMethod: "card",
+   165→    paymentStatus: "completed",
+   166→    createdAt: "2025-02-12T11:00:00Z",
+   167→    updatedAt: "2025-02-12T11:05:00Z",
+   168→    items: [
+   169→      { id: "i5", name: "Cashmere V-Neck Sweater", price: 3490, quantity: 1, size: "S", color: "Olive", image: "" },
+   170→    ],
+   171→  },
+   172→  {
+   173→    id: "4",
+   174→    orderNumber: "MSN-L5M1X8",
+   175→    status: "cancelled",
+   176→    total: 5490,
+   177→    subtotal: 5490,
+   178→    discount: 0,
+   179→    shipping: 0,
+   180→    shippingAddress: JSON.stringify({
+   181→      name: "Arjun Mehta",
+   182→      street: "42, Altamount Road",
+   183→      city: "Mumbai",
+   184→      state: "Maharashtra",
+   185→      zip: "400026",
+   186→    }),
+   187→    paymentMethod: "card",
+   188→    paymentStatus: "refunded",
+   189→    createdAt: "2024-12-28T09:15:00Z",
+   190→    updatedAt: "2024-12-30T16:30:00Z",
+   191→    items: [
+   192→      { id: "i6", name: "Structured Blazer", price: 5490, quantity: 1, size: "L", color: "Navy", image: "" },
+   193→    ],
+   194→  },
+   195→];
+   196→
+   197→const INITIAL_ADDRESSES: Address[] = [
+   198→  {
+   199→    id: "a1",
+   200→    name: "Arjun Mehta",
+   201→    street: "42, Altamount Road",
+   202→    city: "Mumbai",
+   203→    state: "Maharashtra",
+   204→    zip: "400026",
+   205→    phone: "+91 98765 43210",
+   206→    isDefault: true,
+   207→  },
+   208→  {
+   209→    id: "a2",
+   210→    name: "Arjun Mehta",
+   211→    street: "7, Juhu Tara Road, Juhu",
+   212→    city: "Mumbai",
+   213→    state: "Maharashtra",
+   214→    zip: "400049",
+   215→    phone: "+91 98765 43210",
+   216→    isDefault: false,
+   217→  },
+   218→  {
+   219→    id: "a3",
+   220→    name: "Office - Arjun Mehta",
+   221→    street: "14th Floor, BKC Tower",
+   222→    city: "Mumbai",
+   223→    state: "Maharashtra",
+   224→    zip: "400051",
+   225→    phone: "+91 87654 32109",
+   226→    isDefault: false,
+   227→  },
+   228→];
+   229→
+   230→const formatCurrency = (amount: number) =>
+   231→  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);
+   232→
+   233→const formatDate = (dateStr: string) =>
+   234→  new Date(dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+   235→
+   236→const fadeUp = {
+   237→  initial: { opacity: 0, y: 12 },
+   238→  animate: { opacity: 1, y: 0 },
+   239→  exit: { opacity: 0, y: -8 },
+   240→  transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] },
+   241→};
+   242→
+   243→// ── Profile Tab ─────────────────────────────────────────────────────────────
+   244→function ProfileTab() {
+   245→  const [name, setName] = useState("Arjun Mehta");
+   246→  const [email, setEmail] = useState("arjun.mehta@email.com");
+   247→  const [phone, setPhone] = useState("+91 98765 43210");
+   248→  const [saving, setSaving] = useState(false);
+   249→  const { showNotification } = useStore();
+   250→
+   251→  const handleSave = async () => {
+   252→    setSaving(true);
+   253→    await new Promise((r) => setTimeout(r, 800));
+   254→    setSaving(false);
+   255→    showNotification("Profile updated successfully", "success");
+   256→  };
+   257→
+   258→  return (
+   259→    <motion.div {...fadeUp} className="space-y-8">
+   260→      {/* Avatar Section */}
+   261→      <div className="flex items-center gap-6">
+   262→        <div className="w-20 h-20 rounded-full bg-[#4D5B47] flex items-center justify-center text-white text-2xl font-medium select-none shrink-0">
+   263→          AM
+   264→        </div>
+   265→        <div>
+   266→          <h3 className="text-lg font-medium text-[#111]">Arjun Mehta</h3>
+   267→          <p className="text-sm text-[#666] mt-0.5">Member since January 2024</p>
+   268→        </div>
+   269→      </div>
+   270→
+   271→      <Separator className="bg-[#E8E8E8]" />
+   272→
+   273→      {/* Form */}
+   274→      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl">
+   275→        <div className="space-y-2">
+   276→          <Label htmlFor="name" className="text-[13px] uppercase tracking-wider text-[#666]">
+   277→            Full Name
+   278→          </Label>
+   279→          <Input
+   280→            id="name"
+   281→            value={name}
+   282→            onChange={(e) => setName(e.target.value)}
+   283→            className="rounded-[4px] border-[#E8E8E8] h-11"
+   284→          />
+   285→        </div>
+   286→        <div className="space-y-2">
+   287→          <Label htmlFor="email" className="text-[13px] uppercase tracking-wider text-[#666]">
+   288→            Email
+   289→          </Label>
+   290→          <Input
+   291→            id="email"
+   292→            type="email"
+   293→            value={email}
+   294→            onChange={(e) => setEmail(e.target.value)}
+   295→            className="rounded-[4px] border-[#E8E8E8] h-11"
+   296→          />
+   297→        </div>
+   298→        <div className="space-y-2">
+   299→          <Label htmlFor="phone" className="text-[13px] uppercase tracking-wider text-[#666]">
+   300→            Phone
+   301→          </Label>
+   302→          <Input
+   303→            id="phone"
+   304→            value={phone}
+   305→            onChange={(e) => setPhone(e.target.value)}
+   306→            className="rounded-[4px] border-[#E8E8E8] h-11"
+   307→          />
+   308→        </div>
+   309→      </div>
+   310→
+   311→      <Button
+   312→        onClick={handleSave}
+   313→        disabled={saving}
+   314→        className="rounded-[4px] bg-[#111] hover:bg-[#333] text-white h-11 px-8"
+   315→      >
+   316→        {saving ? (
+   317→          <motion.div
+   318→            animate={{ rotate: 360 }}
+   319→            transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+   320→            className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
+   321→          />
+   322→        ) : (
+   323→          "Save Changes"
+   324→        )}
+   325→      </Button>
+   326→    </motion.div>
+   327→  );
+   328→}
+   329→
+   330→// ── Orders Tab ──────────────────────────────────────────────────────────────
+   331→function OrdersTab() {
+   332→  const [orders, setOrders] = useState<Order[]>([]);
+   333→  const [loading, setLoading] = useState(true);
+   334→  const [expandedId, setExpandedId] = useState<string | null>(null);
+   335→
+   336→  useEffect(() => {
+   337→    const fetchOrders = async () => {
+   338→      try {
+   339→        const res = await fetch("/api/orders");
+   340→        const data = await res.json();
+   341→        if (data.orders && data.orders.length > 0) {
+   342→          setOrders(data.orders);
+   343→        } else {
+   344→          setOrders(MOCK_ORDERS);
+   345→        }
+   346→      } catch {
+   347→        setOrders(MOCK_ORDERS);
+   348→      } finally {
+   349→        setLoading(false);
+   350→      }
+   351→    };
+   352→    fetchOrders();
+   353→  }, []);
+   354→
+   355→  if (loading) {
+   356→    return (
+   357→      <div className="space-y-4">
+   358→        {[1, 2, 3].map((i) => (
+   359→          <Skeleton key={i} className="h-24 w-full rounded-[4px] skeleton-shimmer" />
+   360→        ))}
+   361→      </div>
+   362→    );
+   363→  }
+   364→
+   365→  if (orders.length === 0) {
+   366→    return (
+   367→      <motion.div {...fadeUp} className="flex flex-col items-center justify-center py-16 text-center">
+   368→        <div className="w-16 h-16 rounded-full bg-[#F0EFED] flex items-center justify-center mb-4">
+   369→          <Package className="w-7 h-7 text-[#999]" strokeWidth={1.5} />
+   370→        </div>
+   371→        <h3 className="text-base font-medium text-[#111] mb-1">No orders yet</h3>
+   372→        <p className="text-sm text-[#666] max-w-xs">
+   373→          Your order history will appear here once you make a purchase.
+   374→        </p>
+   375→      </motion.div>
+   376→    );
+   377→  }
+   378→
+   379→  return (
+   380→    <div className="space-y-3">
+   381→      {orders.map((order, idx) => {
+   382→        const isExpanded = expandedId === order.id;
+   383→        return (
+   384→          <motion.div
+   385→            key={order.id}
+   386→            initial={{ opacity: 0, y: 12 }}
+   387→            animate={{ opacity: 1, y: 0 }}
+   388→            transition={{ delay: idx * 0.05, duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+   389→          >
+   390→            <button
+   391→              onClick={() => setExpandedId(isExpanded ? null : order.id)}
+   392→              className="w-full text-left bg-white rounded-[4px] border border-[#E8E8E8] p-4 hover:border-[#999] transition-colors"
+   393→            >
+   394→              <div className="flex items-center justify-between gap-4">
+   395→                <div className="flex-1 min-w-0">
+   396→                  <div className="flex items-center gap-3 mb-1">
+   397→                    <span className="text-sm font-medium text-[#111]">{order.orderNumber}</span>
+   398→                    <Badge className={`rounded-[4px] text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 border-0 ${STATUS_COLORS[order.status] || STATUS_COLORS.pending}`}>
+   399→                      {order.status}
+   400→                    </Badge>
+   401→                  </div>
+   402→                  <p className="text-xs text-[#666]">
+   403→                    {formatDate(order.createdAt)} &middot; {order.items?.length || 0} item{(order.items?.length || 0) > 1 ? "s" : ""}
+   404→                  </p>
+   405→                </div>
+   406→                <div className="flex items-center gap-3 shrink-0">
+   407→                  <span className="text-sm font-medium text-[#111]">{formatCurrency(order.total)}</span>
+   408→                  {isExpanded ? (
+   409→                    <ChevronUp className="w-4 h-4 text-[#999]" />
+   410→                  ) : (
+   411→                    <ChevronDown className="w-4 h-4 text-[#999]" />
+   412→                  )}
+   413→                </div>
+   414→              </div>
+   415→            </button>
+   416→
+   417→            <AnimatePresence>
+   418→              {isExpanded && (
+   419→                <motion.div
+   420→                  initial={{ height: 0, opacity: 0 }}
+   421→                  animate={{ height: "auto", opacity: 1 }}
+   422→                  exit={{ height: 0, opacity: 0 }}
+   423→                  transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+   424→                  className="overflow-hidden"
+   425→                >
+   426→                  <div className="bg-white border border-t-0 border-[#E8E8E8] rounded-b-[4px] p-4">
+   427→                    <div className="space-y-3">
+   428→                      {order.items?.map((item) => (
+   429→                        <div key={item.id} className="flex items-center gap-3">
+   430→                          <div className="w-14 h-14 rounded-[4px] bg-[#F0EFED] shrink-0 flex items-center justify-center">
+   431→                            <Package className="w-5 h-5 text-[#999]" strokeWidth={1} />
+   432→                          </div>
+   433→                          <div className="flex-1 min-w-0">
+   434→                            <p className="text-sm font-medium text-[#111] line-clamp-1">{item.name}</p>
+   435→                            <p className="text-xs text-[#666]">
+   436→                              {item.size && `Size: ${item.size}`}
+   437→                              {item.size && item.color && " · "}
+   438→                              {item.color && `Color: ${item.color}`}
+   439→                              {" · Qty: "}{item.quantity}
+   440→                            </p>
+   441→                          </div>
+   442→                          <span className="text-sm text-[#111] shrink-0">
+   443→                            {formatCurrency(item.price * item.quantity)}
+   444→                          </span>
+   445→                        </div>
+   446→                      ))}
+   447→                    </div>
+   448→
+   449→                    <Separator className="bg-[#E8E8E8] my-4" />
+   450→
+   451→                    <div className="flex items-center justify-between text-sm">
+   452→                      <div className="text-[#666]">
+   453→                        <p>Payment: <span className="text-[#111] font-medium capitalize">{order.paymentMethod}</span></p>
+   454→                        <p>Payment Status: <span className="text-[#111] font-medium capitalize">{order.paymentStatus}</span></p>
+   455→                      </div>
+   456→                      <div className="text-right space-y-0.5">
+   457→                        {order.discount > 0 && (
+   458→                          <p className="text-xs text-[#C53030]">- {formatCurrency(order.discount)}</p>
+   459→                        )}
+   460→                        {order.shipping > 0 && (
+   461→                          <p className="text-xs text-[#666]">+ {formatCurrency(order.shipping)} shipping</p>
+   462→                        )}
+   463→                        <p className="font-medium text-[#111]">Total: {formatCurrency(order.total)}</p>
+   464→                      </div>
+   465→                    </div>
+   466→                  </div>
+   467→                </motion.div>
+   468→              )}
+   469→            </AnimatePresence>
+   470→          </motion.div>
+   471→        );
+   472→      })}
+   473→    </div>
+   474→  );
+   475→}
+   476→
+   477→// ── Addresses Tab ───────────────────────────────────────────────────────────
+   478→function AddressesTab() {
+   479→  const [addresses, setAddresses] = useState<Address[]>(INITIAL_ADDRESSES);
+   480→  const [dialogOpen, setDialogOpen] = useState(false);
+   481→  const [editingId, setEditingId] = useState<string | null>(null);
+   482→  const [form, setForm] = useState({ name: "", street: "", city: "", state: "", zip: "", phone: "" });
+   483→  const { showNotification } = useStore();
+   484→
+   485→  const openNew = () => {
+   486→    setEditingId(null);
+   487→    setForm({ name: "", street: "", city: "", state: "", zip: "", phone: "" });
+   488→    setDialogOpen(true);
+   489→  };
+   490→
+   491→  const openEdit = (addr: Address) => {
+   492→    setEditingId(addr.id);
+   493→    setForm({ name: addr.name, street: addr.street, city: addr.city, state: addr.state, zip: addr.zip, phone: addr.phone });
+   494→    setDialogOpen(true);
+   495→  };
+   496→
+   497→  const handleSave = () => {
+   498→    if (!form.name || !form.street || !form.city) return;
+   499→    if (editingId) {
+   500→      setAddresses((prev) =>
+   501→        prev.map((a) => (a.id === editingId ? { ...a, ...form } : a))
+   502→      );
+   503→      showNotification("Address updated", "success");
+   504→    } else {
+   505→      const newAddr: Address = {
+   506→        id: `a${Date.now()}`,
+   507→        ...form,
+   508→        isDefault: addresses.length === 0,
+   509→      };
+   510→      setAddresses((prev) => [...prev, newAddr]);
+   511→      showNotification("Address added", "success");
+   512→    }
+   513→    setDialogOpen(false);
+   514→  };
+   515→
+   516→  const handleDelete = (id: string) => {
+   517→    setAddresses((prev) => prev.filter((a) => a.id !== id));
+   518→    showNotification("Address removed", "info");
+   519→  };
+   520→
+   521→  const setDefault = (id: string) => {
+   522→    setAddresses((prev) => prev.map((a) => ({ ...a, isDefault: a.id === id })));
+   523→    showNotification("Default address updated", "success");
+   524→  };
+   525→
+   526→  return (
+   527→    <motion.div {...fadeUp} className="space-y-4">
+   528→      <div className="flex items-center justify-between">
+   529→        <h3 className="text-base font-medium text-[#111]">Saved Addresses</h3>
+   530→        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+   531→          <DialogTrigger asChild>
+   532→            <Button
+   533→              onClick={openNew}
+   534→              variant="outline"
+   535→              className="rounded-[4px] border-[#E8E8E8] h-9 text-xs uppercase tracking-wider"
+   536→            >
+   537→              <Plus className="w-3.5 h-3.5" />
+   538→              Add New
+   539→            </Button>
+   540→          </DialogTrigger>
+   541→          <DialogContent className="rounded-[4px] max-w-md">
+   542→            <DialogHeader>
+   543→              <DialogTitle className="text-base font-medium">
+   544→                {editingId ? "Edit Address" : "Add New Address"}
+   545→              </DialogTitle>
+   546→            </DialogHeader>
+   547→            <div className="space-y-4 pt-2">
+   548→              <div className="space-y-2">
+   549→                <Label className="text-[13px] uppercase tracking-wider text-[#666]">Full Name</Label>
+   550→                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="rounded-[4px] border-[#E8E8E8] h-10" />
+   551→              </div>
+   552→              <div className="space-y-2">
+   553→                <Label className="text-[13px] uppercase tracking-wider text-[#666]">Street Address</Label>
+   554→                <Textarea value={form.street} onChange={(e) => setForm({ ...form, street: e.target.value })} className="rounded-[4px] border-[#E8E8E8] min-h-[60px]" />
+   555→              </div>
+   556→              <div className="grid grid-cols-2 gap-4">
+   557→                <div className="space-y-2">
+   558→                  <Label className="text-[13px] uppercase tracking-wider text-[#666]">City</Label>
+   559→                  <Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className="rounded-[4px] border-[#E8E8E8] h-10" />
+   560→                </div>
+   561→                <div className="space-y-2">
+   562→                  <Label className="text-[13px] uppercase tracking-wider text-[#666]">State</Label>
+   563→                  <Input value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} className="rounded-[4px] border-[#E8E8E8] h-10" />
+   564→                </div>
+   565→              </div>
+   566→              <div className="grid grid-cols-2 gap-4">
+   567→                <div className="space-y-2">
+   568→                  <Label className="text-[13px] uppercase tracking-wider text-[#666]">PIN Code</Label>
+   569→                  <Input value={form.zip} onChange={(e) => setForm({ ...form, zip: e.target.value })} className="rounded-[4px] border-[#E8E8E8] h-10" />
+   570→                </div>
+   571→                <div className="space-y-2">
+   572→                  <Label className="text-[13px] uppercase tracking-wider text-[#666]">Phone</Label>
+   573→                  <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="rounded-[4px] border-[#E8E8E8] h-10" />
+   574→                </div>
+   575→              </div>
+   576→              <Button onClick={handleSave} className="rounded-[4px] bg-[#111] hover:bg-[#333] text-white h-10 w-full">
+   577→                {editingId ? "Update Address" : "Save Address"}
+   578→              </Button>
+   579→            </div>
+   580→          </DialogContent>
+   581→        </Dialog>
+   582→      </div>
+   583→
+   584→      <div className="space-y-3">
+   585→        {addresses.map((addr, idx) => (
+   586→          <motion.div
+   587→            key={addr.id}
+   588→            initial={{ opacity: 0, y: 12 }}
+   589→            animate={{ opacity: 1, y: 0 }}
+   590→            transition={{ delay: idx * 0.05, duration: 0.3 }}
+   591→            className="bg-white rounded-[4px] border border-[#E8E8E8] p-4"
+   592→          >
+   593→            <div className="flex items-start justify-between gap-4">
+   594→              <div className="flex-1">
+   595→                <div className="flex items-center gap-2 mb-1">
+   596→                  <span className="text-sm font-medium text-[#111]">{addr.name}</span>
+   597→                  {addr.isDefault && (
+   598→                    <Badge className="rounded-[4px] text-[10px] uppercase tracking-wider bg-[#4D5B47] text-white border-0 px-2 py-0.5">
+   599→                      Default
+   600→                    </Badge>
+   601→                  )}
+   602→                </div>
+   603→                <p className="text-sm text-[#666] leading-relaxed">
+   604→                  {addr.street}
+   605→                  <br />
+   606→                  {addr.city}, {addr.state} — {addr.zip}
+   607→                </p>
+   608→                <p className="text-xs text-[#999] mt-1">{addr.phone}</p>
+   609→              </div>
+   610→              <div className="flex items-center gap-1 shrink-0">
+   611→                {!addr.isDefault && (
+   612→                  <Button
+   613→                    variant="ghost"
+   614→                    size="icon"
+   615→                    onClick={() => setDefault(addr.id)}
+   616→                    className="rounded-[4px] h-8 w-8"
+   617→                    title="Set as default"
+   618→                  >
+   619→                    <Check className="w-3.5 h-3.5 text-[#666]" />
+   620→                  </Button>
+   621→                )}
+   622→                <Button
+   623→                  variant="ghost"
+   624→                  size="icon"
+   625→                  onClick={() => openEdit(addr)}
+   626→                  className="rounded-[4px] h-8 w-8"
+   627→                  title="Edit"
+   628→                >
+   629→                  <Pencil className="w-3.5 h-3.5 text-[#666]" />
+   630→                </Button>
+   631→                <Button
+   632→                  variant="ghost"
+   633→                  size="icon"
+   634→                  onClick={() => handleDelete(addr.id)}
+   635→                  className="rounded-[4px] h-8 w-8 hover:text-[#C53030]"
+   636→                  title="Delete"
+   637→                >
+   638→                  <Trash2 className="w-3.5 h-3.5" />
+   639→                </Button>
+   640→              </div>
+   641→            </div>
+   642→          </motion.div>
+   643→        ))}
+   644→      </div>
+   645→    </motion.div>
+   646→  );
+   647→}
+   648→
+   649→// ── Settings Tab ────────────────────────────────────────────────────────────
+   650→function SettingsTab() {
+   651→  const [orderUpdates, setOrderUpdates] = useState(true);
+   652→  const [promoEmails, setPromoEmails] = useState(false);
+   653→  const [newsletter, setNewsletter] = useState(true);
+   654→  const [theme, setTheme] = useState<"light" | "dark">("light");
+   655→  const { showNotification } = useStore();
+   656→
+   657→  const toggleTheme = () => {
+   658→    const next = theme === "light" ? "dark" : "light";
+   659→    setTheme(next);
+   660→    showNotification(`Theme set to ${next}`, "info");
+   661→  };
+   662→
+   663→  return (
+   664→    <motion.div {...fadeUp} className="space-y-8">
+   665→      {/* Notifications */}
+   666→      <div>
+   667→        <h3 className="text-base font-medium text-[#111] mb-4">Notifications</h3>
+   668→        <div className="space-y-4">
+   669→          <div className="flex items-center justify-between bg-white rounded-[4px] border border-[#E8E8E8] p-4">
+   670→            <div className="flex items-center gap-3">
+   671→              <div className="w-9 h-9 rounded-[4px] bg-[#F0EFED] flex items-center justify-center">
+   672→                <Package className="w-4 h-4 text-[#666]" strokeWidth={1.5} />
+   673→              </div>
+   674→              <div>
+   675→                <p className="text-sm font-medium text-[#111]">Order Updates</p>
+   676→                <p className="text-xs text-[#666]">Get notified about your order status</p>
+   677→              </div>
+   678→            </div>
+   679→            <Switch checked={orderUpdates} onCheckedChange={setOrderUpdates} className="data-[state=checked]:bg-[#4D5B47]" />
+   680→          </div>
+   681→
+   682→          <div className="flex items-center justify-between bg-white rounded-[4px] border border-[#E8E8E8] p-4">
+   683→            <div className="flex items-center gap-3">
+   684→              <div className="w-9 h-9 rounded-[4px] bg-[#F0EFED] flex items-center justify-center">
+   685→                <Bell className="w-4 h-4 text-[#666]" strokeWidth={1.5} />
+   686→              </div>
+   687→              <div>
+   688→                <p className="text-sm font-medium text-[#111]">Promotional Emails</p>
+   689→                <p className="text-xs text-[#666]">Receive offers and sale alerts</p>
+   690→              </div>
+   691→            </div>
+   692→            <Switch checked={promoEmails} onCheckedChange={setPromoEmails} className="data-[state=checked]:bg-[#4D5B47]" />
+   693→          </div>
+   694→
+   695→          <div className="flex items-center justify-between bg-white rounded-[4px] border border-[#E8E8E8] p-4">
+   696→            <div className="flex items-center gap-3">
+   697→              <div className="w-9 h-9 rounded-[4px] bg-[#F0EFED] flex items-center justify-center">
+   698→                <Mail className="w-4 h-4 text-[#666]" strokeWidth={1.5} />
+   699→              </div>
+   700→              <div>
+   701→                <p className="text-sm font-medium text-[#111]">Newsletter</p>
+   702→                <p className="text-xs text-[#666]">Weekly style picks and editorials</p>
+   703→              </div>
+   704→            </div>
+   705→            <Switch checked={newsletter} onCheckedChange={setNewsletter} className="data-[state=checked]:bg-[#4D5B47]" />
+   706→          </div>
+   707→        </div>
+   708→      </div>
+   709→
+   710→      <Separator className="bg-[#E8E8E8]" />
+   711→
+   712→      {/* Theme */}
+   713→      <div>
+   714→        <h3 className="text-base font-medium text-[#111] mb-4">Appearance</h3>
+   715→        <div className="bg-white rounded-[4px] border border-[#E8E8E8] p-4">
+   716→          <div className="flex items-center justify-between">
+   717→            <div className="flex items-center gap-3">
+   718→              <div className="w-9 h-9 rounded-[4px] bg-[#F0EFED] flex items-center justify-center">
+   719→                {theme === "light" ? (
+   720→                  <Sun className="w-4 h-4 text-[#666]" strokeWidth={1.5} />
+   721→                ) : (
+   722→                  <Moon className="w-4 h-4 text-[#666]" strokeWidth={1.5} />
+   723→                )}
+   724→              </div>
+   725→              <div>
+   726→                <p className="text-sm font-medium text-[#111]">Theme</p>
+   727→                <p className="text-xs text-[#666]">Current: {theme === "light" ? "Light Mode" : "Dark Mode"}</p>
+   728→              </div>
+   729→            </div>
+   730→            <Button
+   731→              variant="outline"
+   732→              onClick={toggleTheme}
+   733→              className="rounded-[4px] border-[#E8E8E8] h-9 text-xs uppercase tracking-wider"
+   734→            >
+   735→              {theme === "light" ? "Switch to Dark" : "Switch to Light"}
+   736→            </Button>
+   737→          </div>
+   738→        </div>
+   739→      </div>
+   740→
+   741→      <Separator className="bg-[#E8E8E8]" />
+   742→
+   743→      {/* Danger Zone */}
+   744→      <div>
+   745→        <h3 className="text-base font-medium text-[#C53030] mb-4">Danger Zone</h3>
+   746→        <div className="space-y-3">
+   747→          <AlertDialog>
+   748→            <AlertDialogTrigger asChild>
+   749→              <Button
+   750→                variant="outline"
+   751→                className="rounded-[4px] border-[#C53030]/30 text-[#C53030] hover:bg-[#C53030]/5 h-10 text-xs uppercase tracking-wider"
+   752→              >
+   753→                <AlertTriangle className="w-3.5 h-3.5" />
+   754→                Delete Account
+   755→              </Button>
+   756→            </AlertDialogTrigger>
+   757→            <AlertDialogContent className="rounded-[4px]">
+   758→              <AlertDialogHeader>
+   759→                <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+   760→                <AlertDialogDescription>
+   761→                  This action cannot be undone. All your data including orders, addresses, and preferences will be permanently removed.
+   762→                </AlertDialogDescription>
+   763→              </AlertDialogHeader>
+   764→              <AlertDialogFooter>
+   765→                <AlertDialogCancel className="rounded-[4px]">Cancel</AlertDialogCancel>
+   766→                <AlertDialogAction className="rounded-[4px] bg-[#C53030] hover:bg-[#C53030]/90 text-white">
+   767→                  Delete Account
+   768→                </AlertDialogAction>
+   769→              </AlertDialogFooter>
+   770→            </AlertDialogContent>
+   771→          </AlertDialog>
+   772→
+   773→          <Button
+   774→            variant="outline"
+   775→            className="rounded-[4px] border-[#E8E8E8] h-10 text-xs uppercase tracking-wider"
+   776→            onClick={() => showNotification("Logged out", "info")}
+   777→          >
+   778→            <LogOut className="w-3.5 h-3.5" />
+   779→            Log Out
+   780→          </Button>
+   781→        </div>
+   782→      </div>
+   783→    </motion.div>
+   784→  );
+   785→}
+   786→
+   787→// ── Main Account Page ───────────────────────────────────────────────────────
+   788→export default function AccountPage() {
+   789→  const [activeTab, setActiveTab] = useState("profile");
+   790→
+   791→  return (
+   792→    <div className="min-h-screen bg-[#F8F8F6]">
+   793→      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
+   794→        {/* Header */}
+   795→        <motion.div
+   796→          initial={{ opacity: 0, y: 16 }}
+   797→          animate={{ opacity: 1, y: 0 }}
+   798→          transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+   799→          className="mb-8"
+   800→        >
+   801→          <h1 className="text-2xl sm:text-3xl font-medium text-[#111] tracking-tight">My Account</h1>
+   802→          <p className="text-sm text-[#666] mt-1">Manage your profile, orders, and settings</p>
+   803→        </motion.div>
+   804→
+   805→        {/* Tabs */}
+   806→        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+   807→          <TabsList className="bg-white rounded-[4px] border border-[#E8E8E8] p-1 h-auto w-full sm:w-auto mb-8 overflow-x-auto scrollbar-none">
+   808→            <TabsTrigger
+   809→              value="profile"
+   810→              className="rounded-[4px] flex-1 sm:flex-initial gap-2 px-4 h-10 text-xs uppercase tracking-wider font-medium data-[state=active]:bg-[#111] data-[state=active]:text-white data-[state=active]:shadow-none"
+   811→            >
+   812→              <User className="w-3.5 h-3.5" />
+   813→              <span className="hidden sm:inline">Profile</span>
+   814→              <span className="sm:hidden">Profile</span>
+   815→            </TabsTrigger>
+   816→            <TabsTrigger
+   817→              value="orders"
+   818→              className="rounded-[4px] flex-1 sm:flex-initial gap-2 px-4 h-10 text-xs uppercase tracking-wider font-medium data-[state=active]:bg-[#111] data-[state=active]:text-white data-[state=active]:shadow-none"
+   819→            >
+   820→              <Package className="w-3.5 h-3.5" />
+   821→              <span className="hidden sm:inline">Orders</span>
+   822→              <span className="sm:hidden">Orders</span>
+   823→            </TabsTrigger>
+   824→            <TabsTrigger
+   825→              value="addresses"
+   826→              className="rounded-[4px] flex-1 sm:flex-initial gap-2 px-4 h-10 text-xs uppercase tracking-wider font-medium data-[state=active]:bg-[#111] data-[state=active]:text-white data-[state=active]:shadow-none"
+   827→            >
+   828→              <MapPin className="w-3.5 h-3.5" />
+   829→              <span className="hidden sm:inline">Addresses</span>
+   830→              <span className="sm:hidden">Address</span>
+   831→            </TabsTrigger>
+   832→            <TabsTrigger
+   833→              value="settings"
+   834→              className="rounded-[4px] flex-1 sm:flex-initial gap-2 px-4 h-10 text-xs uppercase tracking-wider font-medium data-[state=active]:bg-[#111] data-[state=active]:text-white data-[state=active]:shadow-none"
+   835→            >
+   836→              <Settings className="w-3.5 h-3.5" />
+   837→              <span className="hidden sm:inline">Settings</span>
+   838→              <span className="sm:hidden">Settings</span>
+   839→            </TabsTrigger>
+   840→          </TabsList>
+   841→
+   842→          <TabsContent value="profile">
+   843→            <ProfileTab />
+   844→          </TabsContent>
+   845→          <TabsContent value="orders">
+   846→            <OrdersTab />
+   847→          </TabsContent>
+   848→          <TabsContent value="addresses">
+   849→            <AddressesTab />
+   850→          </TabsContent>
+   851→          <TabsContent value="settings">
+   852→            <SettingsTab />
+   853→          </TabsContent>
+   854→        </Tabs>
+   855→      </div>
+   856→    </div>
+   857→  );
+   858→}

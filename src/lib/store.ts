@@ -81,6 +81,10 @@ interface StoreState {
   recentlyViewed: string[];
   addToRecentlyViewed: (productId: string) => void;
 
+  // Quick View
+  quickViewProductId: string | null;
+  setQuickViewProductId: (id: string | null) => void;
+
   // Notification
   notification: { message: string; type: 'success' | 'error' | 'info' } | null;
   showNotification: (message: string, type?: 'success' | 'error' | 'info') => void;
@@ -214,6 +218,10 @@ export const useStore = create<StoreState>()(
           return { recentlyViewed: [productId, ...filtered].slice(0, 12) };
         });
       },
+
+      // Quick View
+      quickViewProductId: null,
+      setQuickViewProductId: (id) => set({ quickViewProductId: id }),
 
       // Notification
       notification: null,

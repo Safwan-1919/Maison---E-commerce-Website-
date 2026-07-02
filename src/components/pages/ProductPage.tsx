@@ -194,7 +194,7 @@ function CollapsibleSection({ title, children, defaultOpen = false }: { title: s
 }
 
 export default function ProductPage() {
-  const { selectedProductId, navigate, goBack, addToCart, toggleWishlist, isInWishlist } = useStore();
+  const { selectedProductId, navigate, goBack, addToCart, toggleWishlist, isInWishlist, addToRecentlyViewed } = useStore();
   const [product, setProduct] = useState<Product | null>(null);
   const [similar, setSimilar] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);

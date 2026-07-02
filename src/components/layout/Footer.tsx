@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { useStore } from "@/lib/store";
-import { ArrowUp, Instagram, Twitter, Facebook, Youtube } from "lucide-react";
+import { ArrowUp, Instagram, Twitter, Facebook, Youtube, Check } from "lucide-react";
 
 const footerLinks = {
   Shop: ["New Arrivals", "Best Sellers", "Trending", "Sale", "Gift Cards"],
@@ -21,10 +22,41 @@ const socialLinks = [
 const paymentIcons = ["Visa", "Mastercard", "Amex", "UPI", "Paytm"];
 
 export function Footer() {
-  const { navigate } = useStore();
+  const { navigate, showNotification } = useStore();
+  const [email, setEmail] = useState("");
+  const [subscribed, setSubscribed] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleSubscribe = async () => {
+    if (!email.trim()) {
+      showNotification("Please enter a valid email address", "error");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/newsletter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setSubscribed(true);
+        showNotification(data.message, "success");
+      } else {
+        showNotification(data.message, "error");
+      }
+    } catch {
+      showNotification("Something went wrong. Please try again.", "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -41,16 +73,34 @@ export function Footer() {
                 Be the first to know about new arrivals, exclusive offers, and curated style content.
               </p>
             </div>
-            <div className="flex gap-3 w-full lg:w-auto">
-              <input
-                type="email"
-                placeholder="Your email address"
-                className="flex-1 lg:w-[300px] px-4 py-3 bg-[#1A1A1A] border border-[#2A2A2A] text-[#F8F8F6] text-[14px] placeholder:text-[#666] outline-none focus:border-[#4D5B47] transition-colors"
-              />
-              <button className="px-6 py-3 bg-[#F8F8F6] text-[#111] text-[12px] font-medium tracking-widest uppercase hover:bg-[#E8E8E8] transition-colors whitespace-nowrap">
-                Subscribe
-              </button>
-            </div>
+            {subscribed ? (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-3 px-5 py-3 bg-[#1A1A1A] border border-[#4D5B47] w-full lg:w-auto"
+              >
+                <Check className="w-4 h-4 text-[#4D5B47] shrink-0" strokeWidth={2} />
+                <span className="text-[14px] text-[#F8F8F6]">You&apos;re in!</span>
+              </motion.div>
+            ) : (
+              <div className="flex gap-3 w-full lg:w-auto">
+                <input
+                  type="email"
+                  placeholder="Your email address"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSubscribe()}
+                  className="flex-1 lg:w-[300px] px-4 py-3 bg-[#1A1A1A] border border-[#2A2A2A] text-[#F8F8F6] text-[14px] placeholder:text-[#666] outline-none focus:border-[#4D5B47] transition-colors"
+                />
+                <button
+                  onClick={handleSubscribe}
+                  disabled={loading}
+                  className="px-6 py-3 bg-[#F8F8F6] text-[#111] text-[12px] font-medium tracking-widest uppercase hover:bg-[#E8E8E8] transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? "Subscribing…" : "Subscribe"}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
