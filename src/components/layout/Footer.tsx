@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useStore } from "@/lib/store";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, Instagram, Twitter, Facebook, Youtube } from "lucide-react";
 
 const footerLinks = {
   Shop: ["New Arrivals", "Best Sellers", "Trending", "Sale", "Gift Cards"],
@@ -10,6 +10,15 @@ const footerLinks = {
   Company: ["About Us", "Careers", "Sustainability", "Press", "Affiliates"],
   Legal: ["Privacy Policy", "Terms of Service", "Cookie Policy", "Accessibility"],
 };
+
+const socialLinks = [
+  { icon: Instagram, label: "Instagram", href: "#" },
+  { icon: Twitter, label: "Twitter", href: "#" },
+  { icon: Facebook, label: "Facebook", href: "#" },
+  { icon: Youtube, label: "YouTube", href: "#" },
+];
+
+const paymentIcons = ["Visa", "Mastercard", "Amex", "UPI", "Paytm"];
 
 export function Footer() {
   const { navigate } = useStore();
@@ -71,16 +80,43 @@ export function Footer() {
         </div>
       </div>
 
-      {/* Bottom */}
+      {/* Social + Payment */}
       <div className="border-t border-[#2A2A2A]">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-6">
-              <span className="text-[18px] font-medium tracking-[0.15em]">MAISON</span>
-              <span className="text-[12px] text-[#666]">© 2025 All rights reserved</span>
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            {/* Social */}
+            <div className="flex items-center gap-5">
+              <span className="text-[11px] text-[#666] tracking-wider uppercase mr-2">Follow Us</span>
+              {socialLinks.map((s) => (
+                <a
+                  key={s.label}
+                  href={s.href}
+                  aria-label={s.label}
+                  className="w-8 h-8 flex items-center justify-center border border-[#2A2A2A] hover:border-[#4D5B47] transition-colors"
+                >
+                  <s.icon className="w-3.5 h-3.5" strokeWidth={1.5} />
+                </a>
+              ))}
             </div>
+
+            {/* Payment */}
             <div className="flex items-center gap-4">
-              <span className="text-[11px] text-[#666]">Crafted with intention</span>
+              <span className="text-[11px] text-[#666] tracking-wider uppercase mr-1">We Accept</span>
+              <div className="flex items-center gap-2">
+                {paymentIcons.map((name) => (
+                  <span key={name} className="text-[12px] font-medium text-[#666]">
+                    {name}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Copyright */}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-6">
+                <span className="text-[18px] font-medium tracking-[0.15em]">MAISON</span>
+                <span className="text-[12px] text-[#666]">© 2025 All rights reserved</span>
+              </div>
               <button
                 onClick={scrollToTop}
                 className="w-8 h-8 flex items-center justify-center border border-[#2A2A2A] hover:border-[#4D5B47] transition-colors"

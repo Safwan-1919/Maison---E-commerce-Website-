@@ -1,0 +1,699 @@
+1:"use client";
+2:
+3:import { useEffect, useState, useCallback } from "react";
+4:import { motion, AnimatePresence } from "framer-motion";
+5:import { useStore } from "@/lib/store";
+6:import { ProductCard } from "@/components/shared/ProductCard";
+7:import { ScrollReveal, StaggerContainer, StaggerItem } from "@/components/shared/ScrollReveal";
+8:import { ArrowRight, Star, ChevronDown, Truck, RotateCcw, Shield, Sparkles, Clock, ArrowUp } from "lucide-react";
+9:import Image from "next/image";
+10:
+11:interface Product {
+12:  id: string;
+13:  name: string;
+14:  price: number;
+15:  mrp: number;
+16:  image: string;
+17:  images?: string;
+18:  category: string;
+19:  brand: string;
+20:  rating: number;
+21:  reviewCount: number;
+22:  discount: number;
+23:  isNew: boolean;
+24:  isTrending: boolean;
+25:  isBestSeller: boolean;
+26:  isFlashDeal: boolean;
+27:}
+28:
+29:const categories = [
+30:  { name: "T-Shirts", slug: "t-shirts", desc: "Essential foundations" },
+31:  { name: "Shirts", slug: "shirts", desc: "From casual to formal" },
+32:  { name: "Blazers", slug: "blazers", desc: "Structured elegance" },
+33:  { name: "Sweaters", slug: "sweaters", desc: "Luxurious knits" },
+34:  { name: "Jeans", slug: "jeans", desc: "Selvedge denim" },
+35:  { name: "Trousers", slug: "trousers", desc: "Tailored precision" },
+36:  { name: "Outerwear", slug: "outerwear", desc: "Seasonless layers" },
+37:  { name: "Footwear", slug: "footwear", desc: "Crafted soles" },
+38:  { name: "Bags", slug: "bags", desc: "Leather goods" },
+39:  { name: "Accessories", slug: "accessories", desc: "Finishing touches" },
+40:];
+41:
+42:const testimonials = [
+43:  { name: "Arjun M.", location: "Mumbai", rating: 5, text: "The quality is unlike anything I've found online. The cashmere sweater has become my most-worn piece. Every detail speaks of real craftsmanship." },
+44:  { name: "Priya S.", location: "Delhi", rating: 5, text: "MAISON understands that true luxury is in the restraint. Clean designs, exceptional fabrics, and a shopping experience that feels considered." },
+45:  { name: "Vikram K.", location: "Bangalore", rating: 5, text: "I replaced my entire wardrobe with MAISON pieces. The wool blazer alone is worth more than what I used to pay for full suits. Investment dressing done right." },
+46:];
+47:
+48:const catImages = [
+49:  "/images/products/product-2.png", "/images/products/product-11.png",
+50:  "/images/products/product-6.png", "/images/products/product-4.png",
+51:  "/images/products/product-3.png", "/images/products/product-9.png",
+52:  "/images/products/product-10.png", "/images/products/product-8.png",
+53:  "/images/products/product-1.png", "/images/products/product-12.png",
+54:];
+55:
+56:function ProductSkeleton() {
+57:  return (
+58:    <div className="space-y-3">
+59:      <div className="aspect-[3/4] skeleton-shimmer rounded-[4px]" />
+60:      <div className="h-3 w-16 skeleton-shimmer rounded-[4px]" />
+61:      <div className="h-4 w-full skeleton-shimmer rounded-[4px]" />
+62:      <div className="h-4 w-20 skeleton-shimmer rounded-[4px]" />
+63:    </div>
+64:  );
+65:}
+66:
+67:function HeroSection() {
+68:  const { navigate } = useStore();
+69:  const [loaded, setLoaded] = useState(false);
+70:  const [scrollY, setScrollY] = useState(0);
+71:
+72:  useEffect(() => {
+73:    const id = requestAnimationFrame(() => setLoaded(true));
+74:    return () => cancelAnimationFrame(id);
+75:  }, []);
+76:
+77:  useEffect(() => {
+78:    const handleScroll = () => setScrollY(window.scrollY);
+79:    window.addEventListener("scroll", handleScroll, { passive: true });
+80:    return () => window.removeEventListener("scroll", handleScroll);
+81:  }, []);
+82:
+83:  const headingWords = ["Quiet", "Luxury,"];
+84:  const subWords = ["Loud", "Quality"];
+85:
+86:  return (
+87:    <section className="relative min-h-[100vh] flex items-center overflow-hidden bg-[#111]">
+88:      {/* Background Image with parallax */}
+89:      <div className="absolute inset-0" style={{ transform: `translateY(\${scrollY * 0.3}px)` }}>
+90:        <Image
+91:          src="/images/hero-bg.png"
+92:          alt="MAISON Campaign"
+93:          fill
+94:          className="object-cover opacity-50 scale-110"
+95:          priority
+96:          sizes="100vw"
+97:        />
+98:      </div>
+99:      <div className="absolute inset-0 bg-gradient-to-r from-[#111]/95 via-[#111]/65 to-[#111]/25" />
+100:      <div className="absolute inset-0 bg-gradient-to-t from-[#111] via-transparent to-[#111]/50" />
+101:      {/* Bottom fade for smooth content transition */}
+102:      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#F8F8F6] to-transparent z-10" />
+103:
+104:      {/* Content */}
+105:      <div className="relative z-10 max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 w-full pt-24 pb-16">
+106:        <div className="max-w-2xl">
+107:          <motion.div
+108:            initial={{ opacity: 0, y: 20 }}
+109:            animate={loaded ? { opacity: 1, y: 0 } : {}}
+110:            transition={{ duration: 0.8, delay: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+111:            className="mb-6"
+112:          >
+113:            <span className="inline-flex items-center gap-2 px-3 py-1.5 border border-[#F8F8F6]/20 text-[#F8F8F6] text-[11px] font-medium tracking-[0.2em] uppercase">
+114:              <Sparkles className="w-3 h-3" />
+115:              Autumn/Winter 2025
+116:            </span>
+117:          </motion.div>
+118:
+119:          <h1 className="text-[40px] sm:text-[56px] lg:text-[72px] font-medium text-[#F8F8F6] leading-[0.95] tracking-[-0.03em] mb-6">
+120:            {headingWords.map((word, i) => (
+121:              <motion.span
+122:                key={word}
+123:                initial={{ opacity: 0, y: 30 }}
+124:                animate={loaded ? { opacity: 1, y: 0 } : {}}
+125:                transition={{ duration: 0.7, delay: 0.3 + i * 0.12, ease: [0.25, 0.1, 0.25, 1] }}
+126:              >
+127:                {word}{" "}
+128:              </motion.span>
+129:            ))}
+130:            <br />
+131:            <span className="inline-flex gap-x-1">
+132:              {subWords.map((word, i) => (
+133:                <motion.span
+134:                  key={word}
+135:                  initial={{ opacity: 0, y: 20 }}
+136:                  animate={loaded ? { opacity: 0.5, y: 0 } : {}}
+137:                  transition={{ duration: 0.7, delay: 0.55 + i * 0.1, ease: [0.25, 0.1, 0.25, 1] }}
+138:                >
+139:                  {word}
+140:                </motion.span>
+141:              ))}
+142:            </span>
+143:          </h1>
+144:
+145:          <motion.p
+146:            initial={{ opacity: 0, y: 20 }}
+147:            animate={loaded ? { opacity: 1, y: 0 } : {}}
+148:            transition={{ duration: 0.8, delay: 0.7, ease: [0.25, 0.1, 0.25, 1] }}
+149:            className="text-[15px] sm:text-[17px] text-[#F8F8F6]/50 leading-relaxed mb-12 max-w-lg font-light"
+150:          >
+151:            Curated essentials and investment pieces crafted from the world&apos;s finest materials.
+152:            Designed for those who understand that true style whispers.
+153:          </motion.p>
+154:
+155:          <motion.div
+156:            initial={{ opacity: 0, y: 20 }}
+157:            animate={loaded ? { opacity: 1, y: 0 } : {}}
+158:            transition={{ duration: 0.8, delay: 0.9, ease: [0.25, 0.1, 0.25, 1] }}
+159:            className="flex flex-wrap gap-4"
+160:          >
+161:            <button
+162:              onClick={() => navigate("shop")}
+163:              className="group px-8 py-3.5 bg-[#F8F8F6] text-[#111] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-white transition-all duration-300 flex items-center gap-2"
+164:            >
+165:              Shop Collection
+166:              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+167:            </button>
+168:            <button
+169:              onClick={() => navigate("shop")}
+170:              className="px-8 py-3.5 border border-[#F8F8F6]/20 text-[#F8F8F6] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#F8F8F6]/10 hover:border-[#F8F8F6]/40 transition-all duration-300"
+171:            >
+172:              New Arrivals
+173:            </button>
+174:          </motion.div>
+175:        </div>
+176:      </div>
+177:
+178:      {/* Scroll Indicator */}
+179:      <motion.div
+180:        initial={{ opacity: 0 }}
+181:        animate={loaded ? { opacity: 1 } : {}}
+182:        transition={{ delay: 1.8, duration: 0.8 }}
+183:        className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 z-20"
+184:      >
+185:        <span className="text-[10px] text-[#F8F8F6]/25 tracking-[0.2em] uppercase">Scroll</span>
+186:        <motion.div
+187:          animate={{ y: [0, 6, 0] }}
+188:          transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+189:        >
+190:          <ChevronDown className="w-4 h-4 text-[#F8F8F6]/25" />
+191:        </motion.div>
+192:      </motion.div>
+193:    </section>
+194:  );
+195:}
+196:
+197:function MarqueeBanner() {
+198:  const text = "FREE SHIPPING ON ORDERS OVER \u20B92,000 \u2022 HANDCRAFTED QUALITY \u2022 SUSTAINABLE MATERIALS \u2022 EASY 30-DAY RETURNS \u2022 ";
+199:  return (
+200:    <div className="bg-[#111] border-t border-b border-[#2A2A2A] py-3 overflow-hidden">
+201:      <div className="animate-marquee whitespace-nowrap flex">
+202:        <span className="text-[11px] tracking-[0.2em] uppercase text-[#F8F8F6]/50 font-medium">
+203:          {text}{text}{text}{text}
+204:        </span>
+205:      </div>
+206:    </div>
+207:  );
+208:}
+209:
+210:function CategoriesSection() {
+211:  const { navigate, setFilter, resetFilters } = useStore();
+212:
+213:  const handleCategoryClick = (cat: string) => {
+214:    resetFilters();
+215:    setFilter("category", [cat]);
+216:    navigate("shop");
+217:  };
+218:
+219:  return (
+220:    <section className="py-16 lg:py-24">
+221:      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+222:        <ScrollReveal>
+223:          <div className="flex items-end justify-between mb-10">
+224:            <div>
+225:              <h2 className="text-[28px] sm:text-[36px] lg:text-[42px] font-medium tracking-[-0.02em] text-[#111]">
+226:                Shop by Category
+227:              </h2>
+228:              <p className="text-[14px] text-[#666] mt-2">Find exactly what you're looking for</p>
+229:            </div>
+230:            <button
+231:              onClick={() => navigate("shop")}
+232:              className="hidden sm:flex items-center gap-2 text-[12px] tracking-widest uppercase text-[#666] hover:text-[#111] transition-colors"
+233:            >
+234:              View All <ArrowRight className="w-3.5 h-3.5" />
+235:            </button>
+236:          </div>
+237:        </ScrollReveal>
+238:
+239:        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 lg:gap-4">
+240:          {categories.map((cat, i) => (
+241:            <ScrollReveal key={cat.slug} delay={i * 0.04} duration={0.4}>
+242:              <button
+243:                onClick={() => handleCategoryClick(cat.name)}
+244:                className="group relative aspect-[3/4] bg-[#F0EFED] overflow-hidden w-full"
+245:              >
+246:                <Image
+247:                  src={catImages[i]}
+248:                  alt={cat.name}
+249:                  fill
+250:                  className="object-cover opacity-60 group-hover:opacity-80 group-hover:scale-105 transition-all duration-700"
+251:                  sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 20vw"
+252:                />
+253:                <div className="absolute inset-0 bg-gradient-to-t from-[#111]/70 via-[#111]/10 to-transparent" />
+254:                <div className="absolute bottom-0 left-0 right-0 p-4">
+255:                  <h3 className="text-[#F8F8F6] text-[14px] sm:text-[15px] font-medium tracking-wide">
+256:                    {cat.name}
+257:                  </h3>
+258:                  <p className="text-[#F8F8F6]/50 text-[11px] mt-0.5 tracking-wide">{cat.desc}</p>
+259:                </div>
+260:              </button>
+261:            </ScrollReveal>
+262:          ))}
+263:        </div>
+264:      </div>
+265:    </section>
+266:  );
+267:}
+268:
+269:function ProductSection({
+270:  title,
+271:  subtitle,
+272:  fetchUrl,
+273:  viewAllFilter,
+274:}: {
+275:  title: string;
+276:  subtitle?: string;
+277:  fetchUrl: string;
+278:  viewAllFilter?: string;
+279:}) {
+280:  const { navigate, setFilter, resetFilters } = useStore();
+281:  const [products, setProducts] = useState<Product[]>([]);
+282:  const [loading, setLoading] = useState(true);
+283:
+284:  useEffect(() => {
+285:    let cancelled = false;
+286:    fetch(fetchUrl)
+287:      .then((r) => r.json())
+288:      .then((data) => {
+289:        if (!cancelled) {
+290:          setProducts(data.products || []);
+291:          setLoading(false);
+292:        }
+293:      })
+294:      .catch(() => { if (!cancelled) setLoading(false); });
+295:    return () => { cancelled = true; };
+296:  }, [fetchUrl]);
+297:
+298:  const handleViewAll = () => {
+299:    resetFilters();
+300:    if (viewAllFilter) setFilter("sortBy", viewAllFilter);
+301:    navigate("shop");
+302:  };
+303:
+304:  return (
+305:    <section className="py-16 lg:py-20">
+306:      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+307:        <ScrollReveal>
+308:          <div className="flex items-end justify-between mb-10">
+309:            <div>
+310:              <h2 className="text-[28px] sm:text-[36px] lg:text-[42px] font-medium tracking-[-0.02em] text-[#111]">
+311:                {title}
+312:              </h2>
+313:              {subtitle && <p className="text-[14px] text-[#666] mt-2">{subtitle}</p>}
+314:            </div>
+315:            <button
+316:              onClick={handleViewAll}
+317:              className="hidden sm:flex items-center gap-2 text-[12px] tracking-widest uppercase text-[#666] hover:text-[#111] transition-colors"
+318:            >
+319:              View All <ArrowRight className="w-3.5 h-3.5" />
+320:            </button>
+321:          </div>
+322:        </ScrollReveal>
+323:
+324:        {loading ? (
+325:          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
+326:            {Array.from({ length: 4 }).map((_, i) => (
+327:              <ProductSkeleton key={i} />
+328:            ))}
+329:          </div>
+330:        ) : (
+331:          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
+332:            {products.map((p, i) => (
+333:              <ProductCard
+334:                key={p.id}
+335:                id={p.id}
+336:                name={p.name}
+337:                price={p.price}
+338:                mrp={p.mrp}
+339:                image={p.image}
+340:                images={p.images ? JSON.parse(p.images) : undefined}
+341:                category={p.category}
+342:                brand={p.brand}
+343:                rating={p.rating}
+344:                reviewCount={p.reviewCount}
+345:                discount={p.discount}
+346:                isNew={p.isNew}
+347:                isTrending={p.isTrending}
+348:                isBestSeller={p.isBestSeller}
+349:                index={i}
+350:              />
+351:            ))}
+352:          </div>
+353:        )}
+354:
+355:        <div className="mt-8 text-center sm:hidden">
+356:          <button
+357:            onClick={handleViewAll}
+358:            className="px-6 py-2.5 border border-[#E8E8E8] text-[12px] tracking-widest uppercase text-[#111] hover:bg-[#F0EFED] transition-colors"
+359:          >
+360:            View All
+361:          </button>
+362:        </div>
+363:      </div>
+364:    </section>
+365:  );
+366:}
+367:
+368:function EditorialSection() {
+369:  const { navigate } = useStore();
+370:
+371:  return (
+372:    <section className="py-16 lg:py-24 bg-white">
+373:      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+374:        <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+375:          <ScrollReveal direction="left">
+376:            <div className="relative aspect-[4/5] bg-[#F0EFED] overflow-hidden">
+377:              <Image
+378:                src="/images/products/product-6.png"
+379:                alt="MAISON Editorial"
+380:                fill
+381:                className="object-cover"
+382:                sizes="(max-width: 1024px) 100vw, 50vw"
+383:              />
+384:            </div>
+385:          </ScrollReveal>
+386:          <ScrollReveal direction="right">
+387:            <div className="lg:pl-8">
+388:              <span className="text-[11px] font-medium tracking-[0.2em] uppercase text-[#4D5B47] mb-4 block">
+389:                Our Philosophy
+390:              </span>
+391:              <h2 className="text-[28px] sm:text-[36px] lg:text-[42px] font-medium tracking-[-0.02em] text-[#111] leading-[1.1] mb-6">
+392:                Less, but better.
+393:                <br />
+394:                <span className="text-[#666]">Every piece, a statement.</span>
+395:              </h2>
+396:              <p className="text-[15px] text-[#666] leading-relaxed mb-4">
+397:                At MAISON, we believe in the power of restraint. Each piece in our collection is the result of
+398:                countless hours of sourcing the finest materials, refining patterns, and perfecting fits.
+399:              </p>
+400:              <p className="text-[15px] text-[#666] leading-relaxed mb-8">
+401:                We don't chase trends. We build wardrobes. Clothes that work today, tomorrow, and ten years from now.
+402:                Because true style isn't about what's new — it's about what's right.
+403:              </p>
+404:              <button
+405:                onClick={() => navigate("shop")}
+406:                className="inline-flex items-center gap-2 text-[12px] tracking-widest uppercase text-[#111] font-medium hover:text-[#4D5B47] transition-colors group"
+407:              >
+408:                Discover More
+409:                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+410:              </button>
+411:            </div>
+412:          </ScrollReveal>
+413:        </div>
+414:      </div>
+415:    </section>
+416:  );
+417:}
+418:
+419:function FlashDealsSection() {
+420:  const { navigate } = useStore();
+421:  const [products, setProducts] = useState<Product[]>([]);
+422:  const [loading, setLoading] = useState(true);
+423:  const [timeLeft, setTimeLeft] = useState({ hours: 5, minutes: 47, seconds: 32 });
+424:
+425:  useEffect(() => {
+426:    fetch("/api/products?flashDeal=true&limit=4")
+427:      .then((r) => r.json())
+428:      .then((data) => {
+429:        setProducts(data.products || []);
+430:        setLoading(false);
+431:      })
+432:      .catch(() => setLoading(false));
+433:  }, []);
+434:
+435:  useEffect(() => {
+436:    const timer = setInterval(() => {
+437:      setTimeLeft((prev) => {
+438:        let { hours, minutes, seconds } = prev;
+439:        seconds--;
+440:        if (seconds < 0) { seconds = 59; minutes--; }
+441:        if (minutes < 0) { minutes = 59; hours--; }
+442:        if (hours < 0) return { hours: 5, minutes: 59, seconds: 59 };
+443:        return { hours, minutes, seconds };
+444:      });
+445:    }, 1000);
+446:    return () => clearInterval(timer);
+447:  }, []);
+448:
+449:  const pad = (n: number) => n.toString().padStart(2, "0");
+450:
+451:  return (
+452:    <section className="py-16 lg:py-20 bg-[#111]">
+453:      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+454:        <ScrollReveal>
+455:          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-10">
+456:            <div>
+457:              <h2 className="text-[28px] sm:text-[36px] lg:text-[42px] font-medium tracking-[-0.02em] text-[#F8F8F6]">
+458:                Flash Deals
+459:              </h2>
+460:              <p className="text-[14px] text-[#F8F8F6]/40 mt-2">Limited time offers on selected pieces</p>
+461:            </div>
+462:            <div className="flex items-center gap-3">
+463:              <span className="text-[11px] tracking-[0.15em] uppercase text-[#F8F8F6]/40">Ends in</span>
+464:              <div className="flex items-center gap-1.5">
+465:                {[
+466:                  { val: timeLeft.hours, label: "HRS" },
+467:                  { val: timeLeft.minutes, label: "MIN" },
+468:                  { val: timeLeft.seconds, label: "SEC" },
+469:                ].map((t, i) => (
+470:                  <div key={t.label} className="flex items-center gap-1.5">
+471:                    <div className="bg-[#1A1A1A] border border-[#2A2A2A] px-3 py-2 text-center min-w-[48px]">
+472:                      <span className="text-[18px] font-medium text-[#F8F8F6] font-mono">{pad(t.val)}</span>
+473:                    </div>
+474:                    {i < 2 && <span className="text-[#F8F8F6]/20 text-[14px]">:</span>}
+475:                  </div>
+476:                ))}
+477:              </div>
+478:            </div>
+479:          </div>
+480:        </ScrollReveal>
+481:
+482:        {loading ? (
+483:          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
+484:            {Array.from({ length: 4 }).map((_, i) => (
+485:              <div key={i} className="space-y-3">
+486:                <div className="aspect-[3/4] bg-[#1A1A1A] rounded-[4px]" />
+487:                <div className="h-3 w-16 bg-[#1A1A1A] rounded-[4px]" />
+488:                <div className="h-4 w-full bg-[#1A1A1A] rounded-[4px]" />
+489:              </div>
+490:            ))}
+491:          </div>
+492:        ) : (
+493:          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
+494:            {products.map((p, i) => (
+495:              <ProductCard
+496:                key={p.id}
+497:                id={p.id}
+498:                name={p.name}
+499:                price={p.price}
+500:                mrp={p.mrp}
+501:                image={p.image}
+502:                images={p.images ? JSON.parse(p.images) : undefined}
+503:                category={p.category}
+504:                brand={p.brand}
+505:                rating={p.rating}
+506:                reviewCount={p.reviewCount}
+507:                discount={p.discount}
+508:                isNew={p.isNew}
+509:                isTrending={p.isTrending}
+510:                isBestSeller={p.isBestSeller}
+511:                index={i}
+512:              />
+513:            ))}
+514:          </div>
+515:        )}
+516:      </div>
+517:    </section>
+518:  );
+519:}
+520:
+521:function TestimonialsSection() {
+522:  return (
+523:    <section className="py-16 lg:py-24 bg-white">
+524:      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+525:        <ScrollReveal>
+526:          <div className="text-center mb-12">
+527:            <h2 className="text-[28px] sm:text-[36px] lg:text-[42px] font-medium tracking-[-0.02em] text-[#111]">
+528:              What Our Customers Say
+529:            </h2>
+530:            <p className="text-[14px] text-[#666] mt-2">Real experiences from the MAISON community</p>
+531:          </div>
+532:        </ScrollReveal>
+533:
+534:        <StaggerContainer className="grid md:grid-cols-3 gap-6 lg:gap-8">
+535:          {testimonials.map((t, i) => (
+536:            <StaggerItem key={i}>
+537:              <div className="p-6 lg:p-8 border border-[#E8E8E8] h-full flex flex-col">
+538:                <div className="flex items-center gap-0.5 mb-4">
+539:                  {Array.from({ length: t.rating }).map((_, si) => (
+540:                    <Star key={si} className="w-3.5 h-3.5 fill-[#111] text-[#111]" />
+541:                  ))}
+542:                </div>
+543:                <p className="text-[14px] sm:text-[15px] text-[#333] leading-relaxed flex-1 mb-6">
+544:                  &ldquo;{t.text}&rdquo;
+545:                </p>
+546:                <div className="flex items-center justify-between pt-4 border-t border-[#E8E8E8]">
+547:                  <div>
+548:                    <p className="text-[13px] font-medium text-[#111]">{t.name}</p>
+549:                    <p className="text-[12px] text-[#999]">{t.location}</p>
+550:                  </div>
+551:                  <div className="w-8 h-8 bg-[#F0EFED] rounded-full flex items-center justify-center text-[12px] font-medium text-[#666]">
+552:                    {t.name.charAt(0)}
+553:                  </div>
+554:                </div>
+555:              </div>
+556:            </StaggerItem>
+557:          ))}
+558:        </StaggerContainer>
+559:      </div>
+560:    </section>
+561:  );
+562:}
+563:
+564:function TrustSection() {
+565:  const features = [
+566:    { icon: Truck, title: "Free Shipping", desc: "On orders over \u20B92,000" },
+567:    { icon: RotateCcw, title: "Easy Returns", desc: "30-day return policy" },
+568:    { icon: Shield, title: "Secure Payment", desc: "256-bit encryption" },
+569:  ];
+570:
+571:  return (
+572:    <section className="py-12 border-y border-[#E8E8E8]">
+573:      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+574:        <div className="grid grid-cols-3 gap-4 lg:gap-8">
+575:          {features.map((f) => (
+576:            <div key={f.title} className="flex flex-col items-center text-center gap-2">
+577:              <f.icon className="w-5 h-5 text-[#4D5B47]" strokeWidth={1.5} />
+578:              <h3 className="text-[12px] sm:text-[13px] font-medium tracking-wide text-[#111]">{f.title}</h3>
+579:              <p className="text-[11px] text-[#999]">{f.desc}</p>
+580:            </div>
+581:          ))}
+582:        </div>
+583:      </div>
+584:    </section>
+585:  );
+586:}
+587:
+588:export default function HomePage() {
+589:  return (
+590:    <main className="min-h-screen bg-[#F8F8F6]">
+591:      <HeroSection />
+592:      <MarqueeBanner />
+593:      <CategoriesSection />
+594:      <ProductSection
+595:        title="New Arrivals"
+596:        subtitle="The latest additions to our collection"
+597:        fetchUrl="/api/products?new=true&limit=8"
+598:        viewAllFilter="newest"
+599:      />
+600:      <EditorialSection />
+601:      <ProductSection
+602:        title="Trending Now"
+603:        subtitle="What the MAISON community is loving"
+604:        fetchUrl="/api/products?trending=true&limit=4"
+605:        viewAllFilter="popularity"
+606:      />
+607:      <FlashDealsSection />
+608:      <ProductSection
+609:        title="Best Sellers"
+610:        subtitle="Tried, tested, and loved"
+611:        fetchUrl="/api/products?bestSeller=true&limit=4"
+612:        viewAllFilter="popularity"
+613:      />
+614:      <TrustSection />
+615:      <TestimonialsSection />
+616:      <RecentlyViewedSection />
+617:    </main>
+618:  );
+619:}
+620:
+621:function RecentlyViewedSection() {
+622:  const { recentlyViewed, navigate } = useStore();
+623:  const [products, setProducts] = useState<Product[]>([]);
+624:  const [loading, setLoading] = useState(false);
+625:
+626:  useEffect(() => {
+627:    if (recentlyViewed.length === 0) return;
+628:    setLoading(true);
+629:    const ids = recentlyViewed.slice(0, 6);
+630:    Promise.all(ids.map((id) => fetch(`/api/products/\${id}`).then((r) => r.json()).catch(() => null)))
+631:      .then((results) => {
+632:        const valid: typeof results === "object" && Array.isArray(results)
+633:          ? results.filter((r) => { if (r results.filter((r) => r !== null && r.product != null).map((r) => r.product)results.filter((r) => r !== null && r.product != null).map((r) => r.product) r.product) return r.product; }).map((r) => r.product)
+634:          : [];
+635:        setProducts(valid);
+636:        setLoading(false);
+637:      });
+638:  }, [recentlyViewed]);
+639:
+640:  if (recentlyViewed.length === 0) return null;
+641:
+642:  return (
+643:    <section className="py-16 lg:py-20 bg-white">
+644:      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+645:        <ScrollReveal>
+646:          <div className="flex items-end justify-between mb-8">
+647:            <div>
+648:              <h2 className="text-[28px] sm:text-[36px] font-medium tracking-[-0.02em] text-[#111]">
+649:                Recently Viewed
+650:              </h2>
+651:              <p className="text-[14px] text-[#666] mt-2">Products you&apos;ve been exploring</p>
+652:            </div>
+653:            <button
+654:              onClick={() => navigate("wishlist")}
+655:              className="hidden sm:flex items-center gap-2 text-[12px] tracking-widest uppercase text-[#666] hover:text-[#111] transition-colors"
+656:            >
+657:              View All <ArrowRight className="w-3.5 h-3.5" />
+658:            </button>
+659:          </div>
+660:        </ScrollReveal>
+661:
+662:        {loading ? (
+663:          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+664:            {Array.from({ length: 6 }).map((_, i) => (
+665:              <div key={i} className="space-y-3">
+666:                <div className="aspect-[3/4] skeleton-shimmer rounded-[4px]" />
+667:                <div className="h-3 w-16 skeleton-shimmer rounded-[4px]" />
+668:                <div className="h-4 w-full skeleton-shimmer rounded-[4px]" />
+669:              </div>
+670:            ))}
+671:          </div>
+672:        ) : (
+673:          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 lg:gap-5">
+674:            {products.map((p, i) => (
+675:              <ProductCard
+676:                key={p.id}
+677:                id={p.id}
+678:                name={p.name}
+679:                price={p.price}
+680:                mrp={p.mrp}
+681:                image={p.images ? JSON.parse(p.images)[0] : p.image}
+682:                images={p.images ? JSON.parse(p.images) : undefined}
+683:                category={p.category}
+684:                brand={p.brand}
+685:                rating={p.rating}
+686:                reviewCount={p.reviewCount}
+687:                discount={p.discount}
+688:                isNew={p.isNew}
+689:                isTrending={p.isTrending}
+690:                isBestSeller={p.isBestSeller}
+691:                index={i}
+692:              />
+693:            ))}
+694:          </div>
+695:        )}
+696:      </div>
+697:    </section>
+698:  );
+699:}

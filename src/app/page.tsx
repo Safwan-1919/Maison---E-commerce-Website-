@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { ArrowUp } from "lucide-react";
 import { useStore } from "@/lib/store";
 import HomePage from "@/components/pages/HomePage";
 import ShopPage from "@/components/pages/ShopPage";
@@ -29,6 +31,36 @@ const pageConfig: Record<string, { component: React.ComponentType; showNav: bool
   admin: { component: AdminPage, showNav: true, showFooter: true },
 };
 
+function BackToTop() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => {
+      setVisible(window.scrollY > 600);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.button
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.8 }}
+          transition={{ duration: 0.2 }}
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="fixed bottom-6 right-6 z-[60] w-10 h-10 bg-[#111] text-[#F8F8F6] flex items-center justify-center shadow-lg hover:bg-[#333] transition-colors"
+          aria-label="Back to top"
+        >
+          <ArrowUp className="w-4 h-4" strokeWidth={1.5} />
+        </motion.button>
+      )}
+    </AnimatePresence>
+  );
+}
+
 export default function Home() {
   const { currentPage } = useStore();
   const config = pageConfig[currentPage] || pageConfig.home;
@@ -53,6 +85,7 @@ export default function Home() {
         </motion.div>
       </AnimatePresence>
       {config.showFooter && <Footer />}
+      <BackToTop />
     </div>
   );
 }

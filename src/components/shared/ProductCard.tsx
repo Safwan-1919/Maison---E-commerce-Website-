@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, ShoppingBag, Star } from "lucide-react";
+import { Heart, ShoppingBag, Star, Eye } from "lucide-react";
 import { useStore } from "@/lib/store";
 import Image from "next/image";
-import Link from "next/link";
 
 interface ProductCardProps {
   id: string;
@@ -45,7 +44,7 @@ export function ProductCard({
 }: ProductCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [imgError, setImgError] = useState(false);
-  const { navigate, addToCart, toggleWishlist, isInWishlist } = useStore();
+  const { navigate, addToCart, toggleWishlist, isInWishlist, setShowQuickView, setSelectedProductId } = useStore();
   const inWishlist = isInWishlist(id);
 
   const handleAddToCart = (e: React.MouseEvent) => {
@@ -64,6 +63,11 @@ export function ProductCard({
   const handleWishlist = (e: React.MouseEvent) => {
     e.stopPropagation();
     toggleWishlist(id);
+  };
+
+  const handleQuickView = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate("product", id);
   };
 
   const currentImage = isHovered && images && images[1] ? images[1] : image;
@@ -114,14 +118,14 @@ export function ProductCard({
           )}
         </div>
 
-        {/* Actions */}
-        <div className="absolute top-3 right-3 flex flex-col gap-2">
+        {/* Actions - Desktop hover only */}
+        <div className="absolute top-3 right-3 flex-col gap-2 max-md:hidden">
           <motion.button
             initial={false}
             animate={{ opacity: isHovered ? 1 : 0, y: isHovered ? 0 : -4 }}
             transition={{ duration: 0.2 }}
             onClick={handleWishlist}
-            className="w-9 h-9 bg-[#F8F8F6] flex items-center justify-center hover:bg-white transition-colors"
+            className="w-9 h-9 bg-[#F8F8F6] flex items-center justify-center hover:bg-white transition-colors shadow-sm"
           >
             <Heart
               className="w-4 h-4"
@@ -130,14 +134,38 @@ export function ProductCard({
               strokeWidth={1.5}
             />
           </motion.button>
+          <motion.button
+            initial={false}
+            animate={{ opacity: isHovered ? 1 : 0, y: isHovered ? 0 : -4 }}
+            transition={{ duration: 0.2, delay: 0.05 }}
+            onClick={handleQuickView}
+            className="w-9 h-9 bg-[#F8F8F6] flex items-center justify-center hover:bg-white transition-colors shadow-sm"
+          >
+            <Eye className="w-4 h-4" stroke="#111" strokeWidth={1.5} />
+          </motion.button>
         </div>
 
-        {/* Quick Add */}
+        {/* Mobile actions - always visible */}
+        <div className="absolute top-3 right-3 md:hidden">
+          <button
+            onClick={handleWishlist}
+            className="w-8 h-8 bg-[#F8F8F6]/90 backdrop-blur-sm flex items-center justify-center"
+          >
+            <Heart
+              className="w-3.5 h-3.5"
+              fill={inWishlist ? "#111" : "none"}
+              stroke="#111"
+              strokeWidth={1.5}
+            />
+          </button>
+        </div>
+
+        {/* Quick Add - Desktop hover */}
         <motion.div
           initial={false}
           animate={{ opacity: isHovered ? 1 : 0, y: isHovered ? 0 : 8 }}
           transition={{ duration: 0.25, delay: 0.05 }}
-          className="absolute bottom-0 left-0 right-0 p-3"
+          className="absolute bottom-0 left-0 right-0 p-3 md:block hidden"
         >
           <button
             onClick={handleAddToCart}
@@ -149,36 +177,47 @@ export function ProductCard({
       </div>
 
       {/* Info */}
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         <div className="flex items-center justify-between">
           <p className="text-[11px] font-medium tracking-wider uppercase text-[#999]">
             {brand}
           </p>
-          {isBestSeller && (
-            <span className="text-[10px] font-medium tracking-wider uppercase text-[#4D5B47]">
-              Best Seller
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {isBestSeller && (
+              <span className="text-[10px] font-medium tracking-wider uppercase text-[#4D5B47]">
+                Best Seller
+              </span>
+            )}
+          </div>
         </div>
-        <h3 className="text-[14px] font-normal leading-tight text-[#111] line-clamp-1">
+        <h3 className="text-[14px] font-normal leading-tight text-[#111] line-clamp-2 min-h-[2.5em]">
           {name}
         </h3>
         <div className="flex items-center gap-2">
           <span className="text-[14px] font-medium text-[#111]">
-            ₹{price.toLocaleString("en-IN")}
+            {"\u20B9"}{price.toLocaleString("en-IN")}
           </span>
           {mrp > price && (
             <span className="text-[12px] text-[#999] line-through">
-              ₹{mrp.toLocaleString("en-IN")}
+              {"\u20B9"}{mrp.toLocaleString("en-IN")}
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="flex items-center gap-0.5">
-            <Star className="w-3 h-3 fill-[#111] text-[#111]" />
-            <span className="text-[12px] text-[#666]">{rating}</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-0.5">
+              <Star className="w-3 h-3 fill-[#111] text-[#111]" />
+              <span className="text-[12px] text-[#666]">{rating}</span>
+            </div>
+            <span className="text-[11px] text-[#999]">({reviewCount})</span>
           </div>
-          <span className="text-[11px] text-[#999]">({reviewCount})</span>
+          {/* Mobile add to bag button - always visible on small screens */}
+          <button
+            onClick={handleAddToCart}
+            className="md:hidden px-3 py-1.5 border border-[#E8E8E8] text-[10px] font-medium tracking-widest uppercase text-[#111] hover:bg-[#F0EFED] transition-colors"
+          >
+            Add
+          </button>
         </div>
       </div>
     </motion.div>

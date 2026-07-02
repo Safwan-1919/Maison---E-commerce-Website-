@@ -219,6 +219,16 @@ export default function ProductPage() {
 
   useEffect(() => { fetchProduct(); }, [fetchProduct]);
 
+  // Track recently viewed
+  useEffect(() => {
+    if (product) {
+      const timer = setTimeout(() => {
+        addToRecentlyViewed(product.id);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [product]);
+
   useEffect(() => {
     if (product) {
       const sizes: string[] = JSON.parse(product.sizes);
