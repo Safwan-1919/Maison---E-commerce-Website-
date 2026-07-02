@@ -7,7 +7,7 @@ import { ProductCard } from "@/components/shared/ProductCard";
 import { ScrollReveal } from "@/components/shared/ScrollReveal";
 import {
   ArrowLeft, Heart, ShoppingBag, Star, Truck, RotateCcw, Shield,
-  ChevronDown, ChevronRight, Minus, Plus, Check, Ruler
+  ChevronDown, ChevronRight, ChevronLeft, Minus, Plus, Check, Ruler, X
 } from "lucide-react";
 import Image from "next/image";
 
@@ -61,7 +61,7 @@ function ProductSkeleton() {
   );
 }
 
-function ImageGallery({ images, productName }: { images: string[]; productName: string }) {
+function ImageGallery({ images, productName, onImageClick }: { images: string[]; productName: string; onImageClick?: (index: number) => void }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [zoomed, setZoomed] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
@@ -78,10 +78,11 @@ function ImageGallery({ images, productName }: { images: string[]; productName: 
     <div className="space-y-3">
       {/* Main Image */}
       <div
-        className="relative aspect-[3/4] bg-[#F0EFED] overflow-hidden cursor-crosshair"
+        className="relative aspect-[3/4] bg-[#F0EFED] overflow-hidden cursor-zoom-in"
         onMouseEnter={() => setZoomed(true)}
         onMouseLeave={() => setZoomed(false)}
         onMouseMove={handleMouseMove}
+        onClick={() => onImageClick?.(activeIndex)}
       >
         <AnimatePresence mode="wait">
           <motion.div
@@ -166,6 +167,8 @@ export default function ProductPage() {
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   const fetchProduct = useCallback(async () => {
     if (!selectedProductId) return;
@@ -182,6 +185,16 @@ export default function ProductPage() {
   }, [selectedProductId]);
 
   useEffect(() => { fetchProduct(); }, [fetchProduct]);
+
+  // Escape key to close lightbox
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightboxOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [lightboxOpen]);
 
   // Track recently viewed
   useEffect(() => {
@@ -269,7 +282,7 @@ export default function ProductPage() {
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-16">
           {/* Gallery */}
           <ScrollReveal direction="left">
-            <ImageGallery images={images} productName={product.name} />
+            <ImageGallery images={images} productName={product.name} onImageClick={(i) => { setLightboxIndex(i); setLightboxOpen(true); }} />
           </ScrollReveal>
 
           {/* Product Info */}
@@ -571,6 +584,69 @@ export default function ProductPage() {
           </section>
         )}
       </div>
+
+      {/* Image Lightbox */}
+      <AnimatePresence>
+        {lightboxOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center"
+            onClick={() => setLightboxOpen(false)}
+          >
+            {/* Close button */}
+            <button
+              onClick={() => setLightboxOpen(false)}
+              className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors rounded"
+              aria-label="Close lightbox"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Counter */}
+            <div className="absolute top-4 left-4 text-white/60 text-[12px] tracking-wider">
+              {lightboxIndex + 1} / {images.length}
+            </div>
+
+            {/* Left arrow */}
+            {lightboxIndex > 0 && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setLightboxIndex(lightboxIndex - 1); }}
+                className="absolute left-4 w-10 h-10 bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors rounded"
+                aria-label="Previous image"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+            )}
+
+            {/* Right arrow */}
+            {lightboxIndex < images.length - 1 && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setLightboxIndex(lightboxIndex + 1); }}
+                className="absolute right-4 w-10 h-10 bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors rounded"
+                aria-label="Next image"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            )}
+
+            {/* Image */}
+            <motion.img
+              key={lightboxIndex}
+              src={images[lightboxIndex]}
+              alt={`${product.name} - Image ${lightboxIndex + 1}`}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.25 }}
+              className="max-h-[85vh] max-w-[85vw] object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }

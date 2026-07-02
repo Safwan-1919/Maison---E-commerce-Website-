@@ -61,6 +61,8 @@ export function Footer() {
 
   return (
     <footer className="bg-[#111] text-[#F8F8F6]">
+      {/* Decorative top gradient line */}
+      <div className="h-px bg-gradient-to-r from-transparent via-[#4D5B47]/40 to-transparent" />
       {/* Newsletter */}
       <div className="border-b border-[#2A2A2A]">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
@@ -105,6 +107,26 @@ export function Footer() {
         </div>
       </div>
 
+      {/* Brand Promise */}
+      <div className="border-b border-[#2A2A2A]">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
+            <div>
+              <p className="text-[11px] tracking-[0.2em] uppercase text-[#666] mb-1">Crafted with Care</p>
+              <p className="text-[13px] text-[#999]">Every piece tells a story of meticulous craftsmanship</p>
+            </div>
+            <div>
+              <p className="text-[11px] tracking-[0.2em] uppercase text-[#666] mb-1">Sustainably Sourced</p>
+              <p className="text-[13px] text-[#999]">Responsible materials for a conscious wardrobe</p>
+            </div>
+            <div>
+              <p className="text-[11px] tracking-[0.2em] uppercase text-[#666] mb-1">Timeless Design</p>
+              <p className="text-[13px] text-[#999]">Investment pieces that transcend seasons</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Links */}
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 lg:gap-12">
@@ -118,7 +140,7 @@ export function Footer() {
                   <li key={link}>
                     <button
                       onClick={() => navigate("home")}
-                      className="text-[13px] text-[#999] hover:text-[#F8F8F6] transition-colors"
+                      className="text-[13px] text-[#999] hover:text-[#F8F8F6] hover:pl-1 transition-all duration-200"
                     >
                       {link}
                     </button>
@@ -132,6 +154,7 @@ export function Footer() {
 
       {/* Social + Payment */}
       <div className="border-t border-[#2A2A2A]">
+        <div className="h-px bg-gradient-to-r from-transparent via-[#4D5B47]/20 to-transparent" />
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             {/* Social */}
@@ -142,7 +165,7 @@ export function Footer() {
                   key={s.label}
                   href={s.href}
                   aria-label={s.label}
-                  className="w-8 h-8 flex items-center justify-center border border-[#2A2A2A] hover:border-[#4D5B47] transition-colors"
+                  className="w-8 h-8 flex items-center justify-center border border-[#2A2A2A] hover:border-[#4D5B47] hover:scale-110 transition-all duration-200"
                 >
                   <s.icon className="w-3.5 h-3.5" strokeWidth={1.5} />
                 </a>
