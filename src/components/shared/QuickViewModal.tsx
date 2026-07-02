@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Star, Minus, Plus, ShoppingBag, Eye } from "lucide-react";
 import { useStore } from "@/lib/store";
-import Image from "next/image";
 
 interface ProductData {
   id: string;
@@ -278,13 +277,10 @@ export function QuickViewModal() {
                         <ShoppingBag className="w-10 h-10 text-[#999]" strokeWidth={1} />
                       </div>
                     ) : (
-                      <Image
+                      <img
                         src={parsedImages[imageIndex]}
                         alt={product.name}
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 768px) 100vw, 50vw"
-                        priority
+                        className="w-full h-full object-cover"
                         onError={() => setImgError(true)}
                       />
                     )}
@@ -313,12 +309,10 @@ export function QuickViewModal() {
                             idx === imageIndex ? "opacity-100 ring-1 ring-[#111]" : "opacity-50 hover:opacity-75"
                           }`}
                         >
-                          <Image
+                          <img
                             src={img}
                             alt={`${product.name} view ${idx + 1}`}
-                            fill
-                            className="object-cover"
-                            sizes="64px"
+                            className="w-full h-full object-cover"
                             onError={() => setImgError(true)}
                           />
                         </button>

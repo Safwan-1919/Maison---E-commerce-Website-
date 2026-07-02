@@ -160,7 +160,7 @@ function CollapsibleSection({ title, children, defaultOpen = false }: { title: s
 }
 
 export default function ProductPage() {
-  const { selectedProductId, navigate, goBack, addToCart, toggleWishlist, isInWishlist, addToRecentlyViewed, setSizeGuideOpen } = useStore();
+  const { selectedProductId, navigate, goBack, addToCart, toggleWishlist, isInWishlist, addToRecentlyViewed, setSizeGuideOpen, showNotification } = useStore();
   const [product, setProduct] = useState<Product | null>(null);
   const [similar, setSimilar] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -169,6 +169,14 @@ export default function ProductPage() {
   const [quantity, setQuantity] = useState(1);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [reviewTitle, setReviewTitle] = useState("");
+  const [reviewName, setReviewName] = useState("");
+  const [reviewText, setReviewText] = useState("");
+  const [reviewErrors, setReviewErrors] = useState<Record<string, string>>({});
+  const [localReviews, setLocalReviews] = useState<Review[]>([]);
 
   const fetchProduct = useCallback(async () => {
     if (!selectedProductId) return;
@@ -216,6 +224,7 @@ export default function ProductPage() {
       if (!selectedColor && colors.length > 0) {
         setSelectedColor(colors[0]);
       }
+      setLocalReviews(product.reviews || []);
     }
   }, [product]);
 
@@ -497,35 +506,163 @@ export default function ProductPage() {
         </div>
 
         {/* Reviews Section */}
-        {product.reviews && product.reviews.length > 0 && (
-          <section className="mt-16 lg:mt-24">
-            <ScrollReveal>
-              <div className="flex items-center justify-between mb-8">
-                <div>
-                  <h2 className="text-[24px] sm:text-[28px] font-medium tracking-[-0.02em]">Reviews</h2>
-                  <p className="text-[13px] text-[#999] mt-1">{product.reviewCount} reviews</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[32px] font-medium">{product.rating}</span>
-                  <div>
-                    <div className="flex items-center gap-0.5">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <Star
-                          key={i}
-                          className={`w-3.5 h-3.5 ${i < Math.round(product.rating) ? "fill-[#111] text-[#111]" : "text-[#D1D1D1]"}`}
-                        />
-                      ))}
-                    </div>
-                    <p className="text-[11px] text-[#999] mt-0.5">Average rating</p>
-                  </div>
-                </div>
+        <section className="mt-16 lg:mt-24">
+          <ScrollReveal>
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-[24px] sm:text-[28px] font-medium tracking-[-0.02em]">Reviews</h2>
+                <p className="text-[13px] text-[#999] mt-1">{localReviews.length > 0 ? localReviews.length : product.reviewCount} reviews</p>
               </div>
-            </ScrollReveal>
+              <div className="flex items-center gap-4">
+                {localReviews.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[32px] font-medium">{product.rating}</span>
+                    <div>
+                      <div className="flex items-center gap-0.5">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`w-3.5 h-3.5 ${i < Math.round(product.rating) ? "fill-[#B79B7B] text-[#B79B7B]" : "text-[#E8E8E8]"}`}
+                          />
+                        ))}
+                      </div>
+                      <p className="text-[11px] text-[#999] mt-0.5">Average rating</p>
+                    </div>
+                  </div>
+                )}
+                <button
+                  onClick={() => setShowReviewForm(!showReviewForm)}
+                  className="bg-[#4D5B47] text-white text-[13px] tracking-wide px-5 py-2.5 rounded-[4px] hover:bg-[#3A4835] transition-colors"
+                >
+                  {showReviewForm ? "Cancel" : "Write a Review"}
+                </button>
+              </div>
+            </div>
+          </ScrollReveal>
 
+          {/* Review Form */}
+          <AnimatePresence>
+            {showReviewForm && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="overflow-hidden mb-8"
+              >
+                <div className="border border-[#E8E8E8] bg-white p-6 rounded-[4px]">
+                  <h3 className="text-[16px] font-medium text-[#111] mb-5 tracking-[-0.01em]">Write a Review</h3>
+
+                  {/* Star Rating */}
+                  <div className="mb-5">
+                    <label className="text-[13px] font-medium tracking-wide text-[#111] block mb-2">Your Rating</label>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: 5 }).map((_, i) => {
+                        const starVal = i + 1;
+                        const isActive = starVal <= (hoverRating || reviewRating);
+                        const color = isActive ? (hoverRating ? "#4D5B47" : "#B79B7B") : "#E8E8E8";
+                        return (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => setReviewRating(starVal)}
+                            onMouseEnter={() => setHoverRating(starVal)}
+                            onMouseLeave={() => setHoverRating(0)}
+                            className="p-0.5 transition-transform hover:scale-110"
+                          >
+                            <Star
+                              className="w-6 h-6 transition-colors"
+                              style={isActive ? { fill: color, color } : { color: "#E8E8E8" }}
+                            />
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {reviewErrors.rating && <p className="text-[12px] text-red-500 mt-1">{reviewErrors.rating}</p>}
+                  </div>
+
+                  {/* Title */}
+                  <div className="mb-4">
+                    <input
+                      type="text"
+                      placeholder="Review Title"
+                      value={reviewTitle}
+                      onChange={(e) => setReviewTitle(e.target.value)}
+                      className="w-full border border-[#E8E8E8] focus:border-[#4D5B47] transition-colors bg-white text-[14px] px-4 py-3 rounded-[4px] outline-none text-[#111] placeholder:text-[#999]"
+                    />
+                  </div>
+
+                  {/* Name */}
+                  <div className="mb-4">
+                    <input
+                      type="text"
+                      placeholder="Your Name"
+                      value={reviewName}
+                      onChange={(e) => { setReviewName(e.target.value); if (reviewErrors.name) setReviewErrors(prev => ({ ...prev, name: "" })); }}
+                      className="w-full border border-[#E8E8E8] focus:border-[#4D5B47] transition-colors bg-white text-[14px] px-4 py-3 rounded-[4px] outline-none text-[#111] placeholder:text-[#999]"
+                    />
+                    {reviewErrors.name && <p className="text-[12px] text-red-500 mt-1">{reviewErrors.name}</p>}
+                  </div>
+
+                  {/* Review Text */}
+                  <div className="mb-5">
+                    <textarea
+                      placeholder="Share your experience with this product..."
+                      rows={4}
+                      value={reviewText}
+                      onChange={(e) => { setReviewText(e.target.value); if (reviewErrors.text) setReviewErrors(prev => ({ ...prev, text: "" })); }}
+                      className="w-full border border-[#E8E8E8] focus:border-[#4D5B47] transition-colors bg-white text-[14px] px-4 py-3 rounded-[4px] outline-none text-[#111] placeholder:text-[#999] resize-none"
+                    />
+                    {reviewErrors.text && <p className="text-[12px] text-red-500 mt-1">{reviewErrors.text}</p>}
+                  </div>
+
+                  {/* Submit */}
+                  <button
+                    onClick={() => {
+                      const errors: Record<string, string> = {};
+                      if (reviewRating === 0) errors.rating = "Please select a rating";
+                      if (!reviewName.trim()) errors.name = "Please enter your name";
+                      if (!reviewText.trim() || reviewText.trim().length < 10) errors.text = "Review must be at least 10 characters";
+
+                      if (Object.keys(errors).length > 0) {
+                        setReviewErrors(errors);
+                        return;
+                      }
+
+                      const newReview: Review = {
+                        id: `local-${Date.now()}`,
+                        userName: reviewName.trim(),
+                        rating: reviewRating,
+                        title: reviewTitle.trim() || null,
+                        comment: reviewText.trim(),
+                        createdAt: new Date().toISOString(),
+                      };
+
+                      setLocalReviews(prev => [newReview, ...prev]);
+                      setShowReviewForm(false);
+                      setReviewRating(0);
+                      setHoverRating(0);
+                      setReviewTitle("");
+                      setReviewName("");
+                      setReviewText("");
+                      setReviewErrors({});
+                      showNotification("Thank you for your review!", "success");
+                    }}
+                    className="bg-[#111] text-[#F8F8F6] text-[13px] tracking-wide px-8 py-3 rounded-[4px] hover:bg-[#333] transition-colors"
+                  >
+                    Submit Review
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Reviews List */}
+          {localReviews.length > 0 && (
             <div className="space-y-4">
-              {product.reviews.map((review, i) => (
+              {localReviews.map((review, i) => (
                 <ScrollReveal key={review.id} delay={i * 0.05}>
-                  <div className="p-6 border border-[#E8E8E8] bg-white">
+                  <div className="p-6 border border-[#E8E8E8] border-l-2 border-l-[#4D5B47] bg-white">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-[#F0EFED] rounded-full flex items-center justify-center text-[12px] font-medium text-[#666]">
@@ -534,13 +671,13 @@ export default function ProductPage() {
                         <div>
                           <p className="text-[13px] font-medium text-[#111]">{review.userName}</p>
                           <p className="text-[11px] text-[#999]">
-                            {new Date(review.createdAt).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}
+                            {new Date(review.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-0.5">
                         {Array.from({ length: 5 }).map((_, si) => (
-                          <Star key={si} className={`w-3 h-3 ${si < review.rating ? "fill-[#111] text-[#111]" : "text-[#D1D1D1]"}`} />
+                          <Star key={si} className={`w-3 h-3 ${si < review.rating ? "fill-[#B79B7B] text-[#B79B7B]" : "text-[#E8E8E8]"}`} />
                         ))}
                       </div>
                     </div>
@@ -550,8 +687,8 @@ export default function ProductPage() {
                 </ScrollReveal>
               ))}
             </div>
-          </section>
-        )}
+          )}
+        </section>
 
         {/* Similar Products */}
         {similar.length > 0 && (

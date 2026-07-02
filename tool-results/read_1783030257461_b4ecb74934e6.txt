@@ -1,0 +1,652 @@
+     1→"use client";
+     2→
+     3→import { useEffect, useState, useCallback } from "react";
+     4→import { motion, AnimatePresence } from "framer-motion";
+     5→import { useStore } from "@/lib/store";
+     6→import { ProductCard } from "@/components/shared/ProductCard";
+     7→import { ScrollReveal } from "@/components/shared/ScrollReveal";
+     8→import {
+     9→  ArrowLeft, Heart, ShoppingBag, Star, Truck, RotateCcw, Shield,
+    10→  ChevronDown, ChevronRight, ChevronLeft, Minus, Plus, Check, Ruler, X
+    11→} from "lucide-react";
+    12→import Image from "next/image";
+    13→
+    14→interface Product {
+    15→  id: string;
+    16→  name: string;
+    17→  slug: string;
+    18→  description: string | null;
+    19→  price: number;
+    20→  mrp: number;
+    21→  category: string;
+    22→  brand: string;
+    23→  sizes: string;
+    24→  colors: string;
+    25→  images: string;
+    26→  rating: number;
+    27→  reviewCount: number;
+    28→  stock: number;
+    29→  isNew: boolean;
+    30→  isTrending: boolean;
+    31→  isBestSeller: boolean;
+    32→  discount: number;
+    33→  material: string | null;
+    34→  care: string | null;
+    35→  tags: string | null;
+    36→  reviews: Review[];
+    37→}
+    38→
+    39→interface Review {
+    40→  id: string;
+    41→  userName: string;
+    42→  rating: number;
+    43→  title: string | null;
+    44→  comment: string | null;
+    45→  createdAt: string;
+    46→}
+    47→
+    48→function ProductSkeleton() {
+    49→  return (
+    50→    <div className="animate-pulse">
+    51→      <div className="grid lg:grid-cols-2 gap-8 lg:gap-16">
+    52→        <div className="aspect-[3/4] bg-[#F0EFED] rounded-[4px]" />
+    53→        <div className="space-y-4">
+    54→          <div className="h-3 w-24 bg-[#F0EFED] rounded-[4px]" />
+    55→          <div className="h-8 w-3/4 bg-[#F0EFED] rounded-[4px]" />
+    56→          <div className="h-4 w-48 bg-[#F0EFED] rounded-[4px]" />
+    57→          <div className="h-6 w-32 bg-[#F0EFED] rounded-[4px]" />
+    58→        </div>
+    59→      </div>
+    60→    </div>
+    61→  );
+    62→}
+    63→
+    64→function ImageGallery({ images, productName, onImageClick }: { images: string[]; productName: string; onImageClick?: (index: number) => void }) {
+    65→  const [activeIndex, setActiveIndex] = useState(0);
+    66→  const [zoomed, setZoomed] = useState(false);
+    67→  const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
+    68→
+    69→  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    70→    const rect = e.currentTarget.getBoundingClientRect();
+    71→    setMousePos({
+    72→      x: ((e.clientX - rect.left) / rect.width) * 100,
+    73→      y: ((e.clientY - rect.top) / rect.height) * 100,
+    74→    });
+    75→  };
+    76→
+    77→  return (
+    78→    <div className="space-y-3">
+    79→      {/* Main Image */}
+    80→      <div
+    81→        className="relative aspect-[3/4] bg-[#F0EFED] overflow-hidden cursor-zoom-in"
+    82→        onMouseEnter={() => setZoomed(true)}
+    83→        onMouseLeave={() => setZoomed(false)}
+    84→        onMouseMove={handleMouseMove}
+    85→        onClick={() => onImageClick?.(activeIndex)}
+    86→      >
+    87→        <AnimatePresence mode="wait">
+    88→          <motion.div
+    89→            key={activeIndex}
+    90→            initial={{ opacity: 0 }}
+    91→            animate={{ opacity: 1 }}
+    92→            exit={{ opacity: 0 }}
+    93→            transition={{ duration: 0.3 }}
+    94→            className="absolute inset-0"
+    95→          >
+    96→            <Image
+    97→              src={images[activeIndex]}
+    98→              alt={`${productName} - Image ${activeIndex + 1}`}
+    99→              fill
+   100→              className="object-cover transition-transform duration-300"
+   101→              style={zoomed ? { transform: "scale(1.8)", transformOrigin: `${mousePos.x}% ${mousePos.y}%` } : {}}
+   102→              sizes="(max-width: 1024px) 100vw, 50vw"
+   103→              priority
+   104→            />
+   105→          </motion.div>
+   106→        </AnimatePresence>
+   107→        {images.length > 1 && (
+   108→          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/40 backdrop-blur-sm px-3 py-1">
+   109→            <span className="text-[11px] text-white font-medium">{activeIndex + 1} / {images.length}</span>
+   110→          </div>
+   111→        )}
+   112→      </div>
+   113→
+   114→      {/* Thumbnails */}
+   115→      {images.length > 1 && (
+   116→        <div className="flex gap-2 overflow-x-auto scrollbar-none">
+   117→          {images.map((img, i) => (
+   118→            <button
+   119→              key={i}
+   120→              onClick={() => setActiveIndex(i)}
+   121→              className={`flex-shrink-0 w-16 h-20 border-2 overflow-hidden transition-all ${
+   122→                i === activeIndex ? "border-[#111]" : "border-transparent opacity-60 hover:opacity-100"
+   123→              }`}
+   124→            >
+   125→              <Image src={img} alt="" width={64} height={80} className="w-full h-full object-cover" />
+   126→            </button>
+   127→          ))}
+   128→        </div>
+   129→      )}
+   130→    </div>
+   131→  );
+   132→}
+   133→
+   134→function CollapsibleSection({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
+   135→  const [open, setOpen] = useState(defaultOpen);
+   136→  return (
+   137→    <div className="border-b border-[#E8E8E8]">
+   138→      <button
+   139→        onClick={() => setOpen(!open)}
+   140→        className="flex items-center justify-between w-full py-4 text-[13px] font-medium tracking-wide text-[#111] hover:text-[#666] transition-colors"
+   141→      >
+   142→        {title}
+   143→        {open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+   144→      </button>
+   145→      <AnimatePresence>
+   146→        {open && (
+   147→          <motion.div
+   148→            initial={{ height: 0, opacity: 0 }}
+   149→            animate={{ height: "auto", opacity: 1 }}
+   150→            exit={{ height: 0, opacity: 0 }}
+   151→            transition={{ duration: 0.25 }}
+   152→            className="overflow-hidden pb-4"
+   153→          >
+   154→            {children}
+   155→          </motion.div>
+   156→        )}
+   157→      </AnimatePresence>
+   158→    </div>
+   159→  );
+   160→}
+   161→
+   162→export default function ProductPage() {
+   163→  const { selectedProductId, navigate, goBack, addToCart, toggleWishlist, isInWishlist, addToRecentlyViewed, setSizeGuideOpen } = useStore();
+   164→  const [product, setProduct] = useState<Product | null>(null);
+   165→  const [similar, setSimilar] = useState<Product[]>([]);
+   166→  const [loading, setLoading] = useState(true);
+   167→  const [selectedSize, setSelectedSize] = useState<string | null>(null);
+   168→  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+   169→  const [quantity, setQuantity] = useState(1);
+   170→  const [lightboxOpen, setLightboxOpen] = useState(false);
+   171→  const [lightboxIndex, setLightboxIndex] = useState(0);
+   172→
+   173→  const fetchProduct = useCallback(async () => {
+   174→    if (!selectedProductId) return;
+   175→    setLoading(true);
+   176→    try {
+   177→      const res = await fetch(`/api/products/${selectedProductId}`);
+   178→      const data = await res.json();
+   179→      setProduct(data.product);
+   180→      setSimilar(data.similar || []);
+   181→    } catch (e) {
+   182→      console.error(e);
+   183→    }
+   184→    setLoading(false);
+   185→  }, [selectedProductId]);
+   186→
+   187→  useEffect(() => { fetchProduct(); }, [fetchProduct]);
+   188→
+   189→  // Escape key to close lightbox
+   190→  useEffect(() => {
+   191→    if (!lightboxOpen) return;
+   192→    const handleKeyDown = (e: KeyboardEvent) => {
+   193→      if (e.key === "Escape") setLightboxOpen(false);
+   194→    };
+   195→    window.addEventListener("keydown", handleKeyDown);
+   196→    return () => window.removeEventListener("keydown", handleKeyDown);
+   197→  }, [lightboxOpen]);
+   198→
+   199→  // Track recently viewed
+   200→  useEffect(() => {
+   201→    if (product) {
+   202→      const timer = setTimeout(() => {
+   203→        addToRecentlyViewed(product.id);
+   204→      }, 2000);
+   205→      return () => clearTimeout(timer);
+   206→    }
+   207→  }, [product]);
+   208→
+   209→  useEffect(() => {
+   210→    if (product) {
+   211→      const sizes: string[] = JSON.parse(product.sizes);
+   212→      const colors: string[] = JSON.parse(product.colors);
+   213→      if (!selectedSize && sizes.length > 0 && sizes[0] !== "ONE SIZE") {
+   214→        setSelectedSize(sizes[Math.min(2, sizes.length - 1)]);
+   215→      }
+   216→      if (!selectedColor && colors.length > 0) {
+   217→        setSelectedColor(colors[0]);
+   218→      }
+   219→    }
+   220→  }, [product]);
+   221→
+   222→  if (loading) return <main className="min-h-screen bg-[#F8F8F6] pt-20"><div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8"><ProductSkeleton /></div></main>;
+   223→  if (!product) return <main className="min-h-screen bg-[#F8F8F6] pt-20 flex items-center justify-center"><p className="text-[15px] text-[#666]">Product not found</p></main>;
+   224→
+   225→  const images: string[] = JSON.parse(product.images);
+   226→  const sizes: string[] = JSON.parse(product.sizes);
+   227→  const colors: string[] = JSON.parse(product.colors);
+   228→  const inWishlist = isInWishlist(product.id);
+   229→  const deliveryDate = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+   230→  const deliveryStr = deliveryDate.toLocaleDateString("en-IN", { weekday: "short", month: "short", day: "numeric" });
+   231→
+   232→  const handleAddToCart = () => {
+   233→    addToCart({
+   234→      productId: product.id,
+   235→      name: product.name,
+   236→      price: product.price,
+   237→      mrp: product.mrp,
+   238→      image: images[0],
+   239→      size: selectedSize || sizes[0] || "M",
+   240→      color: selectedColor || colors[0] || "Default",
+   241→      quantity,
+   242→    });
+   243→  };
+   244→
+   245→  const handleBuyNow = () => {
+   246→    addToCart({
+   247→      productId: product.id,
+   248→      name: product.name,
+   249→      price: product.price,
+   250→      mrp: product.mrp,
+   251→      image: images[0],
+   252→      size: selectedSize || sizes[0] || "M",
+   253→      color: selectedColor || colors[0] || "Default",
+   254→      quantity,
+   255→    });
+   256→    navigate("checkout");
+   257→  };
+   258→
+   259→  return (
+   260→    <main className="min-h-screen bg-[#F8F8F6] pt-20 pb-16">
+   261→      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+   262→        {/* Breadcrumb */}
+   263→        <ScrollReveal>
+   264→          <nav className="flex items-center gap-2 py-4 text-[12px] text-[#999]">
+   265→            <button onClick={() => navigate("home")} className="hover:text-[#111] transition-colors">Home</button>
+   266→            <ChevronRight className="w-3 h-3" />
+   267→            <button onClick={() => navigate("shop")} className="hover:text-[#111] transition-colors">{product.category}</button>
+   268→            <ChevronRight className="w-3 h-3" />
+   269→            <span className="text-[#111] truncate max-w-[200px]">{product.name}</span>
+   270→          </nav>
+   271→        </ScrollReveal>
+   272→
+   273→        {/* Back Button */}
+   274→        <button
+   275→          onClick={goBack}
+   276→          className="flex items-center gap-1.5 text-[12px] tracking-widest uppercase text-[#999] hover:text-[#111] transition-colors mb-6"
+   277→        >
+   278→          <ArrowLeft className="w-3.5 h-3.5" /> Back
+   279→        </button>
+   280→
+   281→        {/* Product Layout */}
+   282→        <div className="grid lg:grid-cols-2 gap-8 lg:gap-16">
+   283→          {/* Gallery */}
+   284→          <ScrollReveal direction="left">
+   285→            <ImageGallery images={images} productName={product.name} onImageClick={(i) => { setLightboxIndex(i); setLightboxOpen(true); }} />
+   286→          </ScrollReveal>
+   287→
+   288→          {/* Product Info */}
+   289→          <ScrollReveal direction="right">
+   290→            <div className="space-y-6">
+   291→              {/* Brand */}
+   292→              <p className="text-[11px] font-medium tracking-[0.2em] uppercase text-[#999]">
+   293→                {product.brand}
+   294→              </p>
+   295→
+   296→              {/* Name */}
+   297→              <h1 className="text-[24px] sm:text-[28px] lg:text-[32px] font-medium tracking-[-0.02em] text-[#111] leading-tight">
+   298→                {product.name}
+   299→              </h1>
+   300→
+   301→              {/* Rating */}
+   302→              <div className="flex items-center gap-3">
+   303→                <div className="flex items-center gap-1">
+   304→                  <Star className="w-4 h-4 fill-[#111] text-[#111]" />
+   305→                  <span className="text-[14px] font-medium">{product.rating}</span>
+   306→                </div>
+   307→                <span className="text-[13px] text-[#999]">({product.reviewCount} reviews)</span>
+   308→              </div>
+   309→
+   310→              {/* Price */}
+   311→              <div className="flex items-baseline gap-3">
+   312→                <span className="text-[24px] sm:text-[28px] font-medium text-[#111]">
+   313→                  {"\u20B9"}{product.price.toLocaleString("en-IN")}
+   314→                </span>
+   315→                {product.mrp > product.price && (
+   316→                  <>
+   317→                    <span className="text-[16px] text-[#999] line-through">
+   318→                      {"\u20B9"}{product.mrp.toLocaleString("en-IN")}
+   319→                    </span>
+   320→                    <span className="px-2 py-0.5 bg-[#F0EFED] text-[11px] font-medium tracking-wide text-[#111]">
+   321→                      {product.discount}% OFF
+   322→                    </span>
+   323→                  </>
+   324→                )}
+   325→              </div>
+   326→
+   327→              {/* Short Description */}
+   328→              {product.description && (
+   329→                <p className="text-[14px] text-[#666] leading-relaxed">
+   330→                  {product.description.length > 200 ? product.description.slice(0, 200) + "..." : product.description}
+   331→                </p>
+   332→              )}
+   333→
+   334→              <div className="border-t border-[#E8E8E8]" />
+   335→
+   336→              {/* Color Selection */}
+   337→              {colors.length > 0 && (
+   338→                <div>
+   339→                  <p className="text-[12px] font-medium tracking-wider uppercase text-[#111] mb-3">
+   340→                    Color: <span className="text-[#999] font-normal normal-case tracking-normal">{selectedColor}</span>
+   341→                  </p>
+   342→                  <div className="flex items-center gap-2">
+   343→                    {colors.map((color) => (
+   344→                      <button
+   345→                        key={color}
+   346→                        onClick={() => setSelectedColor(color)}
+   347→                        className={`w-8 h-8 border-2 transition-all ${
+   348→                          selectedColor === color ? "border-[#111] scale-110" : "border-[#E8E8E8] hover:border-[#999]"
+   349→                        }`}
+   350→                        style={{ backgroundColor: color }}
+   351→                        title={color}
+   352→                      />
+   353→                    ))}
+   354→                  </div>
+   355→                </div>
+   356→              )}
+   357→
+   358→              {/* Size Selection */}
+   359→              {sizes.length > 0 && (
+   360→                <div>
+   361→                  <div className="flex items-center justify-between mb-3">
+   362→                    <p className="text-[12px] font-medium tracking-wider uppercase text-[#111]">
+   363→                      Size: <span className="text-[#999] font-normal normal-case tracking-normal">{selectedSize || "Select"}</span>
+   364→                    </p>
+   365→                    {sizes[0] !== "ONE SIZE" && (
+   366→                      <button
+   367→                        onClick={() => setSizeGuideOpen(true)}
+   368→                        className="flex items-center gap-1 text-[11px] text-[#4D5B47] hover:text-[#111] transition-colors"
+   369→                      >
+   370→                        <Ruler className="w-3 h-3" /> Size Guide
+   371→                      </button>
+   372→                    )}
+   373→                  </div>
+   374→
+   375→                  <div className="flex flex-wrap gap-2">
+   376→                    {sizes.map((size) => (
+   377→                      <button
+   378→                        key={size}
+   379→                        onClick={() => setSelectedSize(size)}
+   380→                        className={`min-w-[44px] h-11 px-3 text-[13px] border transition-all flex items-center justify-center ${
+   381→                          selectedSize === size
+   382→                            ? "bg-[#111] text-[#F8F8F6] border-[#111]"
+   383→                            : "border-[#E8E8E8] text-[#333] hover:border-[#999]"
+   384→                        }`}
+   385→                      >
+   386→                        {size}
+   387→                      </button>
+   388→                    ))}
+   389→                  </div>
+   390→                </div>
+   391→              )}
+   392→
+   393→              {/* Quantity */}
+   394→              <div>
+   395→                <p className="text-[12px] font-medium tracking-wider uppercase text-[#111] mb-3">Quantity</p>
+   396→                <div className="inline-flex items-center border border-[#E8E8E8]">
+   397→                  <button
+   398→                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+   399→                    className="w-11 h-11 flex items-center justify-center hover:bg-[#F0EFED] transition-colors"
+   400→                  >
+   401→                    <Minus className="w-3.5 h-3.5" strokeWidth={1.5} />
+   402→                  </button>
+   403→                  <span className="w-12 text-center text-[14px] font-medium">{quantity}</span>
+   404→                  <button
+   405→                    onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
+   406→                    className="w-11 h-11 flex items-center justify-center hover:bg-[#F0EFED] transition-colors"
+   407→                  >
+   408→                    <Plus className="w-3.5 h-3.5" strokeWidth={1.5} />
+   409→                  </button>
+   410→                </div>
+   411→                {product.stock <= 5 && product.stock > 0 && (
+   412→                  <p className="text-[12px] text-[#C53030] mt-2">Only {product.stock} left in stock</p>
+   413→                )}
+   414→              </div>
+   415→
+   416→              {/* Action Buttons */}
+   417→              <div className="space-y-3 pt-2">
+   418→                <button
+   419→                  onClick={handleAddToCart}
+   420→                  className="w-full py-4 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#333] transition-colors flex items-center justify-center gap-2"
+   421→                >
+   422→                  <ShoppingBag className="w-4 h-4" />
+   423→                  Add to Bag
+   424→                </button>
+   425→                <div className="flex gap-3">
+   426→                  <button
+   427→                    onClick={handleBuyNow}
+   428→                    className="flex-1 py-3.5 border border-[#111] text-[#111] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#111] hover:text-[#F8F8F6] transition-all"
+   429→                  >
+   430→                    Buy Now
+   431→                  </button>
+   432→                  <button
+   433→                    onClick={() => toggleWishlist(product.id)}
+   434→                    className={`w-12 h-12 border flex items-center justify-center transition-all ${
+   435→                      inWishlist ? "border-[#111] bg-[#111]" : "border-[#E8E8E8] hover:border-[#999]"
+   436→                    }`}
+   437→                  >
+   438→                    <Heart
+   439→                      className={`w-4 h-4 ${inWishlist ? "text-[#F8F8F6]" : "text-[#111]"}`}
+   440→                      fill={inWishlist ? "currentColor" : "none"}
+   441→                      strokeWidth={1.5}
+   442→                    />
+   443→                  </button>
+   444→                </div>
+   445→              </div>
+   446→
+   447→              {/* Delivery Info */}
+   448→              <div className="border-t border-b border-[#E8E8E8] py-4 space-y-3">
+   449→                <div className="flex items-center gap-3">
+   450→                  <Truck className="w-4 h-4 text-[#4D5B47] flex-shrink-0" strokeWidth={1.5} />
+   451→                  <div>
+   452→                    <p className="text-[13px] text-[#111]">Free delivery by <span className="font-medium">{deliveryStr}</span></p>
+   453→                    <p className="text-[11px] text-[#999]">Order within 2 hours for earliest delivery</p>
+   454→                  </div>
+   455→                </div>
+   456→                <div className="flex items-center gap-3">
+   457→                  <RotateCcw className="w-4 h-4 text-[#4D5B47] flex-shrink-0" strokeWidth={1.5} />
+   458→                  <div>
+   459→                    <p className="text-[13px] text-[#111]">Easy 30-day returns</p>
+   460→                    <p className="text-[11px] text-[#999]">No questions asked return policy</p>
+   461→                  </div>
+   462→                </div>
+   463→                <div className="flex items-center gap-3">
+   464→                  <Shield className="w-4 h-4 text-[#4D5B47] flex-shrink-0" strokeWidth={1.5} />
+   465→                  <div>
+   466→                    <p className="text-[13px] text-[#111]">100% authentic products</p>
+   467→                    <p className="text-[11px] text-[#999]">Sourced directly from brands</p>
+   468→                  </div>
+   469→                </div>
+   470→              </div>
+   471→
+   472→              {/* Product Details Accordion */}
+   473→              <div>
+   474→                <CollapsibleSection title="Description &amp; Fit" defaultOpen>
+   475→                  <p className="text-[14px] text-[#666] leading-relaxed">{product.description}</p>
+   476→                </CollapsibleSection>
+   477→                <CollapsibleSection title="Material &amp; Care">
+   478→                  {product.material && (
+   479→                    <p className="text-[13px] text-[#666] mb-2"><span className="text-[#111] font-medium">Material:</span> {product.material}</p>
+   480→                  )}
+   481→                  {product.care && (
+   482→                    <p className="text-[13px] text-[#666]"><span className="text-[#111] font-medium">Care:</span> {product.care}</p>
+   483→                  )}
+   484→                </CollapsibleSection>
+   485→                <CollapsibleSection title="Shipping &amp; Returns">
+   486→                  <div className="space-y-2 text-[13px] text-[#666]">
+   487→                    <p>Free shipping on orders over {"\u20B9"}2,000</p>
+   488→                    <p>Standard delivery: 3-5 business days</p>
+   489→                    <p>Express delivery: 1-2 business days ({"\u20B9"}299)</p>
+   490→                    <p>30-day hassle-free returns</p>
+   491→                    <p>Free returns on orders over {"\u20B9"}5,000</p>
+   492→                  </div>
+   493→                </CollapsibleSection>
+   494→              </div>
+   495→            </div>
+   496→          </ScrollReveal>
+   497→        </div>
+   498→
+   499→        {/* Reviews Section */}
+   500→        {product.reviews && product.reviews.length > 0 && (
+   501→          <section className="mt-16 lg:mt-24">
+   502→            <ScrollReveal>
+   503→              <div className="flex items-center justify-between mb-8">
+   504→                <div>
+   505→                  <h2 className="text-[24px] sm:text-[28px] font-medium tracking-[-0.02em]">Reviews</h2>
+   506→                  <p className="text-[13px] text-[#999] mt-1">{product.reviewCount} reviews</p>
+   507→                </div>
+   508→                <div className="flex items-center gap-2">
+   509→                  <span className="text-[32px] font-medium">{product.rating}</span>
+   510→                  <div>
+   511→                    <div className="flex items-center gap-0.5">
+   512→                      {Array.from({ length: 5 }).map((_, i) => (
+   513→                        <Star
+   514→                          key={i}
+   515→                          className={`w-3.5 h-3.5 ${i < Math.round(product.rating) ? "fill-[#111] text-[#111]" : "text-[#D1D1D1]"}`}
+   516→                        />
+   517→                      ))}
+   518→                    </div>
+   519→                    <p className="text-[11px] text-[#999] mt-0.5">Average rating</p>
+   520→                  </div>
+   521→                </div>
+   522→              </div>
+   523→            </ScrollReveal>
+   524→
+   525→            <div className="space-y-4">
+   526→              {product.reviews.map((review, i) => (
+   527→                <ScrollReveal key={review.id} delay={i * 0.05}>
+   528→                  <div className="p-6 border border-[#E8E8E8] bg-white">
+   529→                    <div className="flex items-center justify-between mb-3">
+   530→                      <div className="flex items-center gap-3">
+   531→                        <div className="w-8 h-8 bg-[#F0EFED] rounded-full flex items-center justify-center text-[12px] font-medium text-[#666]">
+   532→                          {review.userName.charAt(0)}
+   533→                        </div>
+   534→                        <div>
+   535→                          <p className="text-[13px] font-medium text-[#111]">{review.userName}</p>
+   536→                          <p className="text-[11px] text-[#999]">
+   537→                            {new Date(review.createdAt).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}
+   538→                          </p>
+   539→                        </div>
+   540→                      </div>
+   541→                      <div className="flex items-center gap-0.5">
+   542→                        {Array.from({ length: 5 }).map((_, si) => (
+   543→                          <Star key={si} className={`w-3 h-3 ${si < review.rating ? "fill-[#111] text-[#111]" : "text-[#D1D1D1]"}`} />
+   544→                        ))}
+   545→                      </div>
+   546→                    </div>
+   547→                    {review.title && <p className="text-[14px] font-medium text-[#111] mb-1">{review.title}</p>}
+   548→                    {review.comment && <p className="text-[13px] text-[#666] leading-relaxed">{review.comment}</p>}
+   549→                  </div>
+   550→                </ScrollReveal>
+   551→              ))}
+   552→            </div>
+   553→          </section>
+   554→        )}
+   555→
+   556→        {/* Similar Products */}
+   557→        {similar.length > 0 && (
+   558→          <section className="mt-16 lg:mt-24">
+   559→            <ScrollReveal>
+   560→              <h2 className="text-[24px] sm:text-[28px] font-medium tracking-[-0.02em] mb-8">You May Also Like</h2>
+   561→            </ScrollReveal>
+   562→            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
+   563→              {similar.slice(0, 4).map((p, i) => (
+   564→                <ProductCard
+   565→                  key={p.id}
+   566→                  id={p.id}
+   567→                  name={p.name}
+   568→                  price={p.price}
+   569→                  mrp={p.mrp}
+   570→                  image={p.image}
+   571→                  images={p.images ? JSON.parse(p.images) : undefined}
+   572→                  category={p.category}
+   573→                  brand={p.brand}
+   574→                  rating={p.rating}
+   575→                  reviewCount={p.reviewCount}
+   576→                  discount={p.discount}
+   577→                  isNew={p.isNew}
+   578→                  isTrending={p.isTrending}
+   579→                  isBestSeller={p.isBestSeller}
+   580→                  index={i}
+   581→                />
+   582→              ))}
+   583→            </div>
+   584→          </section>
+   585→        )}
+   586→      </div>
+   587→
+   588→      {/* Image Lightbox */}
+   589→      <AnimatePresence>
+   590→        {lightboxOpen && (
+   591→          <motion.div
+   592→            initial={{ opacity: 0 }}
+   593→            animate={{ opacity: 1 }}
+   594→            exit={{ opacity: 0 }}
+   595→            transition={{ duration: 0.2 }}
+   596→            className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center"
+   597→            onClick={() => setLightboxOpen(false)}
+   598→          >
+   599→            {/* Close button */}
+   600→            <button
+   601→              onClick={() => setLightboxOpen(false)}
+   602→              className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors rounded"
+   603→              aria-label="Close lightbox"
+   604→            >
+   605→              <X className="w-5 h-5" />
+   606→            </button>
+   607→
+   608→            {/* Counter */}
+   609→            <div className="absolute top-4 left-4 text-white/60 text-[12px] tracking-wider">
+   610→              {lightboxIndex + 1} / {images.length}
+   611→            </div>
+   612→
+   613→            {/* Left arrow */}
+   614→            {lightboxIndex > 0 && (
+   615→              <button
+   616→                onClick={(e) => { e.stopPropagation(); setLightboxIndex(lightboxIndex - 1); }}
+   617→                className="absolute left-4 w-10 h-10 bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors rounded"
+   618→                aria-label="Previous image"
+   619→              >
+   620→                <ChevronLeft className="w-5 h-5" />
+   621→              </button>
+   622→            )}
+   623→
+   624→            {/* Right arrow */}
+   625→            {lightboxIndex < images.length - 1 && (
+   626→              <button
+   627→                onClick={(e) => { e.stopPropagation(); setLightboxIndex(lightboxIndex + 1); }}
+   628→                className="absolute right-4 w-10 h-10 bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors rounded"
+   629→                aria-label="Next image"
+   630→              >
+   631→                <ChevronRight className="w-5 h-5" />
+   632→              </button>
+   633→            )}
+   634→
+   635→            {/* Image */}
+   636→            <motion.img
+   637→              key={lightboxIndex}
+   638→              src={images[lightboxIndex]}
+   639→              alt={`${product.name} - Image ${lightboxIndex + 1}`}
+   640→              initial={{ opacity: 0, scale: 0.95 }}
+   641→              animate={{ opacity: 1, scale: 1 }}
+   642→              exit={{ opacity: 0, scale: 0.95 }}
+   643→              transition={{ duration: 0.25 }}
+   644→              className="max-h-[85vh] max-w-[85vw] object-contain"
+   645→              onClick={(e) => e.stopPropagation()}
+   646→            />
+   647→          </motion.div>
+   648→        )}
+   649→      </AnimatePresence>
+   650→    </main>
+   651→  );
+   652→}

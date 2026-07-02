@@ -7,7 +7,6 @@ import {
   ChevronRight, CreditCard, Wallet, Building2, Smartphone, Truck,
   CheckCircle, ArrowLeft, Shield, Lock
 } from "lucide-react";
-import Image from "next/image";
 
 const steps = ["Shipping", "Payment", "Review"];
 
@@ -118,36 +117,150 @@ export default function CheckoutPage() {
   }
 
   if (orderSuccess) {
-    const deliveryDate = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+    const deliveryMin = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+    const deliveryMax = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const confettiParticles = Array.from({ length: 14 }, (_, i) => {
+      const angle = (i / 14) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+      const distance = 120 + Math.random() * 140;
+      const size = 6 + Math.random() * 8;
+      const colors = ["#4D5B47", "#B79B7B", "#111", "#E8E8E8", "#6B8F5E", "#D4A853"];
+      return {
+        id: i,
+        x: Math.cos(angle) * distance,
+        y: Math.sin(angle) * distance - 40,
+        size,
+        color: colors[i % colors.length],
+        delay: 0.3 + Math.random() * 0.3,
+      };
+    });
+
+    const fmtDate = (d: Date) =>
+      d.toLocaleDateString("en-IN", { weekday: "short", month: "short", day: "numeric" });
+
     return (
-      <main className="min-h-screen bg-[#F8F8F6] pt-20 flex items-center justify-center">
+      <main className="min-h-screen bg-[#F8F8F6] pt-20 flex items-center justify-center relative overflow-hidden">
+        {/* Confetti particles */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          {confettiParticles.map((p) => (
+            <motion.div
+              key={p.id}
+              initial={{ opacity: 0, x: 0, y: 0, scale: 0 }}
+              animate={{ opacity: [0, 1, 1, 0], x: p.x, y: p.y, scale: [0, 1, 1, 0] }}
+              transition={{ duration: 1.6, delay: p.delay, ease: "easeOut" }}
+              className="absolute rounded-full"
+              style={{ width: p.size, height: p.size, backgroundColor: p.color }}
+            />
+          ))}
+        </div>
+
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="text-center max-w-md mx-auto px-4"
+          className="text-center max-w-md mx-auto px-4 relative z-10"
         >
+          {/* Large animated checkmark circle */}
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: "spring", damping: 15 }}
-            className="w-16 h-16 bg-[#4D5B47] rounded-full flex items-center justify-center mx-auto mb-6"
+            transition={{ delay: 0.15, type: "spring", damping: 12, stiffness: 180 }}
+            className="w-24 h-24 bg-[#4D5B47] rounded-full flex items-center justify-center mx-auto mb-8"
           >
-            <CheckCircle className="w-8 h-8 text-white" />
+            <motion.svg
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: 1 }}
+              transition={{ delay: 0.45, duration: 0.5, ease: "easeOut" }}
+              width="44"
+              height="44"
+              viewBox="0 0 44 44"
+              fill="none"
+              stroke="white"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <motion.path
+                d="M10 22 L19 31 L34 13"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ delay: 0.45, duration: 0.5, ease: "easeOut" }}
+              />
+            </motion.svg>
           </motion.div>
-          <h1 className="text-[24px] sm:text-[28px] font-medium tracking-[-0.02em] mb-2">Order Placed!</h1>
-          <p className="text-[14px] text-[#666] mb-1">Thank you for your purchase</p>
-          <p className="text-[13px] text-[#999] mb-6">
-            Order #{orderNumber} &middot; Est. delivery by{" "}
-            {deliveryDate.toLocaleDateString("en-IN", { weekday: "short", month: "short", day: "numeric" })}
+
+          <h1 className="text-[26px] sm:text-[30px] font-medium tracking-[-0.02em] mb-2">
+            Thank you for your order
+          </h1>
+          <p className="text-[14px] text-[#666] mb-8">
+            Your order has been placed successfully and is being processed.
           </p>
-          <p className="text-[32px] font-medium mb-8">{"\u20B9"}{finalTotal.toLocaleString("en-IN")}</p>
-          <button
-            onClick={() => navigate("home")}
-            className="px-8 py-3.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#333] transition-colors"
+
+          {/* Order number card */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6, duration: 0.4 }}
+            className="bg-white border border-[#E8E8E8] rounded-[4px] p-5 mb-4 text-left"
           >
-            Continue Shopping
-          </button>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[11px] font-medium tracking-wider uppercase text-[#999]">
+                Order Number
+              </span>
+              <span className="text-[12px] font-medium text-[#4D5B47]">Confirmed</span>
+            </div>
+            <p className="text-[18px] font-medium tracking-[-0.01em]">#{orderNumber}</p>
+            <div className="mt-3 pt-3 border-t border-[#E8E8E8]">
+              <div className="flex items-center justify-between">
+                <span className="text-[12px] text-[#999]">Estimated Delivery</span>
+                <span className="text-[13px] font-medium">
+                  {fmtDate(deliveryMin)} – {fmtDate(deliveryMax)}
+                </span>
+              </div>
+            </div>
+            <div className="mt-2 pt-2 border-t border-[#E8E8E8]">
+              <div className="flex items-center justify-between">
+                <span className="text-[12px] text-[#999]">Order Total</span>
+                <span className="text-[16px] font-medium">
+                  {"\u20B9"}{finalTotal.toLocaleString("en-IN")}
+                </span>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Delivery info */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.8, duration: 0.4 }}
+            className="flex items-center justify-center gap-2 mb-8"
+          >
+            <Truck className="w-4 h-4 text-[#4D5B47]" strokeWidth={1.5} />
+            <span className="text-[12px] text-[#999]">
+              A confirmation email has been sent to your email address
+            </span>
+          </motion.div>
+
+          {/* Action buttons */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.9, duration: 0.4 }}
+            className="flex flex-col sm:flex-row gap-3"
+          >
+            <button
+              onClick={() => navigate("home")}
+              className="flex-1 py-3.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#333] transition-colors"
+            >
+              Continue Shopping
+            </button>
+            <button
+              onClick={() => navigate("order-tracking")}
+              className="flex-1 py-3.5 border border-[#E8E8E8] text-[#111] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#F0EFED] transition-colors flex items-center justify-center gap-2"
+            >
+              <Truck className="w-4 h-4" strokeWidth={1.5} />
+              Track Order
+            </button>
+          </motion.div>
         </motion.div>
       </main>
     );
@@ -303,7 +416,7 @@ export default function CheckoutPage() {
                     {cartItems.map((item) => (
                       <div key={item.id} className="flex items-center gap-3 p-4 border-b border-[#F0EFED] last:border-0">
                         <div className="w-12 h-16 bg-[#F0EFED] relative overflow-hidden flex-shrink-0">
-                          <Image src={item.image} alt={item.name} fill className="object-cover" sizes="48px" />
+                          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-[13px] text-[#111] line-clamp-1">{item.name}</p>
