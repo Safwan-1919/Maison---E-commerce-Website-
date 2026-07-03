@@ -1,0 +1,1389 @@
+     1→"use client";
+     2→
+     3→import { useState, useEffect } from "react";
+     4→import { motion, AnimatePresence } from "framer-motion";
+     5→import {
+     6→  User,
+     7→  Package,
+     8→  MapPin,
+     9→  Settings,
+    10→  ChevronDown,
+    11→  ChevronUp,
+    12→  Check,
+    13→  Trash2,
+    14→  Pencil,
+    15→  Plus,
+    16→  LogOut,
+    17→  Bell,
+    18→  Mail,
+    19→  Moon,
+    20→  Sun,
+    21→  AlertTriangle,
+    22→  Gift,
+    23→  Crown,
+    24→  Star,
+    25→  Clock,
+    26→  RefreshCw,
+    27→  Shield,
+    28→  Smartphone,
+    29→  Camera,
+    30→  TrendingDown,
+    31→  Sparkles,
+    32→  RotateCcw,
+    33→  Truck,
+    34→
+    35→  ShoppingBag,
+    36→} from "lucide-react";
+    37→import { useStore } from "@/lib/store";
+    38→import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    39→import { Input } from "@/components/ui/input";
+    40→import { Label } from "@/components/ui/label";
+    41→import { Button } from "@/components/ui/button";
+    42→import { Badge } from "@/components/ui/badge";
+    43→import { Switch } from "@/components/ui/switch";
+    44→import { Separator } from "@/components/ui/separator";
+    45→import { Skeleton } from "@/components/ui/skeleton";
+    46→import {
+    47→  AlertDialog,
+    48→  AlertDialogAction,
+    49→  AlertDialogCancel,
+    50→  AlertDialogContent,
+    51→  AlertDialogDescription,
+    52→  AlertDialogFooter,
+    53→  AlertDialogHeader,
+    54→  AlertDialogTitle,
+    55→  AlertDialogTrigger,
+    56→} from "@/components/ui/alert-dialog";
+    57→import {
+    58→  Dialog,
+    59→  DialogContent,
+    60→  DialogHeader,
+    61→  DialogTitle,
+    62→  DialogTrigger,
+    63→} from "@/components/ui/dialog";
+    64→import { Textarea } from "@/components/ui/textarea";
+    65→
+    66→// ── Types ───────────────────────────────────────────────────────────────────
+    67→interface OrderItem {
+    68→  id: string;
+    69→  name: string;
+    70→  price: number;
+    71→  quantity: number;
+    72→  size?: string;
+    73→  color?: string;
+    74→  image?: string;
+    75→}
+    76→
+    77→interface Order {
+    78→  id: string;
+    79→  orderNumber: string;
+    80→  items: OrderItem[];
+    81→  status: string;
+    82→  total: number;
+    83→  subtotal: number;
+    84→  discount: number;
+    85→  shipping: number;
+    86→  shippingAddress: string;
+    87→  paymentMethod: string;
+    88→  paymentStatus: string;
+    89→  createdAt: string;
+    90→  updatedAt: string;
+    91→}
+    92→
+    93→interface Address {
+    94→  id: string;
+    95→  name: string;
+    96→  street: string;
+    97→  city: string;
+    98→  state: string;
+    99→  zip: string;
+   100→  phone: string;
+   101→  isDefault: boolean;
+   102→}
+   103→
+   104→// ── Constants ───────────────────────────────────────────────────────────────
+   105→const STATUS_COLORS: Record<string, string> = {
+   106→  confirmed: "bg-[#4D5B47] text-white",
+   107→  shipped: "bg-[#B79B7B] text-white",
+   108→  delivered: "bg-[#111111] text-white",
+   109→  cancelled: "bg-[#C53030] text-white",
+   110→  pending: "bg-[#F0EFED] text-[#666666]",
+   111→  processing: "bg-[#F0EFED] text-[#666666]",
+   112→};
+   113→
+   114→const MOCK_ORDERS: Order[] = [
+   115→  {
+   116→    id: "1",
+   117→    orderNumber: "MSN-K4X9P2",
+   118→    status: "delivered",
+   119→    total: 12490,
+   120→    subtotal: 12990,
+   121→    discount: 500,
+   122→    shipping: 0,
+   123→    shippingAddress: JSON.stringify({
+   124→      name: "Arjun Mehta",
+   125→      street: "42, Altamount Road",
+   126→      city: "Mumbai",
+   127→      state: "Maharashtra",
+   128→      zip: "400026",
+   129→    }),
+   130→    paymentMethod: "card",
+   131→    paymentStatus: "completed",
+   132→    createdAt: "2025-01-15T10:30:00Z",
+   133→    updatedAt: "2025-01-20T14:00:00Z",
+   134→    items: [
+   135→      { id: "i1", name: "Italian Wool Overcoat", price: 8990, quantity: 1, size: "M", color: "Charcoal", image: "" },
+   136→      { id: "i2", name: "Merino Crew Neck Tee", price: 2000, quantity: 2, size: "L", color: "Ivory", image: "" },
+   137→    ],
+   138→  },
+   139→  {
+   140→    id: "2",
+   141→    orderNumber: "MSN-R7W3N1",
+   142→    status: "shipped",
+   143→    total: 6490,
+   144→    subtotal: 6490,
+   145→    discount: 0,
+   146→    shipping: 0,
+   147→    shippingAddress: JSON.stringify({
+   148→      name: "Arjun Mehta",
+   149→      street: "42, Altamount Road",
+   150→      city: "Mumbai",
+   151→      state: "Maharashtra",
+   152→      zip: "400026",
+   153→    }),
+   154→    paymentMethod: "upi",
+   155→    paymentStatus: "completed",
+   156→    createdAt: "2025-02-08T15:45:00Z",
+   157→    updatedAt: "2025-02-10T09:20:00Z",
+   158→    items: [
+   159→      { id: "i3", name: "Linen Relaxed Trousers", price: 4490, quantity: 1, size: "32", color: "Sand", image: "" },
+   160→      { id: "i4", name: "Leather Minimal Belt", price: 2000, quantity: 1, size: "M", color: "Black", image: "" },
+   161→    ],
+   162→  },
+   163→  {
+   164→    id: "3",
+   165→    orderNumber: "MSN-P2Q8T5",
+   166→    status: "confirmed",
+   167→    total: 3490,
+   168→    subtotal: 3490,
+   169→    discount: 0,
+   170→    shipping: 0,
+   171→    shippingAddress: JSON.stringify({
+   172→      name: "Arjun Mehta",
+   173→      street: "7, Juhu Tara Road",
+   174→      city: "Mumbai",
+   175→      state: "Maharashtra",
+   176→      zip: "400049",
+   177→    }),
+   178→    paymentMethod: "card",
+   179→    paymentStatus: "completed",
+   180→    createdAt: "2025-02-12T11:00:00Z",
+   181→    updatedAt: "2025-02-12T11:05:00Z",
+   182→    items: [
+   183→      { id: "i5", name: "Cashmere V-Neck Sweater", price: 3490, quantity: 1, size: "S", color: "Olive", image: "" },
+   184→    ],
+   185→  },
+   186→  {
+   187→    id: "4",
+   188→    orderNumber: "MSN-L5M1X8",
+   189→    status: "cancelled",
+   190→    total: 5490,
+   191→    subtotal: 5490,
+   192→    discount: 0,
+   193→    shipping: 0,
+   194→    shippingAddress: JSON.stringify({
+   195→      name: "Arjun Mehta",
+   196→      street: "42, Altamount Road",
+   197→      city: "Mumbai",
+   198→      state: "Maharashtra",
+   199→      zip: "400026",
+   200→    }),
+   201→    paymentMethod: "card",
+   202→    paymentStatus: "refunded",
+   203→    createdAt: "2024-12-28T09:15:00Z",
+   204→    updatedAt: "2024-12-30T16:30:00Z",
+   205→    items: [
+   206→      { id: "i6", name: "Structured Blazer", price: 5490, quantity: 1, size: "L", color: "Navy", image: "" },
+   207→    ],
+   208→  },
+   209→  {
+   210→    id: "5",
+   211→    orderNumber: "MSN-T9Y2J6",
+   212→    status: "processing",
+   213→    total: 8970,
+   214→    subtotal: 8970,
+   215→    discount: 0,
+   216→    shipping: 0,
+   217→    shippingAddress: JSON.stringify({
+   218→      name: "Arjun Mehta",
+   219→      street: "42, Altamount Road",
+   220→      city: "Mumbai",
+   221→      state: "Maharashtra",
+   222→      zip: "400026",
+   223→    }),
+   224→    paymentMethod: "card",
+   225→    paymentStatus: "completed",
+   226→    createdAt: "2025-02-14T08:30:00Z",
+   227→    updatedAt: "2025-02-14T09:00:00Z",
+   228→    items: [
+   229→      { id: "i7", name: "Tailored Wool Blazer", price: 6990, quantity: 1, size: "M", color: "Charcoal", image: "" },
+   230→      { id: "i8", name: "Oxford Button-Down Shirt", price: 1990, quantity: 1, size: "M", color: "White", image: "" },
+   231→    ],
+   232→  },
+   233→];
+   234→
+   235→const INITIAL_ADDRESSES: Address[] = [
+   236→  {
+   237→    id: "a1",
+   238→    name: "Arjun Mehta",
+   239→    street: "42, Altamount Road",
+   240→    city: "Mumbai",
+   241→    state: "Maharashtra",
+   242→    zip: "400026",
+   243→    phone: "+91 98765 43210",
+   244→    isDefault: true,
+   245→  },
+   246→  {
+   247→    id: "a2",
+   248→    name: "Arjun Mehta",
+   249→    street: "7, Juhu Tara Road, Juhu",
+   250→    city: "Mumbai",
+   251→    state: "Maharashtra",
+   252→    zip: "400049",
+   253→    phone: "+91 98765 43210",
+   254→    isDefault: false,
+   255→  },
+   256→  {
+   257→    id: "a3",
+   258→    name: "Office - Arjun Mehta",
+   259→    street: "14th Floor, BKC Tower",
+   260→    city: "Mumbai",
+   261→    state: "Maharashtra",
+   262→    zip: "400051",
+   263→    phone: "+91 87654 32109",
+   264→    isDefault: false,
+   265→  },
+   266→];
+   267→
+   268→const RECENT_ACTIVITY = [
+   269→  { id: "a1", type: "order", label: "Order MSN-T9Y2J6 placed", detail: "2 items · ₹8,970", time: "2 hours ago", icon: ShoppingBag },
+   270→  { id: "a2", type: "review", label: "Wrote a review for Italian Wool Overcoat", detail: "★★★★★ · Great quality!", time: "3 days ago", icon: Star },
+   271→  { id: "a3", type: "reward", label: "Earned 150 loyalty points", detail: "From order MSN-R7W3N1", time: "6 days ago", icon: Gift },
+   272→  { id: "a4", type: "order", label: "Order MSN-P2Q8T5 delivered", detail: "Cashmere V-Neck Sweater", time: "1 week ago", icon: Package },
+   273→  { id: "a5", type: "wishlist", label: "Added Structured Blazer to wishlist", detail: "Navy · Size L", time: "2 weeks ago", icon: Sparkles },
+   274→];
+   275→
+   276→const TIER_CONFIG = {
+   277→  Silver: { min: 0, max: 3000, color: "#999999", nextTier: "Gold", nextMin: 3000, icon: Shield },
+   278→  Gold: { min: 3000, max: 10000, color: "#B79B7B", nextTier: "Platinum", nextMin: 10000, icon: Crown },
+   279→  Platinum: { min: 10000, max: 100000, color: "#4D5B47", nextTier: null, nextMin: null, icon: Crown },
+   280→};
+   281→
+   282→const DELIVERY_ESTIMATES: Record<string, string> = {
+   283→  "400026": "Usually delivers in 2-3 business days",
+   284→  "400049": "Usually delivers in 3-5 business days",
+   285→  "400051": "Usually delivers in 2-4 business days",
+   286→};
+   287→
+   288→const getDeliveryEstimate = (zip: string) =>
+   289→  DELIVERY_ESTIMATES[zip] || "Usually delivers in 3-5 business days";
+   290→
+   291→const getEstimatedDelivery = (order: Order) => {
+   292→  if (order.status === "delivered" || order.status === "cancelled") return null;
+   293→  const created = new Date(order.createdAt);
+   294→  const estimated = new Date(created);
+   295→  estimated.setDate(estimated.getDate() + (order.status === "confirmed" ? 7 : order.status === "processing" ? 5 : 3));
+   296→  return estimated.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+   297→};
+   298→
+   299→const formatCurrency = (amount: number) =>
+   300→  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);
+   301→
+   302→const formatDate = (dateStr: string) =>
+   303→  new Date(dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+   304→
+   305→const fadeUp = {
+   306→  initial: { opacity: 0, y: 12 },
+   307→  animate: { opacity: 1, y: 0 },
+   308→  exit: { opacity: 0, y: -8 },
+   309→  transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] as const },
+   310→};
+   311→
+   312→
+   313→// ── Loyalty Points Section ──────────────────────────────────────────────────
+   314→function LoyaltySection() {
+   315→  const points = 2450;
+   316→  const currentTier = "Silver" as keyof typeof TIER_CONFIG;
+   317→  const config = TIER_CONFIG[currentTier];
+   318→  const progressPercent = Math.min(((points - config.min) / (config.max - config.min)) * 100, 100);
+   319→  const TierIcon = config.icon;
+   320→
+   321→  return (
+   322→    <motion.div
+   323→      initial={{ opacity: 0, y: 12 }}
+   324→      animate={{ opacity: 1, y: 0 }}
+   325→      transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
+   326→      className="bg-white rounded-[4px] border border-[#E8E8E8] p-5"
+   327→    >
+   328→      <div className="flex items-start justify-between mb-4">
+   329→        <div className="flex items-center gap-3">
+   330→          <div
+   331→            className="w-10 h-10 rounded-[4px] flex items-center justify-center"
+   332→            style={{ backgroundColor: config.color + "15" }}
+   333→          >
+   334→            <TierIcon className="w-5 h-5" style={{ color: config.color }} strokeWidth={1.5} />
+   335→          </div>
+   336→          <div>
+   337→            <p className="text-xs uppercase tracking-wider text-[#999] font-medium">Loyalty Points</p>
+   338→            <p className="text-2xl font-medium text-[#111] mt-0.5">
+   339→              {points.toLocaleString("en-IN")}
+   340→            </p>
+   341→          </div>
+   342→        </div>
+   343→        <Badge
+   344→          className="rounded-[4px] text-[10px] uppercase tracking-wider font-semibold px-2.5 py-1 border-0"
+   345→          style={{ backgroundColor: config.color + "15", color: config.color }}
+   346→        >
+   347→          <Crown className="w-3 h-3 mr-1" />
+   348→          {currentTier}
+   349→        </Badge>
+   350→      </div>
+   351→
+   352→      <div className="space-y-2">
+   353→        <div className="flex items-center justify-between text-xs">
+   354→          <span className="text-[#666]">Progress to {config.nextTier}</span>
+   355→          <span className="text-[#999] font-medium">
+   356→            {points.toLocaleString()} / {config.nextMin?.toLocaleString()} pts
+   357→          </span>
+   358→        </div>
+   359→        <div className="relative h-1.5 bg-[#F0EFED] rounded-full overflow-hidden">
+   360→          <motion.div
+   361→            className="absolute inset-y-0 left-0 rounded-full"
+   362→            style={{ backgroundColor: config.color }}
+   363→            initial={{ width: 0 }}
+   364→            animate={{ width: `${progressPercent}%` }}
+   365→            transition={{ duration: 1, delay: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+   366→          />
+   367→        </div>
+   368→        <p className="text-[11px] text-[#999]">
+   369→          Earn {((config.nextMin || 100000) - points).toLocaleString()} more points to unlock{" "}
+   370→          <span className="font-medium" style={{ color: config.color }}>{config.nextTier}</span> benefits
+   371→        </p>
+   372→      </div>
+   373→
+   374→      <div className="mt-4 pt-4 border-t border-[#E8E8E8] flex items-center gap-4">
+   375→        <div className="flex items-center gap-2">
+   376→          <Gift className="w-3.5 h-3.5 text-[#B79B7B]" strokeWidth={1.5} />
+   377→          <span className="text-xs text-[#666]">Earn 2x points on weekends</span>
+   378→        </div>
+   379→        <div className="w-px h-3 bg-[#E8E8E8]" />
+   380→        <div className="flex items-center gap-2">
+   381→          <Star className="w-3.5 h-3.5 text-[#B79B7B]" strokeWidth={1.5} />
+   382→          <span className="text-xs text-[#666]">Birthday bonus: +500 pts</span>
+   383→        </div>
+   384→      </div>
+   385→    </motion.div>
+   386→  );
+   387→}
+   388→
+   389→// ── Recent Activity Timeline ────────────────────────────────────────────────
+   390→function RecentActivityTimeline() {
+   391→  return (
+   392→    <motion.div
+   393→      initial={{ opacity: 0, y: 12 }}
+   394→      animate={{ opacity: 1, y: 0 }}
+   395→      transition={{ duration: 0.35, delay: 0.1, ease: [0.25, 0.1, 0.25, 1] }}
+   396→      className="bg-white rounded-[4px] border border-[#E8E8E8] p-5"
+   397→    >
+   398→      <h3 className="text-sm font-medium text-[#111] mb-4">Recent Activity</h3>
+   399→      <div className="space-y-0">
+   400→        {RECENT_ACTIVITY.map((activity, idx) => {
+   401→          const Icon = activity.icon;
+   402→          return (
+   403→            <motion.div
+   404→              key={activity.id}
+   405→              initial={{ opacity: 0, x: -8 }}
+   406→              animate={{ opacity: 1, x: 0 }}
+   407→              transition={{ delay: 0.15 + idx * 0.06, duration: 0.25 }}
+   408→              className="relative flex gap-3 pb-4 last:pb-0"
+   409→            >
+   410→              {/* Timeline line */}
+   411→              {idx < RECENT_ACTIVITY.length - 1 && (
+   412→                <div className="absolute left-[11px] top-[26px] bottom-0 w-px bg-[#E8E8E8]" />
+   413→              )}
+   414→              {/* Icon dot */}
+   415→              <div className="relative z-10 w-[22px] h-[22px] rounded-full bg-[#F0EFED] flex items-center justify-center shrink-0 mt-0.5">
+   416→                <Icon className="w-3 h-3 text-[#666]" strokeWidth={1.5} />
+   417→              </div>
+   418→              {/* Content */}
+   419→              <div className="flex-1 min-w-0">
+   420→                <p className="text-sm text-[#111] leading-snug">{activity.label}</p>
+   421→                <div className="flex items-center gap-2 mt-0.5">
+   422→                  <span className="text-xs text-[#999]">{activity.detail}</span>
+   423→                </div>
+   424→                <span className="text-[11px] text-[#ccc] mt-0.5 block">{activity.time}</span>
+   425→              </div>
+   426→            </motion.div>
+   427→          );
+   428→        })}
+   429→      </div>
+   430→    </motion.div>
+   431→  );
+   432→}
+   433→
+   434→// ── Profile Tab ─────────────────────────────────────────────────────────────
+   435→function ProfileTab() {
+   436→  const [name, setName] = useState("Arjun Mehta");
+   437→  const [email, setEmail] = useState("arjun.mehta@email.com");
+   438→  const [phone, setPhone] = useState("+91 98765 43210");
+   439→  const [saving, setSaving] = useState(false);
+   440→  const [avatarHover, setAvatarHover] = useState(false);
+   441→  const { showNotification } = useStore();
+   442→
+   443→  const handleSave = async () => {
+   444→    setSaving(true);
+   445→    await new Promise((r) => setTimeout(r, 800));
+   446→    setSaving(false);
+   447→    showNotification("Profile updated successfully", "success");
+   448→  };
+   449→
+   450→  const initials = name
+   451→    .split(" ")
+   452→    .map((n) => n[0])
+   453→    .join("")
+   454→    .toUpperCase()
+   455→    .slice(0, 2);
+   456→
+   457→  return (
+   458→    <motion.div {...fadeUp} className="space-y-6">
+   459→      {/* Avatar Section - Enhanced */}
+   460→      <motion.div
+   461→        className="flex items-center gap-6"
+   462→        initial={{ opacity: 0, y: 12 }}
+   463→        animate={{ opacity: 1, y: 0 }}
+   464→        transition={{ duration: 0.35 }}
+   465→      >
+   466→        <div
+   467→          className="relative group cursor-pointer"
+   468→          onMouseEnter={() => setAvatarHover(true)}
+   469→          onMouseLeave={() => setAvatarHover(false)}
+   470→        >
+   471→          <div className="w-24 h-24 rounded-[4px] bg-[#4D5B47] flex items-center justify-center text-white text-3xl font-medium select-none shrink-0">
+   472→            {initials}
+   473→          </div>
+   474→          <AnimatePresence>
+   475→            {avatarHover && (
+   476→              <motion.div
+   477→                initial={{ opacity: 0 }}
+   478→                animate={{ opacity: 1 }}
+   479→                exit={{ opacity: 0 }}
+   480→                transition={{ duration: 0.2 }}
+   481→                className="absolute inset-0 bg-[#111]/60 rounded-[4px] flex flex-col items-center justify-center gap-1"
+   482→              >
+   483→                <Camera className="w-5 h-5 text-white" strokeWidth={1.5} />
+   484→                <span className="text-[10px] uppercase tracking-wider text-white/90 font-medium">
+   485→                  Edit Photo
+   486→                </span>
+   487→              </motion.div>
+   488→            )}
+   489→          </AnimatePresence>
+   490→        </div>
+   491→        <div>
+   492→          <h3 className="text-lg font-medium text-[#111]">{name}</h3>
+   493→          <p className="text-sm text-[#666] mt-0.5">Member since January 2024</p>
+   494→          <div className="flex items-center gap-2 mt-2">
+   495→            <Badge className="rounded-[4px] text-[10px] uppercase tracking-wider bg-[#B79B7B]/15 text-[#B79B7B] border-0 px-2 py-0.5">
+   496→              <Crown className="w-2.5 h-2.5 mr-1" />
+   497→              Silver Member
+   498→            </Badge>
+   499→          </div>
+   500→        </div>
+   501→      </motion.div>
+   502→
+   503→      <Separator className="bg-[#E8E8E8]" />
+   504→
+   505→      {/* Loyalty Points Section */}
+   506→      <LoyaltySection />
+   507→
+   508→      {/* Recent Activity Timeline */}
+   509→      <RecentActivityTimeline />
+   510→
+   511→      <Separator className="bg-[#E8E8E8]" />
+   512→
+   513→      {/* Form - Unchanged */}
+   514→      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl">
+   515→        <div className="space-y-2">
+   516→          <Label htmlFor="name" className="text-[13px] uppercase tracking-wider text-[#666]">
+   517→            Full Name
+   518→          </Label>
+   519→          <Input
+   520→            id="name"
+   521→            value={name}
+   522→            onChange={(e) => setName(e.target.value)}
+   523→            className="rounded-[4px] border-[#E8E8E8] h-11"
+   524→          />
+   525→        </div>
+   526→        <div className="space-y-2">
+   527→          <Label htmlFor="email" className="text-[13px] uppercase tracking-wider text-[#666]">
+   528→            Email
+   529→          </Label>
+   530→          <Input
+   531→            id="email"
+   532→            type="email"
+   533→            value={email}
+   534→            onChange={(e) => setEmail(e.target.value)}
+   535→            className="rounded-[4px] border-[#E8E8E8] h-11"
+   536→          />
+   537→        </div>
+   538→        <div className="space-y-2">
+   539→          <Label htmlFor="phone" className="text-[13px] uppercase tracking-wider text-[#666]">
+   540→            Phone
+   541→          </Label>
+   542→          <Input
+   543→            id="phone"
+   544→            value={phone}
+   545→            onChange={(e) => setPhone(e.target.value)}
+   546→            className="rounded-[4px] border-[#E8E8E8] h-11"
+   547→          />
+   548→        </div>
+   549→      </div>
+   550→
+   551→      <Button
+   552→        onClick={handleSave}
+   553→        disabled={saving}
+   554→        className="rounded-[4px] bg-[#111] hover:bg-[#333] text-white h-11 px-8"
+   555→      >
+   556→        {saving ? (
+   557→          <motion.div
+   558→            animate={{ rotate: 360 }}
+   559→            transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+   560→            className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
+   561→          />
+   562→        ) : (
+   563→          "Save Changes"
+   564→        )}
+   565→      </Button>
+   566→    </motion.div>
+   567→  );
+   568→}
+   569→
+   570→// ── Orders Tab ──────────────────────────────────────────────────────────────
+   571→function OrdersTab() {
+   572→  const [orders, setOrders] = useState<Order[]>([]);
+   573→  const [loading, setLoading] = useState(true);
+   574→  const [expandedId, setExpandedId] = useState<string | null>(null);
+   575→  const [activeFilter, setActiveFilter] = useState("all");
+   576→  const { navigate, addToCart, showNotification } = useStore();
+   577→
+   578→  useEffect(() => {
+   579→    const fetchOrders = async () => {
+   580→      try {
+   581→        const res = await fetch("/api/orders");
+   582→        const data = await res.json();
+   583→        if (data.orders && data.orders.length > 0) {
+   584→          setOrders(data.orders);
+   585→        } else {
+   586→          setOrders(MOCK_ORDERS);
+   587→        }
+   588→      } catch {
+   589→        setOrders(MOCK_ORDERS);
+   590→      } finally {
+   591→        setLoading(false);
+   592→      }
+   593→    };
+   594→    fetchOrders();
+   595→  }, []);
+   596→
+   597→  const statusCounts = orders.reduce<Record<string, number>>((acc, o) => {
+   598→    const s = o.status.toLowerCase();
+   599→    acc[s] = (acc[s] || 0) + 1;
+   600→    return acc;
+   601→  }, {});
+   602→
+   603→  const filterOptions = [
+   604→    { key: "all", label: "All" },
+   605→    { key: "processing", label: "Processing" },
+   606→    { key: "shipped", label: "Shipped" },
+   607→    { key: "delivered", label: "Delivered" },
+   608→    { key: "cancelled", label: "Cancelled" },
+   609→    { key: "confirmed", label: "Confirmed" },
+   610→  ];
+   611→
+   612→  const filteredOrders =
+   613→    activeFilter === "all" ? orders : orders.filter((o) => o.status.toLowerCase() === activeFilter);
+   614→
+   615→  const handleTrackOrder = (orderNumber: string) => {
+   616→    navigate("order-tracking");
+   617→    showNotification(`Tracking ${orderNumber}`, "info");
+   618→  };
+   619→
+   620→  const handleReorder = (order: Order) => {
+   621→    order.items.forEach((item) => {
+   622→      addToCart({
+   623→        id: `${item.id}-${item.size || "M"}-${item.color || "Default"}-reorder`,
+   624→        productId: item.id,
+   625→        name: item.name,
+   626→        price: item.price,
+   627→        mrp: item.price,
+   628→        image: item.image || "/images/placeholder.jpg",
+   629→        size: item.size || "M",
+   630→        color: item.color || "Default",
+   631→      });
+   632→    });
+   633→    showNotification(`${order.items.length} item(s) added to cart`, "success");
+   634→  };
+   635→
+   636→  if (loading) {
+   637→    return (
+   638→      <div className="space-y-4">
+   639→        {[1, 2, 3].map((i) => (
+   640→          <Skeleton key={i} className="h-24 w-full rounded-[4px] skeleton-shimmer" />
+   641→        ))}
+   642→      </div>
+   643→    );
+   644→  }
+   645→
+   646→  if (orders.length === 0) {
+   647→    return (
+   648→      <motion.div {...fadeUp} className="flex flex-col items-center justify-center py-16 text-center">
+   649→        <div className="w-16 h-16 rounded-full bg-[#F0EFED] flex items-center justify-center mb-4">
+   650→          <Package className="w-7 h-7 text-[#999]" strokeWidth={1.5} />
+   651→        </div>
+   652→        <h3 className="text-base font-medium text-[#111] mb-1">No orders yet</h3>
+   653→        <p className="text-sm text-[#666] max-w-xs">
+   654→          Your order history will appear here once you make a purchase.
+   655→        </p>
+   656→      </motion.div>
+   657→    );
+   658→  }
+   659→
+   660→  return (
+   661→    <div className="space-y-4">
+   662→      {/* Filter Bar */}
+   663→      <motion.div
+   664→        initial={{ opacity: 0, y: -8 }}
+   665→        animate={{ opacity: 1, y: 0 }}
+   666→        transition={{ duration: 0.3 }}
+   667→        className="flex flex-wrap gap-2"
+   668→      >
+   669→        {filterOptions.map((opt) => {
+   670→          const count = opt.key === "all" ? orders.length : statusCounts[opt.key] || 0;
+   671→          if (opt.key !== "all" && count === 0) return null;
+   672→          return (
+   673→            <button
+   674→              key={opt.key}
+   675→              onClick={() => setActiveFilter(opt.key)}
+   676→              className={`inline-flex items-center gap-1.5 px-3 h-9 rounded-[4px] text-xs uppercase tracking-wider font-medium border transition-all duration-200 ${
+   677→                activeFilter === opt.key
+   678→                  ? "bg-[#111] text-white border-[#111]"
+   679→                  : "bg-white text-[#666] border-[#E8E8E8] hover:border-[#999] hover:text-[#111]"
+   680→              }`}
+   681→            >
+   682→              {opt.label}
+   683→              <span
+   684→                className={`text-[10px] min-w-[18px] h-[18px] rounded-[4px] flex items-center justify-center font-semibold ${
+   685→                  activeFilter === opt.key
+   686→                    ? "bg-white/20 text-white"
+   687→                    : "bg-[#F0EFED] text-[#999]"
+   688→                }`}
+   689→              >
+   690→                {count}
+   691→              </span>
+   692→            </button>
+   693→          );
+   694→        })}
+   695→      </motion.div>
+   696→
+   697→      {/* Orders List */}
+   698→      <div className="space-y-3">
+   699→        {filteredOrders.map((order, idx) => {
+   700→          const isExpanded = expandedId === order.id;
+   701→          const estDelivery = getEstimatedDelivery(order);
+   702→          return (
+   703→            <motion.div
+   704→              key={order.id}
+   705→              initial={{ opacity: 0, y: 12 }}
+   706→              animate={{ opacity: 1, y: 0 }}
+   707→              transition={{ delay: idx * 0.05, duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+   708→            >
+   709→              <button
+   710→                onClick={() => setExpandedId(isExpanded ? null : order.id)}
+   711→                className="w-full text-left bg-white rounded-[4px] border border-[#E8E8E8] p-4 hover:border-[#999] transition-colors"
+   712→              >
+   713→                <div className="flex items-center justify-between gap-4">
+   714→                  <div className="flex-1 min-w-0">
+   715→                    <div className="flex items-center gap-3 mb-1 flex-wrap">
+   716→                      <span className="text-sm font-medium text-[#111]">{order.orderNumber}</span>
+   717→                      <Badge className={`rounded-[4px] text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 border-0 ${STATUS_COLORS[order.status] || STATUS_COLORS.pending}`}>
+   718→                        {order.status}
+   719→                      </Badge>
+   720→                      {estDelivery && (
+   721→                        <span className="text-[11px] text-[#4D5B47] font-medium flex items-center gap-1">
+   722→                          <Truck className="w-3 h-3" strokeWidth={1.5} />
+   723→                          Est. {estDelivery}
+   724→                        </span>
+   725→                      )}
+   726→                    </div>
+   727→                    <p className="text-xs text-[#666]">
+   728→                      {formatDate(order.createdAt)} &middot; {order.items?.length || 0} item{(order.items?.length || 0) > 1 ? "s" : ""}
+   729→                    </p>
+   730→                  </div>
+   731→                  <div className="flex items-center gap-3 shrink-0">
+   732→                    <span className="text-sm font-medium text-[#111]">{formatCurrency(order.total)}</span>
+   733→                    {isExpanded ? (
+   734→                      <ChevronUp className="w-4 h-4 text-[#999]" />
+   735→                    ) : (
+   736→                      <ChevronDown className="w-4 h-4 text-[#999]" />
+   737→                    )}
+   738→                  </div>
+   739→                </div>
+   740→              </button>
+   741→
+   742→              <AnimatePresence>
+   743→                {isExpanded && (
+   744→                  <motion.div
+   745→                    initial={{ height: 0, opacity: 0 }}
+   746→                    animate={{ height: "auto", opacity: 1 }}
+   747→                    exit={{ height: 0, opacity: 0 }}
+   748→                    transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+   749→                    className="overflow-hidden"
+   750→                  >
+   751→                    <div className="bg-white border border-t-0 border-[#E8E8E8] rounded-b-[4px] p-4">
+   752→                      <div className="space-y-3">
+   753→                        {order.items?.map((item) => (
+   754→                          <div key={item.id} className="flex items-center gap-3">
+   755→                            <div className="w-14 h-14 rounded-[4px] bg-[#F0EFED] shrink-0 flex items-center justify-center">
+   756→                              <Package className="w-5 h-5 text-[#999]" strokeWidth={1} />
+   757→                            </div>
+   758→                            <div className="flex-1 min-w-0">
+   759→                              <p className="text-sm font-medium text-[#111] line-clamp-1">{item.name}</p>
+   760→                              <p className="text-xs text-[#666]">
+   761→                                {item.size && `Size: ${item.size}`}
+   762→                                {item.size && item.color && " · "}
+   763→                                {item.color && `Color: ${item.color}`}
+   764→                                {" · Qty: "}{item.quantity}
+   765→                              </p>
+   766→                            </div>
+   767→                            <span className="text-sm text-[#111] shrink-0">
+   768→                              {formatCurrency(item.price * item.quantity)}
+   769→                            </span>
+   770→                          </div>
+   771→                        ))}
+   772→                      </div>
+   773→
+   774→                      <Separator className="bg-[#E8E8E8] my-4" />
+   775→
+   776→                      <div className="flex items-center justify-between text-sm">
+   777→                        <div className="text-[#666]">
+   778→                          <p>Payment: <span className="text-[#111] font-medium capitalize">{order.paymentMethod}</span></p>
+   779→                          <p>Payment Status: <span className="text-[#111] font-medium capitalize">{order.paymentStatus}</span></p>
+   780→                        </div>
+   781→                        <div className="text-right space-y-0.5">
+   782→                          {order.discount > 0 && (
+   783→                            <p className="text-xs text-[#C53030]">- {formatCurrency(order.discount)}</p>
+   784→                          )}
+   785→                          {order.shipping > 0 && (
+   786→                            <p className="text-xs text-[#666]">+ {formatCurrency(order.shipping)} shipping</p>
+   787→                          )}
+   788→                          <p className="font-medium text-[#111]">Total: {formatCurrency(order.total)}</p>
+   789→                        </div>
+   790→                      </div>
+   791→
+   792→                      {/* Action Buttons */}
+   793→                      <div className="flex items-center gap-2 mt-4 pt-4 border-t border-[#E8E8E8]">
+   794→                        {(order.status === "confirmed" || order.status === "shipped" || order.status === "processing") && (
+   795→                          <Button
+   796→                            variant="outline"
+   797→                            onClick={() => handleTrackOrder(order.orderNumber)}
+   798→                            className="rounded-[4px] border-[#4D5B47] text-[#4D5B47] hover:bg-[#4D5B47]/5 h-9 text-xs uppercase tracking-wider"
+   799→                          >
+   800→                            <Truck className="w-3.5 h-3.5 mr-1.5" />
+   801→                            Track Order
+   802→                          </Button>
+   803→                        )}
+   804→                        {order.status !== "cancelled" && (
+   805→                          <Button
+   806→                            variant="outline"
+   807→                            onClick={() => handleReorder(order)}
+   808→                            className="rounded-[4px] border-[#E8E8E8] h-9 text-xs uppercase tracking-wider hover:border-[#999]"
+   809→                          >
+   810→                            <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+   811→                            Reorder
+   812→                          </Button>
+   813→                        )}
+   814→                      </div>
+   815→                    </div>
+   816→                  </motion.div>
+   817→                )}
+   818→              </AnimatePresence>
+   819→            </motion.div>
+   820→          );
+   821→        })}
+   822→      </div>
+   823→
+   824→      {filteredOrders.length === 0 && !loading && (
+   825→        <motion.div {...fadeUp} className="flex flex-col items-center justify-center py-12 text-center">
+   826→          <Package className="w-8 h-8 text-[#ccc] mb-3" strokeWidth={1.5} />
+   827→          <p className="text-sm text-[#666]">No {activeFilter} orders found</p>
+   828→          <button
+   829→            onClick={() => setActiveFilter("all")}
+   830→            className="text-xs text-[#4D5B47] font-medium uppercase tracking-wider mt-2 hover:underline"
+   831→          >
+   832→            View all orders
+   833→          </button>
+   834→        </motion.div>
+   835→      )}
+   836→    </div>
+   837→  );
+   838→}
+   839→
+   840→// ── Addresses Tab ───────────────────────────────────────────────────────────
+   841→function AddressesTab() {
+   842→  const [addresses, setAddresses] = useState<Address[]>(INITIAL_ADDRESSES);
+   843→  const [dialogOpen, setDialogOpen] = useState(false);
+   844→  const [editingId, setEditingId] = useState<string | null>(null);
+   845→  const [form, setForm] = useState({ name: "", street: "", city: "", state: "", zip: "", phone: "" });
+   846→  const [hoveredId, setHoveredId] = useState<string | null>(null);
+   847→  const { showNotification } = useStore();
+   848→
+   849→  const openNew = () => {
+   850→    setEditingId(null);
+   851→    setForm({ name: "", street: "", city: "", state: "", zip: "", phone: "" });
+   852→    setDialogOpen(true);
+   853→  };
+   854→
+   855→  const openEdit = (addr: Address) => {
+   856→    setEditingId(addr.id);
+   857→    setForm({ name: addr.name, street: addr.street, city: addr.city, state: addr.state, zip: addr.zip, phone: addr.phone });
+   858→    setDialogOpen(true);
+   859→  };
+   860→
+   861→  const handleSave = () => {
+   862→    if (!form.name || !form.street || !form.city) return;
+   863→    if (editingId) {
+   864→      setAddresses((prev) =>
+   865→        prev.map((a) => (a.id === editingId ? { ...a, ...form } : a))
+   866→      );
+   867→      showNotification("Address updated", "success");
+   868→    } else {
+   869→      const newAddr: Address = {
+   870→        id: `a${Date.now()}`,
+   871→        ...form,
+   872→        isDefault: addresses.length === 0,
+   873→      };
+   874→      setAddresses((prev) => [...prev, newAddr]);
+   875→      showNotification("Address added", "success");
+   876→    }
+   877→    setDialogOpen(false);
+   878→  };
+   879→
+   880→  const handleDelete = (id: string) => {
+   881→    setAddresses((prev) => prev.filter((a) => a.id !== id));
+   882→    showNotification("Address removed", "info");
+   883→  };
+   884→
+   885→  const setDefault = (id: string) => {
+   886→    setAddresses((prev) => prev.map((a) => ({ ...a, isDefault: a.id === id })));
+   887→    showNotification("Default address updated", "success");
+   888→  };
+   889→
+   890→  return (
+   891→    <motion.div {...fadeUp} className="space-y-4">
+   892→      <div className="flex items-center justify-between">
+   893→        <h3 className="text-base font-medium text-[#111]">Saved Addresses</h3>
+   894→        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+   895→          <DialogTrigger asChild>
+   896→            <Button
+   897→              onClick={openNew}
+   898→              variant="outline"
+   899→              className="rounded-[4px] border-[#E8E8E8] h-9 text-xs uppercase tracking-wider"
+   900→            >
+   901→              <Plus className="w-3.5 h-3.5" />
+   902→              Add New
+   903→            </Button>
+   904→          </DialogTrigger>
+   905→          <DialogContent className="rounded-[4px] max-w-md">
+   906→            <DialogHeader>
+   907→              <DialogTitle className="text-base font-medium">
+   908→                {editingId ? "Edit Address" : "Add New Address"}
+   909→              </DialogTitle>
+   910→            </DialogHeader>
+   911→            <div className="space-y-4 pt-2">
+   912→              <div className="space-y-2">
+   913→                <Label className="text-[13px] uppercase tracking-wider text-[#666]">Full Name</Label>
+   914→                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="rounded-[4px] border-[#E8E8E8] h-10" />
+   915→              </div>
+   916→              <div className="space-y-2">
+   917→                <Label className="text-[13px] uppercase tracking-wider text-[#666]">Street Address</Label>
+   918→                <Textarea value={form.street} onChange={(e) => setForm({ ...form, street: e.target.value })} className="rounded-[4px] border-[#E8E8E8] min-h-[60px]" />
+   919→              </div>
+   920→              <div className="grid grid-cols-2 gap-4">
+   921→                <div className="space-y-2">
+   922→                  <Label className="text-[13px] uppercase tracking-wider text-[#666]">City</Label>
+   923→                  <Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className="rounded-[4px] border-[#E8E8E8] h-10" />
+   924→                </div>
+   925→                <div className="space-y-2">
+   926→                  <Label className="text-[13px] uppercase tracking-wider text-[#666]">State</Label>
+   927→                  <Input value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} className="rounded-[4px] border-[#E8E8E8] h-10" />
+   928→                </div>
+   929→              </div>
+   930→              <div className="grid grid-cols-2 gap-4">
+   931→                <div className="space-y-2">
+   932→                  <Label className="text-[13px] uppercase tracking-wider text-[#666]">PIN Code</Label>
+   933→                  <Input value={form.zip} onChange={(e) => setForm({ ...form, zip: e.target.value })} className="rounded-[4px] border-[#E8E8E8] h-10" />
+   934→                </div>
+   935→                <div className="space-y-2">
+   936→                  <Label className="text-[13px] uppercase tracking-wider text-[#666]">Phone</Label>
+   937→                  <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="rounded-[4px] border-[#E8E8E8] h-10" />
+   938→                </div>
+   939→              </div>
+   940→              <Button onClick={handleSave} className="rounded-[4px] bg-[#111] hover:bg-[#333] text-white h-10 w-full">
+   941→                {editingId ? "Update Address" : "Save Address"}
+   942→              </Button>
+   943→            </div>
+   944→          </DialogContent>
+   945→        </Dialog>
+   946→      </div>
+   947→
+   948→      <div className="space-y-3">
+   949→        {addresses.map((addr, idx) => (
+   950→          <motion.div
+   951→            key={addr.id}
+   952→            initial={{ opacity: 0, y: 12 }}
+   953→            animate={{ opacity: 1, y: 0 }}
+   954→            transition={{ delay: idx * 0.05, duration: 0.3 }}
+   955→            className="bg-white rounded-[4px] border border-[#E8E8E8] p-4 hover:border-[#999] transition-colors"
+   956→            onMouseEnter={() => setHoveredId(addr.id)}
+   957→            onMouseLeave={() => setHoveredId(null)}
+   958→          >
+   959→            <div className="flex items-start justify-between gap-4">
+   960→              <div className="flex-1">
+   961→                <div className="flex items-center gap-2 mb-1">
+   962→                  {/* Animated Map Pin */}
+   963→                  <motion.div
+   964→                    animate={hoveredId === addr.id ? { y: -2 } : { y: 0 }}
+   965→                    transition={{ duration: 0.2, ease: "easeOut" }}
+   966→                  >
+   967→                    <MapPin
+   968→                      className="w-4 h-4 text-[#4D5B47]"
+   969→                      strokeWidth={1.5}
+   970→                    />
+   971→                  </motion.div>
+   972→                  <span className="text-sm font-medium text-[#111]">{addr.name}</span>
+   973→                  {addr.isDefault && (
+   974→                    <Badge className="rounded-[4px] text-[10px] uppercase tracking-wider bg-[#4D5B47] text-white border-0 px-2 py-0.5">
+   975→                      Default
+   976→                    </Badge>
+   977→                  )}
+   978→                </div>
+   979→                <p className="text-sm text-[#666] leading-relaxed pl-6">
+   980→                  {addr.street}
+   981→                  <br />
+   982→                  {addr.city}, {addr.state} — {addr.zip}
+   983→                </p>
+   984→                <p className="text-xs text-[#999] mt-1 pl-6">{addr.phone}</p>
+   985→                {/* Delivery Estimate */}
+   986→                <div className="flex items-center gap-1.5 mt-2 pl-6">
+   987→                  <Truck className="w-3 h-3 text-[#B79B7B]" strokeWidth={1.5} />
+   988→                  <span className="text-[11px] text-[#B79B7B] font-medium">{getDeliveryEstimate(addr.zip)}</span>
+   989→                </div>
+   990→              </div>
+   991→              <div className="flex items-center gap-1 shrink-0">
+   992→                {!addr.isDefault && (
+   993→                  <Button
+   994→                    variant="ghost"
+   995→                    size="sm"
+   996→                    onClick={() => setDefault(addr.id)}
+   997→                    className="rounded-[4px] h-8 px-2.5 text-[10px] uppercase tracking-wider text-[#4D5B47] hover:text-[#4D5B47] hover:bg-[#4D5B47]/5"
+   998→                    title="Set as default"
+   999→                  >
+  1000→                    <Check className="w-3 h-3 mr-1" />
+  1001→                    <span className="hidden sm:inline">Set Default</span>
+  1002→                  </Button>
+  1003→                )}
+  1004→                <Button
+  1005→                  variant="ghost"
+  1006→                  size="icon"
+  1007→                  onClick={() => openEdit(addr)}
+  1008→                  className="rounded-[4px] h-8 w-8"
+  1009→                  title="Edit"
+  1010→                >
+  1011→                  <Pencil className="w-3.5 h-3.5 text-[#666]" />
+  1012→                </Button>
+  1013→                <Button
+  1014→                  variant="ghost"
+  1015→                  size="icon"
+  1016→                  onClick={() => handleDelete(addr.id)}
+  1017→                  className="rounded-[4px] h-8 w-8 hover:text-[#C53030]"
+  1018→                  title="Delete"
+  1019→                >
+  1020→                  <Trash2 className="w-3.5 h-3.5" />
+  1021→                </Button>
+  1022→              </div>
+  1023→            </div>
+  1024→          </motion.div>
+  1025→        ))}
+  1026→      </div>
+  1027→    </motion.div>
+  1028→  );
+  1029→}
+  1030→
+  1031→// ── Settings Tab ────────────────────────────────────────────────────────────
+  1032→function SettingsTab() {
+  1033→  const [orderUpdates, setOrderUpdates] = useState(true);
+  1034→  const [promoEmails, setPromoEmails] = useState(false);
+  1035→  const [newsletter, setNewsletter] = useState(true);
+  1036→  const [priceDropAlerts, setPriceDropAlerts] = useState(true);
+  1037→  const [newArrivals, setNewArrivals] = useState(false);
+  1038→  const [restockAlerts, setRestockAlerts] = useState(true);
+  1039→  const [theme, setTheme] = useState<"light" | "dark">("light");
+  1040→  const [connectedAccounts, setConnectedAccounts] = useState({
+  1041→    google: true,
+  1042→    apple: false,
+  1043→    facebook: false,
+  1044→  });
+  1045→  const { showNotification } = useStore();
+  1046→
+  1047→  const toggleTheme = () => {
+  1048→    const next = theme === "light" ? "dark" : "light";
+  1049→    setTheme(next);
+  1050→    showNotification(`Theme set to ${next}`, "info");
+  1051→  };
+  1052→
+  1053→  const toggleAccount = (provider: keyof typeof connectedAccounts) => {
+  1054→    const newState = !connectedAccounts[provider];
+  1055→    setConnectedAccounts((prev) => ({ ...prev, [provider]: newState }));
+  1056→    showNotification(
+  1057→      newState ? `${provider.charAt(0).toUpperCase() + provider.slice(1)} connected` : `${provider.charAt(0).toUpperCase() + provider.slice(1)} disconnected`,
+  1058→      newState ? "success" : "info"
+  1059→    );
+  1060→  };
+  1061→
+  1062→  const notificationPreferences = [
+  1063→    {
+  1064→      key: "orderUpdates" as const,
+  1065→      label: "Order Updates",
+  1066→      description: "Get notified about your order status",
+  1067→      icon: Package,
+  1068→      checked: orderUpdates,
+  1069→      onChange: setOrderUpdates,
+  1070→    },
+  1071→    {
+  1072→      key: "promoEmails" as const,
+  1073→      label: "Promotional Emails",
+  1074→      description: "Receive offers and sale alerts",
+  1075→      icon: Bell,
+  1076→      checked: promoEmails,
+  1077→      onChange: setPromoEmails,
+  1078→    },
+  1079→    {
+  1080→      key: "priceDropAlerts" as const,
+  1081→      label: "Price Drop Alerts",
+  1082→      description: "Get notified when wishlist items go on sale",
+  1083→      icon: TrendingDown,
+  1084→      checked: priceDropAlerts,
+  1085→      onChange: setPriceDropAlerts,
+  1086→    },
+  1087→    {
+  1088→      key: "newArrivals" as const,
+  1089→      label: "New Arrivals",
+  1090→      description: "Be the first to know about new collections",
+  1091→      icon: Sparkles,
+  1092→      checked: newArrivals,
+  1093→      onChange: setNewArrivals,
+  1094→    },
+  1095→    {
+  1096→      key: "restockAlerts" as const,
+  1097→      label: "Restock Alerts",
+  1098→      description: "Get notified when out-of-stock items return",
+  1099→      icon: RefreshCw,
+  1100→      checked: restockAlerts,
+  1101→      onChange: setRestockAlerts,
+  1102→    },
+  1103→    {
+  1104→      key: "newsletter" as const,
+  1105→      label: "Newsletter",
+  1106→      description: "Weekly style picks and editorials",
+  1107→      icon: Mail,
+  1108→      checked: newsletter,
+  1109→      onChange: setNewsletter,
+  1110→    },
+  1111→  ];
+  1112→
+  1113→  const connectedAccountList = [
+  1114→    {
+  1115→      provider: "google" as const,
+  1116→      label: "Google",
+  1117→      icon: "G",
+  1118→      color: "#4285F4",
+  1119→      bgColor: "#4285F410",
+  1120→    },
+  1121→    {
+  1122→      provider: "apple" as const,
+  1123→      label: "Apple",
+  1124→      icon: "",
+  1125→      color: "#111",
+  1126→      bgColor: "#11111108",
+  1127→      isApple: true,
+  1128→    },
+  1129→    {
+  1130→      provider: "facebook" as const,
+  1131→      label: "Facebook",
+  1132→      icon: "f",
+  1133→      color: "#1877F2",
+  1134→      bgColor: "#1877F210",
+  1135→    },
+  1136→  ];
+  1137→
+  1138→  return (
+  1139→    <motion.div {...fadeUp} className="space-y-8">
+  1140→      {/* Notification Preferences */}
+  1141→      <motion.div
+  1142→        initial={{ opacity: 0, y: 12 }}
+  1143→        animate={{ opacity: 1, y: 0 }}
+  1144→        transition={{ delay: 0.05 }}
+  1145→      >
+  1146→        <h3 className="text-base font-medium text-[#111] mb-4">Notification Preferences</h3>
+  1147→        <div className="space-y-3">
+  1148→          {notificationPreferences.map((pref, idx) => {
+  1149→            const Icon = pref.icon;
+  1150→            return (
+  1151→              <motion.div
+  1152→                key={pref.key}
+  1153→                initial={{ opacity: 0, y: 8 }}
+  1154→                animate={{ opacity: 1, y: 0 }}
+  1155→                transition={{ delay: 0.08 + idx * 0.04, duration: 0.25 }}
+  1156→                className="flex items-center justify-between bg-white rounded-[4px] border border-[#E8E8E8] p-4"
+  1157→              >
+  1158→                <div className="flex items-center gap-3">
+  1159→                  <div className="w-9 h-9 rounded-[4px] bg-[#F0EFED] flex items-center justify-center">
+  1160→                    <Icon className="w-4 h-4 text-[#666]" strokeWidth={1.5} />
+  1161→                  </div>
+  1162→                  <div>
+  1163→                    <p className="text-sm font-medium text-[#111]">{pref.label}</p>
+  1164→                    <p className="text-xs text-[#666]">{pref.description}</p>
+  1165→                  </div>
+  1166→                </div>
+  1167→                <Switch checked={pref.checked} onCheckedChange={pref.onChange} className="data-[state=checked]:bg-[#4D5B47]" />
+  1168→              </motion.div>
+  1169→            );
+  1170→          })}
+  1171→        </div>
+  1172→      </motion.div>
+  1173→
+  1174→      <Separator className="bg-[#E8E8E8]" />
+  1175→
+  1176→      {/* Theme */}
+  1177→      <motion.div
+  1178→        initial={{ opacity: 0, y: 12 }}
+  1179→        animate={{ opacity: 1, y: 0 }}
+  1180→        transition={{ delay: 0.3 }}
+  1181→      >
+  1182→        <h3 className="text-base font-medium text-[#111] mb-4">Appearance</h3>
+  1183→        <div className="bg-white rounded-[4px] border border-[#E8E8E8] p-4">
+  1184→          <div className="flex items-center justify-between">
+  1185→            <div className="flex items-center gap-3">
+  1186→              <div className="w-9 h-9 rounded-[4px] bg-[#F0EFED] flex items-center justify-center">
+  1187→                {theme === "light" ? (
+  1188→                  <Sun className="w-4 h-4 text-[#666]" strokeWidth={1.5} />
+  1189→                ) : (
+  1190→                  <Moon className="w-4 h-4 text-[#666]" strokeWidth={1.5} />
+  1191→                )}
+  1192→              </div>
+  1193→              <div>
+  1194→                <p className="text-sm font-medium text-[#111]">Theme</p>
+  1195→                <p className="text-xs text-[#666]">Current: {theme === "light" ? "Light Mode" : "Dark Mode"}</p>
+  1196→              </div>
+  1197→            </div>
+  1198→            <Button
+  1199→              variant="outline"
+  1200→              onClick={toggleTheme}
+  1201→              className="rounded-[4px] border-[#E8E8E8] h-9 text-xs uppercase tracking-wider"
+  1202→            >
+  1203→              {theme === "light" ? "Switch to Dark" : "Switch to Light"}
+  1204→            </Button>
+  1205→          </div>
+  1206→        </div>
+  1207→      </motion.div>
+  1208→
+  1209→      <Separator className="bg-[#E8E8E8]" />
+  1210→
+  1211→      {/* Connected Accounts */}
+  1212→      <motion.div
+  1213→        initial={{ opacity: 0, y: 12 }}
+  1214→        animate={{ opacity: 1, y: 0 }}
+  1215→        transition={{ delay: 0.4 }}
+  1216→      >
+  1217→        <h3 className="text-base font-medium text-[#111] mb-4">Connected Accounts</h3>
+  1218→        <div className="space-y-3">
+  1219→          {connectedAccountList.map((account, idx) => (
+  1220→            <motion.div
+  1221→              key={account.provider}
+  1222→              initial={{ opacity: 0, y: 8 }}
+  1223→              animate={{ opacity: 1, y: 0 }}
+  1224→              transition={{ delay: 0.45 + idx * 0.05, duration: 0.25 }}
+  1225→              className="flex items-center justify-between bg-white rounded-[4px] border border-[#E8E8E8] p-4"
+  1226→            >
+  1227→              <div className="flex items-center gap-3">
+  1228→                <div
+  1229→                  className="w-9 h-9 rounded-[4px] flex items-center justify-center"
+  1230→                  style={{ backgroundColor: account.bgColor }}
+  1231→                >
+  1232→                  {account.isApple ? (
+  1233→                    <Smartphone className="w-4 h-4" style={{ color: account.color }} strokeWidth={1.5} />
+  1234→                  ) : (
+  1235→                    <span className="text-sm font-bold" style={{ color: account.color }}>
+  1236→                      {account.icon}
+  1237→                    </span>
+  1238→                  )}
+  1239→                </div>
+  1240→                <div>
+  1241→                  <p className="text-sm font-medium text-[#111]">{account.label}</p>
+  1242→                  <p className="text-xs text-[#666]">
+  1243→                    {connectedAccounts[account.provider] ? "Connected" : "Not connected"}
+  1244→                  </p>
+  1245→                </div>
+  1246→              </div>
+  1247→              <Button
+  1248→                variant={connectedAccounts[account.provider] ? "outline" : "default"}
+  1249→                onClick={() => toggleAccount(account.provider)}
+  1250→                className={`rounded-[4px] h-8 text-xs uppercase tracking-wider px-3 ${
+  1251→                  connectedAccounts[account.provider]
+  1252→                    ? "border-[#E8E8E8] text-[#666] hover:border-[#C53030] hover:text-[#C53030] hover:bg-[#C53030]/5"
+  1253→                    : "bg-[#111] hover:bg-[#333] text-white"
+  1254→                }`}
+  1255→              >
+  1256→                {connectedAccounts[account.provider] ? "Disconnect" : "Connect"}
+  1257→              </Button>
+  1258→            </motion.div>
+  1259→          ))}
+  1260→        </div>
+  1261→      </motion.div>
+  1262→
+  1263→      <Separator className="bg-[#E8E8E8]" />
+  1264→
+  1265→      {/* Danger Zone */}
+  1266→      <motion.div
+  1267→        initial={{ opacity: 0, y: 12 }}
+  1268→        animate={{ opacity: 1, y: 0 }}
+  1269→        transition={{ delay: 0.6 }}
+  1270→      >
+  1271→        <h3 className="text-base font-medium text-[#C53030] mb-4">Danger Zone</h3>
+  1272→        <div className="rounded-[4px] border border-[#C53030]/20 p-4 space-y-3">
+  1273→          <p className="text-xs text-[#666] mb-2">
+  1274→            Once you delete your account, there is no going back. Please be certain.
+  1275→          </p>
+  1276→          <div className="flex items-center gap-2 flex-wrap">
+  1277→            <AlertDialog>
+  1278→              <AlertDialogTrigger asChild>
+  1279→                <Button
+  1280→                  variant="outline"
+  1281→                  className="rounded-[4px] border-[#C53030] text-[#C53030] hover:bg-[#C53030] hover:text-white h-10 text-xs uppercase tracking-wider transition-colors"
+  1282→                >
+  1283→                  <AlertTriangle className="w-3.5 h-3.5 mr-1.5" />
+  1284→                  Delete Account
+  1285→                </Button>
+  1286→              </AlertDialogTrigger>
+  1287→              <AlertDialogContent className="rounded-[4px]">
+  1288→                <AlertDialogHeader>
+  1289→                  <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+  1290→                  <AlertDialogDescription>
+  1291→                    This action cannot be undone. All your data including orders, addresses, and preferences will be permanently removed.
+  1292→                  </AlertDialogDescription>
+  1293→                </AlertDialogHeader>
+  1294→                <AlertDialogFooter>
+  1295→                  <AlertDialogCancel className="rounded-[4px]">Cancel</AlertDialogCancel>
+  1296→                  <AlertDialogAction className="rounded-[4px] bg-[#C53030] hover:bg-[#C53030]/90 text-white">
+  1297→                    Delete Account
+  1298→                  </AlertDialogAction>
+  1299→                </AlertDialogFooter>
+  1300→              </AlertDialogContent>
+  1301→            </AlertDialog>
+  1302→
+  1303→            <Button
+  1304→              variant="outline"
+  1305→              className="rounded-[4px] border-[#E8E8E8] h-10 text-xs uppercase tracking-wider"
+  1306→              onClick={() => showNotification("Logged out", "info")}
+  1307→            >
+  1308→              <LogOut className="w-3.5 h-3.5 mr-1.5" />
+  1309→              Log Out
+  1310→            </Button>
+  1311→          </div>
+  1312→        </div>
+  1313→      </motion.div>
+  1314→    </motion.div>
+  1315→  );
+  1316→}
+  1317→
+  1318→// ── Main Account Page ───────────────────────────────────────────────────────
+  1319→export default function AccountPage() {
+  1320→  const [activeTab, setActiveTab] = useState("profile");
+  1321→
+  1322→  return (
+  1323→    <div className="min-h-screen bg-[#F8F8F6]">
+  1324→      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
+  1325→        {/* Header */}
+  1326→        <motion.div
+  1327→          initial={{ opacity: 0, y: 16 }}
+  1328→          animate={{ opacity: 1, y: 0 }}
+  1329→          transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+  1330→          className="mb-8"
+  1331→        >
+  1332→          <h1 className="text-2xl sm:text-3xl font-medium text-[#111] tracking-tight">My Account</h1>
+  1333→          <p className="text-sm text-[#666] mt-1">Manage your profile, orders, and settings</p>
+  1334→        </motion.div>
+  1335→
+  1336→        {/* Tabs */}
+  1337→        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+  1338→          <TabsList className="bg-white rounded-[4px] border border-[#E8E8E8] p-1 h-auto w-full sm:w-auto mb-8 overflow-x-auto scrollbar-none">
+  1339→            <TabsTrigger
+  1340→              value="profile"
+  1341→              className="rounded-[4px] flex-1 sm:flex-initial gap-2 px-4 h-10 text-xs uppercase tracking-wider font-medium data-[state=active]:bg-[#111] data-[state=active]:text-white data-[state=active]:shadow-none"
+  1342→            >
+  1343→              <User className="w-3.5 h-3.5" />
+  1344→              <span className="hidden sm:inline">Profile</span>
+  1345→              <span className="sm:hidden">Profile</span>
+  1346→            </TabsTrigger>
+  1347→            <TabsTrigger
+  1348→              value="orders"
+  1349→              className="rounded-[4px] flex-1 sm:flex-initial gap-2 px-4 h-10 text-xs uppercase tracking-wider font-medium data-[state=active]:bg-[#111] data-[state=active]:text-white data-[state=active]:shadow-none"
+  1350→            >
+  1351→              <Package className="w-3.5 h-3.5" />
+  1352→              <span className="hidden sm:inline">Orders</span>
+  1353→              <span className="sm:hidden">Orders</span>
+  1354→            </TabsTrigger>
+  1355→            <TabsTrigger
+  1356→              value="addresses"
+  1357→              className="rounded-[4px] flex-1 sm:flex-initial gap-2 px-4 h-10 text-xs uppercase tracking-wider font-medium data-[state=active]:bg-[#111] data-[state=active]:text-white data-[state=active]:shadow-none"
+  1358→            >
+  1359→              <MapPin className="w-3.5 h-3.5" />
+  1360→              <span className="hidden sm:inline">Addresses</span>
+  1361→              <span className="sm:hidden">Address</span>
+  1362→            </TabsTrigger>
+  1363→            <TabsTrigger
+  1364→              value="settings"
+  1365→              className="rounded-[4px] flex-1 sm:flex-initial gap-2 px-4 h-10 text-xs uppercase tracking-wider font-medium data-[state=active]:bg-[#111] data-[state=active]:text-white data-[state=active]:shadow-none"
+  1366→            >
+  1367→              <Settings className="w-3.5 h-3.5" />
+  1368→              <span className="hidden sm:inline">Settings</span>
+  1369→              <span className="sm:hidden">Settings</span>
+  1370→            </TabsTrigger>
+  1371→          </TabsList>
+  1372→
+  1373→          <TabsContent value="profile">
+  1374→            <ProfileTab />
+  1375→          </TabsContent>
+  1376→          <TabsContent value="orders">
+  1377→            <OrdersTab />
+  1378→          </TabsContent>
+  1379→          <TabsContent value="addresses">
+  1380→            <AddressesTab />
+  1381→          </TabsContent>
+  1382→          <TabsContent value="settings">
+  1383→            <SettingsTab />
+  1384→          </TabsContent>
+  1385→        </Tabs>
+  1386→      </div>
+  1387→    </div>
+  1388→  );
+  1389→}

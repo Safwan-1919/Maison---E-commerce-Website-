@@ -1,29 +1,153 @@
 import { db } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
+import { z } from "zod";
 
+const orderItemSchema = z.object({
+  productId: z.string().min(1),
+  name: z.string().min(1),
+  price: z.number().positive(),
+  quantity: z.number().int().min(1),
+  size: z.string().optional(),
+  color: z.string().optional(),
+  image: z.string().optional(),
+});
+
+const createOrderSchema = z.object({
+  items: z.array(orderItemSchema).min(1, "At least one item is required"),
+  shippingAddress: z.record(z.string(), z.any()).optional(),
+  paymentMethod: z.string().min(1, "Payment method is required"),
+  couponCode: z.string().optional(),
+});
+
+// GET /api/orders?status=pending&page=1&limit=10
+export async function GET(request: NextRequest) {
+  try {
+    const user = await requireAuth();
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get("status");
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "10");
+    const skip = (page - 1) * limit;
+
+    const where: Record<string, unknown> = { userId: user.id };
+    if (status) where.status = status;
+
+    const [orders, total] = await Promise.all([
+      db.order.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+        include: { items: true },
+      }),
+      db.order.count({ where }),
+    ]);
+
+    return NextResponse.json({
+      orders,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    });
+  } catch (error: any) {
+    if (error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    console.error("Orders fetch error:", error);
+    return NextResponse.json({ error: "Failed to fetch orders" }, { status: 500 });
+  }
+}
+
+// POST /api/orders
 export async function POST(request: NextRequest) {
   try {
+    const user = await requireAuth();
+
+    const contentType = request.headers.get("content-type");
+    if (!contentType?.includes("application/json")) {
+      return NextResponse.json({ success: false, error: "Content-Type must be application/json" }, { status: 400 });
+    }
+
     const body = await request.json();
-    const { items, shippingAddress, paymentMethod, discount = 0, shipping = 0 } = body;
+    const parsed = createOrderSchema.safeParse(body);
 
-    const subtotal = items.reduce((sum: number, item: { price: number; quantity: number }) => sum + item.price * item.quantity, 0);
-    const total = subtotal - discount + shipping;
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, error: parsed.error.issues[0]?.message || "Validation failed" },
+        { status: 400 }
+      );
+    }
 
-    const orderNumber = `MSN-${Date.now().toString(36).toUpperCase()}`;
+    const { items, shippingAddress, paymentMethod, couponCode } = parsed.data;
+
+    // Calculate subtotal
+    const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+    // Validate and apply coupon if provided
+    let discount = 0;
+
+    if (couponCode) {
+      const coupon = await db.coupon.findUnique({
+        where: { code: couponCode.toUpperCase() },
+      });
+
+      if (!coupon || !coupon.isActive) {
+        return NextResponse.json({ success: false, error: "Invalid or inactive coupon code" }, { status: 400 });
+      }
+
+      if (coupon.expiresAt && new Date(coupon.expiresAt) < new Date()) {
+        return NextResponse.json({ success: false, error: "Coupon has expired" }, { status: 400 });
+      }
+
+      if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
+        return NextResponse.json({ success: false, error: "Coupon has reached its usage limit" }, { status: 400 });
+      }
+
+      if (coupon.minOrder && subtotal < coupon.minOrder) {
+        return NextResponse.json(
+          { success: false, error: `Minimum order amount of ₹${coupon.minOrder} required for this coupon` },
+          { status: 400 }
+        );
+      }
+
+      if (coupon.type === "percentage") {
+        discount = (subtotal * coupon.discount) / 100;
+      } else {
+        discount = coupon.discount;
+      }
+
+      // Increment coupon usage
+      await db.coupon.update({
+        where: { id: coupon.id },
+        data: { usedCount: { increment: 1 } },
+      });
+    }
+
+    const shipping = 0; // Free shipping for now
+    const total = Math.max(0, subtotal - discount + shipping);
+
+    // Generate order number: MSN-YYYY-XXXXX
+    const now = new Date();
+    const year = now.getFullYear();
+    const random = Math.floor(Math.random() * 100000).toString().padStart(5, "0");
+    const orderNumber = `MSN-${year}-${random}`;
 
     const order = await db.order.create({
       data: {
         orderNumber,
+        userId: user.id,
         total,
         subtotal,
         discount,
         shipping,
-        shippingAddress: JSON.stringify(shippingAddress),
+        shippingAddress: shippingAddress ? JSON.stringify(shippingAddress) : null,
         paymentMethod,
         paymentStatus: paymentMethod === "cod" ? "pending" : "completed",
+        couponCode: couponCode ? couponCode.toUpperCase() : null,
         status: "confirmed",
         items: {
-          create: items.map((item: { productId: string; name: string; price: number; quantity: number; size?: string; color?: string; image?: string }) => ({
+          create: items.map((item) => ({
             productId: item.productId,
             name: item.name,
             price: item.price,
@@ -34,6 +158,7 @@ export async function POST(request: NextRequest) {
           })),
         },
       },
+      include: { items: true },
     });
 
     // Update stock
@@ -44,23 +169,21 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ success: true, order: { id: order.id, orderNumber: order.orderNumber, total: order.total } });
-  } catch (error) {
+    return NextResponse.json({
+      success: true,
+      order: {
+        id: order.id,
+        orderNumber: order.orderNumber,
+        total: order.total,
+        status: order.status,
+        createdAt: order.createdAt,
+      },
+    }, { status: 201 });
+  } catch (error: any) {
+    if (error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
     console.error("Order creation error:", error);
     return NextResponse.json({ success: false, error: "Failed to create order" }, { status: 500 });
-  }
-}
-
-export async function GET() {
-  try {
-    const orders = await db.order.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 50,
-      include: { items: true },
-    });
-    return NextResponse.json({ orders });
-  } catch (error) {
-    console.error("Orders fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch orders" }, { status: 500 });
   }
 }

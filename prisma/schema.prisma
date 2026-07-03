@@ -47,6 +47,8 @@ model Category {
   name      String
   slug      String    @unique
   image     String?
+  icon      String?
+  description String?
   sortOrder Int       @default(0)
   products  Product[]
   createdAt DateTime  @default(now())
@@ -75,6 +77,7 @@ model Order {
   shippingAddress String?
   paymentMethod   String?
   paymentStatus   String      @default("pending")
+  couponCode      String?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 }
@@ -98,6 +101,7 @@ model Review {
   productId String
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
   userName  String
   rating    Int
   title     String?
@@ -106,17 +110,22 @@ model Review {
 }
 
 model User {
-  id             String   @id @default(cuid())
-  email          String   @unique
+  id             String         @id @default(cuid())
+  email          String         @unique
+  password       String?
   name           String?
   phone          String?
   avatar         String?
   addresses      String?
   paymentMethods String?
-  role           String   @default("user")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  role           String         @default("user")
+  loyaltyPoints  Int            @default(0)
+  isVerified     Boolean        @default(false)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
   orders         Order[]
+  reviews        Review[]
+  notifications  Notification[]
 }
 
 model Coupon {
@@ -143,9 +152,31 @@ model WishlistItem {
 model Notification {
   id        String   @id @default(cuid())
   userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String
   message   String
   type      String?
   isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Testimonial {
+  id        String   @id @default(cuid())
+  name      String
+  location  String?
+  avatar    String?
+  rating    Int
+  title     String?
+  comment   String
+  product   String?
+  isFeatured Boolean @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model Newsletter {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 }

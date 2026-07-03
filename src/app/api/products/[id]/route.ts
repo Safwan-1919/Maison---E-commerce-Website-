@@ -7,8 +7,10 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const product = await db.product.findUnique({
-      where: { id },
+
+    // Try finding by slug first, then by id
+    let product = await db.product.findUnique({
+      where: { slug: id },
       include: {
         reviews: {
           orderBy: { createdAt: "desc" },
@@ -16,6 +18,18 @@ export async function GET(
         },
       },
     });
+
+    if (!product) {
+      product = await db.product.findUnique({
+        where: { id },
+        include: {
+          reviews: {
+            orderBy: { createdAt: "desc" },
+            take: 20,
+          },
+        },
+      });
+    }
 
     if (!product) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
@@ -29,7 +43,7 @@ export async function GET(
     const similar = await db.product.findMany({
       where: {
         AND: [
-          { id: { not: id } },
+          { id: { not: product.id } },
           {
             OR: [
               { category: product.category },

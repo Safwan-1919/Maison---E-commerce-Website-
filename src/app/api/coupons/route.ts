@@ -1,6 +1,30 @@
 import { db } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/auth";
 
+// GET /api/coupons - Admin only, returns all coupons with usage stats
+export async function GET() {
+  try {
+    await requireAdmin();
+
+    const coupons = await db.coupon.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+
+    return NextResponse.json({ coupons });
+  } catch (error: any) {
+    if (error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (error.message === "Forbidden") {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    }
+    console.error("Coupons fetch error:", error);
+    return NextResponse.json({ error: "Failed to fetch coupons" }, { status: 500 });
+  }
+}
+
+// POST /api/coupons - Validate coupon (kept for backward compatibility)
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();

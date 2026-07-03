@@ -25,44 +25,29 @@ interface Product {
   isNew: boolean;
   isTrending: boolean;
   isBestSeller: boolean;
+  stock?: number;
 }
 
-const categories = [
-  { name: "T-Shirts", desc: "Essential foundations", icon: "T", count: 2 },
-  { name: "Shirts", desc: "Button-down perfection", icon: "S", count: 2 },
-  { name: "Blazers", desc: "Understated tailoring", icon: "B", count: 1 },
-  { name: "Sweaters", desc: "Luxury knitwear", icon: "K", count: 2 },
-  { name: "Jeans", desc: "Premium selvedge", icon: "J", count: 1 },
-  { name: "Trousers", desc: "Impeccable cuts", icon: "P", count: 2 },
-  { name: "Outerwear", desc: "Seasonless elegance", icon: "O", count: 1 },
-  { name: "Footwear", desc: "Handcrafted shoes", icon: "F", count: 2 },
-  { name: "Bags", desc: "Considered leather", icon: "L", count: 1 },
-  { name: "Accessories", desc: "The finishing touch", icon: "A", count: 3 },
-];
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  icon: string;
+  description: string;
+  productCount: number;
+  sortOrder: number;
+}
 
-const testimonials = [
-  {
-    name: "Arjun Mehta",
-    location: "Mumbai",
-    text: "The quality is unlike anything else at this price point. The selvedge denim has developed the most beautiful fades over six months.",
-    rating: 5,
-    avatar: "A",
-  },
-  {
-    name: "Priya Sharma",
-    location: "Delhi",
-    text: "MAISON has completely replaced my wardrobe. Every piece feels considered and intentional. The cashmere sweater is my absolute favorite.",
-    rating: 5,
-    avatar: "P",
-  },
-  {
-    name: "Vikram Kannan",
-    location: "Bangalore",
-    text: "Finally, a brand that understands minimalism without being boring. The tailoring is exceptional and the customer service is top-notch.",
-    rating: 5,
-    avatar: "V",
-  },
-];
+interface Testimonial {
+  id: string;
+  name: string;
+  location: string;
+  rating: number;
+  title: string;
+  comment: string;
+  product: string;
+  isFeatured: boolean;
+}
 
 const marqueeItems = [
   "Free shipping on orders over \u20B92,000",
@@ -216,11 +201,27 @@ function MarqueeBanner() {
   );
 }
 
-// ─── Categories Section ───────────────────────────────────────────────
+// ─── Categories Section (Dynamic) ────────────────────────────────────
 function CategoriesSection() {
   const { navigate, setFilter, resetFilters } = useStore();
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true, margin: "-80px" });
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchCategories() {
+      try {
+        const res = await fetch("/api/categories?withCounts=true");
+        const data = await res.json();
+        setCategories((data.categories || []).sort((a: Category, b: Category) => a.sortOrder - b.sortOrder));
+      } catch (e) {
+        console.error("Failed to fetch categories:", e);
+      }
+      setLoading(false);
+    }
+    fetchCategories();
+  }, []);
 
   const handleCategoryClick = (category: string) => {
     resetFilters();
@@ -228,18 +229,10 @@ function CategoriesSection() {
     navigate("shop");
   };
 
-  const categoryColors: Record<string, string> = {
-    "T-Shirts": "bg-[#F0EFED]",
-    "Shirts": "bg-[#E8E6E0]",
-    "Blazers": "bg-[#D9DDD6]",
-    "Sweaters": "bg-[#E5DDD2]",
-    "Jeans": "bg-[#DEE0DE]",
-    "Trousers": "bg-[#E0DDD5]",
-    "Outerwear": "bg-[#D8D5D0]",
-    "Footwear": "bg-[#DDD8CF]",
-    "Bags": "bg-[#D5D0C8]",
-    "Accessories": "bg-[#E2DED6]",
-  };
+  const categoryColors = [
+    "bg-[#F0EFED]", "bg-[#E8E6E0]", "bg-[#D9DDD6]", "bg-[#E5DDD2]", "bg-[#DEE0DE]",
+    "bg-[#E0DDD5]", "bg-[#D8D5D0]", "bg-[#DDD8CF]", "bg-[#D5D0C8]", "bg-[#E2DED6]",
+  ];
 
   return (
     <section className="py-16 lg:py-24">
@@ -259,46 +252,61 @@ function CategoriesSection() {
           </div>
         </ScrollReveal>
 
-        <div ref={ref} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
-          {categories.map((cat, i) => (
-            <motion.button
-              key={cat.name}
-              initial={{ opacity: 0, y: 20 }}
-              animate={isInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.5, delay: i * 0.04, ease: [0.25, 0.1, 0.25, 1] }}
-              onClick={() => handleCategoryClick(cat.name)}
-              className="group relative overflow-hidden p-5 sm:p-6 text-left hover:shadow-md transition-[transform,shadow] duration-300 hover:scale-[1.02]"
-            >
-              <div className={`absolute inset-0 ${categoryColors[cat.name] || "bg-[#F0EFED]"} transition-transform duration-700`} />
-              {/* Bottom border animation line */}
-              <div className="absolute bottom-0 left-0 h-[2px] bg-[#4D5B47] w-0 group-hover:w-full transition-all duration-[400ms] ease-[cubic-bezier(0.25,0.1,0.25,1)]" />
-              <div className="relative z-10">
-                <span className="text-[28px] font-medium tracking-[-0.04em] text-[#D1D1D1] block mb-3 transition-colors duration-300 group-hover:text-[#4D5B47]">
-                  {cat.icon}
-                </span>
-                <h3 className="text-[14px] font-medium text-[#111] mb-0.5">{cat.name}</h3>
-                <p className="text-[11px] text-[#999]">{cat.desc}</p>
-                <span className={`inline-block mt-2 text-[11px] text-[#999] px-2 py-0.5 bg-[#111]/5 ${isInView ? 'badge-pop' : ''}`}>{cat.count} products</span>
+        {loading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
+            {Array.from({ length: 10 }).map((_, i) => (
+              <div key={i} className="p-5 sm:p-6 space-y-3">
+                <div className="animate-pulse bg-[#E8E8E8] rounded-sm h-9 w-9" />
+                <div className="animate-pulse bg-[#E8E8E8] rounded-sm h-4 w-20" />
+                <div className="animate-pulse bg-[#E8E8E8] rounded-sm h-3 w-28" />
+                <div className="animate-pulse bg-[#E8E8E8] rounded-sm h-5 w-16" />
               </div>
-            </motion.button>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div ref={ref} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
+            {categories.map((cat, i) => (
+              <motion.button
+                key={cat.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={isInView ? { opacity: 1, y: 0 } : {}}
+                transition={{ duration: 0.5, delay: i * 0.04, ease: [0.25, 0.1, 0.25, 1] }}
+                onClick={() => handleCategoryClick(cat.name)}
+                className="group relative overflow-hidden p-5 sm:p-6 text-left hover:shadow-md transition-[transform,shadow] duration-300 hover:scale-[1.02]"
+              >
+                <div className={`absolute inset-0 ${categoryColors[i % categoryColors.length]} transition-transform duration-700`} />
+                {/* Bottom border animation line */}
+                <div className="absolute bottom-0 left-0 h-[2px] bg-[#4D5B47] w-0 group-hover:w-full transition-all duration-[400ms] ease-[cubic-bezier(0.25,0.1,0.25,1)]" />
+                <div className="relative z-10">
+                  <span className="text-[28px] font-medium tracking-[-0.04em] text-[#D1D1D1] block mb-3 transition-colors duration-300 group-hover:text-[#4D5B47]">
+                    {cat.icon || cat.name.charAt(0)}
+                  </span>
+                  <h3 className="text-[14px] font-medium text-[#111] mb-0.5">{cat.name}</h3>
+                  <p className="text-[11px] text-[#999]">{cat.description || ""}</p>
+                  <span className={`inline-block mt-2 text-[11px] text-[#999] px-2 py-0.5 bg-[#111]/5 ${isInView ? 'badge-pop' : ''}`}>{cat.productCount} products</span>
+                </div>
+              </motion.button>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
 }
 
-// ─── Product Section (Reusable) ───────────────────────────────────────
+// ─── Product Section (Reusable, Dynamic) ──────────────────────────────
 function ProductSection({
   title,
   subtitle,
   fetchParam,
   viewAllFilter,
+  limit = 4,
 }: {
   title: string;
   subtitle: string;
   fetchParam: string;
   viewAllFilter?: string;
+  limit?: number;
 }) {
   const { navigate, setFilter, resetFilters } = useStore();
   const [products, setProducts] = useState<Product[]>([]);
@@ -309,14 +317,14 @@ function ProductSection({
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/products?${fetchParam}&limit=4`);
+      const res = await fetch(`/api/products?${fetchParam}&limit=${limit}`);
       const data = await res.json();
       setProducts(data.products || []);
     } catch (e) {
       console.error(e);
     }
     setLoading(false);
-  }, [fetchParam]);
+  }, [fetchParam, limit]);
 
   useEffect(() => {
     const id = setTimeout(fetchProducts, 0);
@@ -352,12 +360,12 @@ function ProductSection({
         <div ref={ref}>
           {loading ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
-              {Array.from({ length: 4 }).map((_, i) => (
+              {Array.from({ length: Math.min(limit, 8) }).map((_, i) => (
                 <div key={i} className="space-y-3">
-                  <div className="aspect-[3/4] skeleton-shimmer rounded-[4px]" />
-                  <div className="h-3 w-16 skeleton-shimmer rounded-[4px]" />
-                  <div className="h-4 w-full skeleton-shimmer rounded-[4px]" />
-                  <div className="h-4 w-20 skeleton-shimmer rounded-[4px]" />
+                  <div className="aspect-[3/4] animate-pulse bg-[#E8E8E8] rounded-[4px]" />
+                  <div className="h-3 w-16 animate-pulse bg-[#E8E8E8] rounded-[4px]" />
+                  <div className="h-4 w-full animate-pulse bg-[#E8E8E8] rounded-[4px]" />
+                  <div className="h-4 w-20 animate-pulse bg-[#E8E8E8] rounded-[4px]" />
                 </div>
               ))}
             </div>
@@ -461,7 +469,7 @@ function EditorialSection() {
   );
 }
 
-// ─── Flash Deals Section ──────────────────────────────────────────────
+// ─── Flash Deals Section (Dynamic) ───────────────────────────────────
 function FlashDealsSection() {
   const [timeLeft, setTimeLeft] = useState({ hours: 5, minutes: 42, seconds: 18 });
   const [products, setProducts] = useState<Product[]>([]);
@@ -528,9 +536,10 @@ function FlashDealsSection() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="space-y-3">
-                <div className="aspect-[3/4] bg-[#1A1A1A] rounded-[4px]" />
-                <div className="h-3 w-20 bg-[#1A1A1A] rounded-[4px]" />
-                <div className="h-4 w-full bg-[#1A1A1A] rounded-[4px]" />
+                <div className="aspect-[3/4] animate-pulse bg-[#1A1A1A] rounded-[4px]" />
+                <div className="h-3 w-20 animate-pulse bg-[#1A1A1A] rounded-[4px]" />
+                <div className="h-4 w-full animate-pulse bg-[#1A1A1A] rounded-[4px]" />
+                <div className="h-4 w-24 animate-pulse bg-[#1A1A1A] rounded-[4px]" />
               </div>
             ))}
           </div>
@@ -579,8 +588,70 @@ function FlashDealsSection() {
   );
 }
 
-// ─── Testimonials Section ─────────────────────────────────────────────
+// ─── Testimonials Section (Dynamic) ──────────────────────────────────
 function TestimonialsSection() {
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchTestimonials() {
+      try {
+        const res = await fetch("/api/testimonials");
+        const data = await res.json();
+        const all = data.testimonials || [];
+        // Show featured first, then others, up to 3
+        const featured = all.filter((t: Testimonial) => t.isFeatured);
+        const rest = all.filter((t: Testimonial) => !t.isFeatured);
+        setTestimonials([...featured, ...rest].slice(0, 3));
+      } catch (e) {
+        console.error("Failed to fetch testimonials:", e);
+      }
+      setLoading(false);
+    }
+    fetchTestimonials();
+  }, []);
+
+  if (loading) {
+    return (
+      <section className="py-16 lg:py-24">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+          <ScrollReveal>
+            <div className="text-center mb-12">
+              <div className="animate-pulse bg-[#E8E8E8] rounded-sm h-3 w-24 mx-auto mb-3" />
+              <div className="animate-pulse bg-[#E8E8E8] rounded-sm h-8 w-64 mx-auto" />
+            </div>
+          </ScrollReveal>
+          <div className="grid md:grid-cols-3 gap-6">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="p-6 sm:p-8 border border-[#E8E8E8] bg-white space-y-4">
+                <div className="animate-pulse bg-[#E8E8E8] rounded-sm h-6 w-6" />
+                <div className="space-y-2">
+                  <div className="animate-pulse bg-[#E8E8E8] rounded-sm h-3 w-full" />
+                  <div className="animate-pulse bg-[#E8E8E8] rounded-sm h-3 w-full" />
+                  <div className="animate-pulse bg-[#E8E8E8] rounded-sm h-3 w-3/4" />
+                </div>
+                <div className="flex gap-1">
+                  {Array.from({ length: 5 }).map((_, si) => (
+                    <div key={si} className="animate-pulse bg-[#E8E8E8] rounded-sm h-3.5 w-3.5" />
+                  ))}
+                </div>
+                <div className="flex items-center gap-3 pt-4 border-t border-[#F0EFED]">
+                  <div className="animate-pulse bg-[#E8E8E8] rounded-full h-9 w-9" />
+                  <div className="space-y-2">
+                    <div className="animate-pulse bg-[#E8E8E8] rounded-sm h-3 w-24" />
+                    <div className="animate-pulse bg-[#E8E8E8] rounded-sm h-3 w-16" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (testimonials.length === 0) return null;
+
   return (
     <section className="py-16 lg:py-24">
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
@@ -592,12 +663,15 @@ function TestimonialsSection() {
         </ScrollReveal>
 
         <StaggerContainer className="grid md:grid-cols-3 gap-6">
-          {testimonials.map((t, i) => (
-            <StaggerItem key={t.name}>
+          {testimonials.map((t) => (
+            <StaggerItem key={t.id}>
               <div className="p-6 sm:p-8 border border-[#E8E8E8] border-l-[3px] border-l-[#4D5B47] bg-white h-full flex flex-col hover:shadow-md transition-shadow duration-300 group">
                 <Quote className="w-6 h-6 text-[#E8E8E8] mb-4 flex-shrink-0" strokeWidth={1} />
+                {t.title && (
+                  <p className="text-[11px] font-medium tracking-[0.15em] uppercase text-[#4D5B47] mb-2">{t.title}</p>
+                )}
                 <p className="text-[14px] text-[#555] italic leading-[1.8] flex-1 mb-6">
-                  &ldquo;{t.text}&rdquo;
+                  &ldquo;{t.comment}&rdquo;
                 </p>
                 <div className="flex items-center gap-0.5 mb-4">
                   {Array.from({ length: 5 }).map((_, si) => (
@@ -609,7 +683,7 @@ function TestimonialsSection() {
                 </div>
                 <div className="flex items-center gap-3 pt-4 border-t border-[#F0EFED]">
                   <div className="w-9 h-9 bg-[#F0EFED] rounded-full flex items-center justify-center text-[13px] font-medium text-[#666]">
-                    {t.avatar}
+                    {t.name.charAt(0)}
                   </div>
                   <div>
                     <p className="text-[13px] font-medium text-[#111]">{t.name}</p>
@@ -809,6 +883,112 @@ function RecentlyViewedSection() {
   );
 }
 
+// ─── Trending Now Section (Combined Best Sellers + Trending) ──────────
+function TrendingNowSection() {
+  const { navigate, setFilter, resetFilters } = useStore();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, margin: "-60px" });
+
+  useEffect(() => {
+    async function fetchTrending() {
+      setLoading(true);
+      try {
+        const [bestRes, trendRes] = await Promise.all([
+          fetch("/api/products?bestSeller=true&limit=4"),
+          fetch("/api/products?trending=true&limit=4"),
+        ]);
+        const bestData = await bestRes.json();
+        const trendData = await trendRes.json();
+        const bestProducts = bestData.products || [];
+        const trendProducts = (trendData.products || []).filter(
+          (p: Product) => !bestProducts.some((bp: Product) => bp.id === p.id)
+        );
+        setProducts([...bestProducts, ...trendProducts].slice(0, 8));
+      } catch (e) {
+        console.error(e);
+      }
+      setLoading(false);
+    }
+    fetchTrending();
+  }, []);
+
+  const handleViewAll = () => {
+    resetFilters();
+    setFilter("sortBy", "popularity");
+    navigate("shop");
+  };
+
+  return (
+    <section className="py-12 lg:py-16">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+        <ScrollReveal>
+          <div className="flex items-end justify-between mb-8">
+            <div>
+              <span className="text-[11px] font-medium tracking-[0.2em] uppercase text-[#999] block mb-2">Popular</span>
+              <h2 className="text-[24px] sm:text-[28px] font-medium tracking-[-0.02em]">Trending Now</h2>
+            </div>
+            <button
+              onClick={handleViewAll}
+              className="hidden sm:flex items-center gap-1.5 text-[12px] tracking-widest uppercase text-[#666] hover:text-[#111] transition-colors group"
+            >
+              View All <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+            </button>
+          </div>
+        </ScrollReveal>
+
+        <div ref={ref}>
+          {loading ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="space-y-3">
+                  <div className="aspect-[3/4] animate-pulse bg-[#E8E8E8] rounded-[4px]" />
+                  <div className="h-3 w-16 animate-pulse bg-[#E8E8E8] rounded-[4px]" />
+                  <div className="h-4 w-full animate-pulse bg-[#E8E8E8] rounded-[4px]" />
+                  <div className="h-4 w-20 animate-pulse bg-[#E8E8E8] rounded-[4px]" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
+              {products.map((p, i) => (
+                <ProductCard
+                  key={p.id}
+                  id={p.id}
+                  name={p.name}
+                  price={p.price}
+                  mrp={p.mrp}
+                  image={p.image}
+                  images={p.images ? JSON.parse(p.images) : undefined}
+                  category={p.category}
+                  brand={p.brand}
+                  rating={p.rating}
+                  reviewCount={p.reviewCount}
+                  discount={p.discount}
+                  isNew={p.isNew}
+                  isTrending={p.isTrending}
+                  isBestSeller={p.isBestSeller}
+                  index={isInView ? i : undefined}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="sm:hidden mt-6 text-center">
+          <button
+            onClick={handleViewAll}
+            className="px-6 py-2.5 border border-[#E8E8E8] text-[12px] tracking-widest uppercase text-[#111] hover:border-[#999] transition-colors"
+          >
+            View All Trending
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ─── Gradient Divider ──────────────────────────────────────────────────
 function GradientDivider() {
   return (
@@ -825,8 +1005,6 @@ function GradientDivider() {
 
 // ─── Main HomePage ────────────────────────────────────────────────────
 export default function HomePage() {
-  const { navigate } = useStore();
-
   return (
     <main>
       <HeroSection />
@@ -834,28 +1012,25 @@ export default function HomePage() {
       <CategoriesSection />
       <GradientDivider />
       <ProductSection
+        title="Featured Collection"
+        subtitle="Curated"
+        fetchParam="featured=true"
+        viewAllFilter="popularity"
+        limit={8}
+      />
+      <ProductSection
         title="New Arrivals"
         subtitle="Just In"
         fetchParam="new=true&sort=newest"
         viewAllFilter="newest"
+        limit={8}
       />
       <EditorialSection />
       <GradientDivider />
       <FeatureHighlight />
-      <ProductSection
-        title="Trending Now"
-        subtitle="Popular"
-        fetchParam="trending=true&sort=popularity"
-        viewAllFilter="popularity"
-      />
+      <TrendingNowSection />
       <GradientDivider />
       <FlashDealsSection />
-      <ProductSection
-        title="Best Sellers"
-        subtitle="Most Loved"
-        fetchParam="bestSeller=true&sort=popularity"
-        viewAllFilter="popularity"
-      />
       <GradientDivider />
       <StatsBanner />
       <TestimonialsSection />

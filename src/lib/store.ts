@@ -94,6 +94,10 @@ interface StoreState {
   isInCompare: (productId: string) => boolean;
   setCompareOpen: (open: boolean) => void;
 
+  // Auth Modal
+  isAuthOpen: boolean;
+  setAuthOpen: (open: boolean) => void;
+
   // Size Guide
   sizeGuideOpen: boolean;
   setSizeGuideOpen: (open: boolean) => void;
@@ -261,6 +265,10 @@ export const useStore = create<StoreState>()(
       clearCompare: () => set({ compareItems: [] }),
       isInCompare: (productId) => get().compareItems.includes(productId),
       setCompareOpen: (open) => set({ isCompareOpen: open }),
+
+      // Auth Modal
+      isAuthOpen: false,
+      setAuthOpen: (open) => set({ isAuthOpen: open }),
 
       // Size Guide
       sizeGuideOpen: false,

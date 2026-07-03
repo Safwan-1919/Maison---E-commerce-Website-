@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useStore } from "@/lib/store";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { ProductCard } from "@/components/shared/ProductCard";
 import { ScrollReveal } from "@/components/shared/ScrollReveal";
 import {
@@ -17,6 +18,7 @@ interface Product {
   description: string | null;
   price: number;
   mrp: number;
+  image: string;
   category: string;
   brand: string;
   sizes: string;
@@ -32,7 +34,6 @@ interface Product {
   material: string | null;
   care: string | null;
   tags: string | null;
-  reviews: Review[];
 }
 
 interface Review {
@@ -289,6 +290,97 @@ function CollapsibleSection({
   );
 }
 
+/* ─────────────────── Review Form ──────────────────── */
+
+function ReviewForm({
+  productId,
+  onSubmit,
+  submitting,
+}: {
+  productId: string;
+  onSubmit: (data: { rating: number; title: string; comment: string }) => void;
+  submitting: boolean;
+}) {
+  const [hoverRating, setHoverRating] = useState(0);
+  const [selectedRating, setSelectedRating] = useState(0);
+  const [title, setTitle] = useState("");
+  const [comment, setComment] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedRating === 0) return;
+    onSubmit({ rating: selectedRating, title, comment });
+    setSelectedRating(0);
+    setTitle("");
+    setComment("");
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4 border border-[#E8E8E8] bg-white p-5 rounded-[4px]">
+      <h3 className="text-[14px] font-medium text-[#111]">Write a Review</h3>
+
+      {/* Star selector */}
+      <div>
+        <p className="text-[12px] text-[#999] mb-2">Your Rating</p>
+        <div className="flex items-center gap-1">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <button
+              key={star}
+              type="button"
+              onClick={() => setSelectedRating(star)}
+              onMouseEnter={() => setHoverRating(star)}
+              onMouseLeave={() => setHoverRating(0)}
+              className="p-0.5 transition-transform hover:scale-110"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d={STAR_PATH}
+                  fill={star <= (hoverRating || selectedRating) ? "#B79B7B" : "#E8E8E8"}
+                />
+              </svg>
+            </button>
+          ))}
+          {selectedRating > 0 && (
+            <span className="text-[12px] text-[#999] ml-2">
+              {selectedRating === 1 ? "Poor" : selectedRating === 2 ? "Fair" : selectedRating === 3 ? "Good" : selectedRating === 4 ? "Very Good" : "Excellent"}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Title */}
+      <div>
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Review title (optional)"
+          className="w-full px-3 py-2.5 text-[13px] border border-[#E8E8E8] bg-transparent focus:outline-none focus:border-[#111] transition-colors placeholder:text-[#bbb]"
+        />
+      </div>
+
+      {/* Comment */}
+      <div>
+        <textarea
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          placeholder="Share your experience with this product (optional)"
+          rows={3}
+          className="w-full px-3 py-2.5 text-[13px] border border-[#E8E8E8] bg-transparent focus:outline-none focus:border-[#111] transition-colors resize-none placeholder:text-[#bbb]"
+        />
+      </div>
+
+      <button
+        type="submit"
+        disabled={selectedRating === 0 || submitting}
+        className="px-6 py-2.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-widest uppercase hover:bg-[#333] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        {submitting ? "Submitting..." : "Submit Review"}
+      </button>
+    </form>
+  );
+}
+
 /* ═══════════════════════ MAIN COMPONENT ═══════════════════════ */
 
 export default function ProductPage() {
@@ -302,7 +394,9 @@ export default function ProductPage() {
     addToRecentlyViewed,
     setSizeGuideOpen,
     showNotification,
+    setAuthOpen,
   } = useStore();
+  const { isAuthenticated } = useAuth();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [similar, setSimilar] = useState<Product[]>([]);
@@ -312,8 +406,15 @@ export default function ProductPage() {
   const [quantity, setQuantity] = useState(1);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
-  const [localReviews, setLocalReviews] = useState<Review[]>([]);
   const [openDetail, setOpenDetail] = useState<string | null>("description");
+
+  // Review state
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewTotal, setReviewTotal] = useState(0);
+  const [reviewPage, setReviewPage] = useState(1);
+  const [reviewTotalPages, setReviewTotalPages] = useState(0);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   const fetchProduct = useCallback(async () => {
     if (!selectedProductId) return;
@@ -322,16 +423,47 @@ export default function ProductPage() {
       const res = await fetch(`/api/products/${selectedProductId}`);
       const data = await res.json();
       setProduct(data.product);
-      setSimilar(data.similar || []);
+      setSimilar(data.similarProducts || []);
+      // Set initial reviews from the product response
+      setReviews(data.product?.reviews || []);
+      setReviewTotal(data.product?.reviewCount || 0);
     } catch (e) {
       console.error(e);
     }
     setLoading(false);
   }, [selectedProductId]);
 
+  const fetchReviews = useCallback(async (pageNum: number, append: boolean = false) => {
+    if (!selectedProductId) return;
+    setReviewsLoading(true);
+    try {
+      const res = await fetch(`/api/products/${selectedProductId}/reviews?page=${pageNum}&limit=5`);
+      const data = await res.json();
+      if (append) {
+        setReviews((prev) => [...prev, ...(data.reviews || [])]);
+      } else {
+        setReviews(data.reviews || []);
+      }
+      setReviewTotal(data.total || 0);
+      setReviewTotalPages(data.totalPages || 1);
+      setReviewPage(data.page || 1);
+    } catch (e) {
+      console.error(e);
+    }
+    setReviewsLoading(false);
+  }, [selectedProductId]);
+
   useEffect(() => {
     fetchProduct();
   }, [fetchProduct]);
+
+  // Fetch reviews when product loads (use API pagination)
+  useEffect(() => {
+    if (product) {
+      setReviewPage(1);
+      fetchReviews(1, false);
+    }
+  }, [product]);
 
   // Escape key to close lightbox
   useEffect(() => {
@@ -353,19 +485,54 @@ export default function ProductPage() {
     }
   }, [product, addToRecentlyViewed]);
 
+  // Set default size/color when product loads
   useEffect(() => {
     if (product) {
-      const sizes: string[] = JSON.parse(product.sizes);
-      const colors: string[] = JSON.parse(product.colors);
-      if (!selectedSize && sizes.length > 0 && sizes[0] !== "ONE SIZE") {
-        setSelectedSize(sizes[Math.min(2, sizes.length - 1)]);
+      try {
+        const sizes: string[] = JSON.parse(product.sizes || "[]");
+        const colors: string[] = JSON.parse(product.colors || "[]");
+        if (!selectedSize && sizes.length > 0 && sizes[0] !== "ONE SIZE") {
+          setSelectedSize(sizes[Math.min(2, sizes.length - 1)]);
+        }
+        if (!selectedColor && colors.length > 0) {
+          setSelectedColor(colors[0]);
+        }
+      } catch {
+        // ignore parse errors
       }
-      if (!selectedColor && colors.length > 0) {
-        setSelectedColor(colors[0]);
-      }
-      setLocalReviews(product.reviews || []);
     }
-    }, [product]);
+  }, [product]);
+
+  // Handle review submission
+  const handleReviewSubmit = async (data: { rating: number; title: string; comment: string }) => {
+    if (!selectedProductId || !isAuthenticated) return;
+    setSubmittingReview(true);
+    try {
+      const res = await fetch("/api/reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: selectedProductId,
+          rating: data.rating,
+          title: data.title || undefined,
+          comment: data.comment || undefined,
+        }),
+      });
+      if (res.ok) {
+        showNotification("Review submitted successfully", "success");
+        // Re-fetch reviews from page 1
+        fetchReviews(1, false);
+        // Re-fetch product to update rating/reviewCount
+        fetchProduct();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showNotification(err.error || "Failed to submit review", "error");
+      }
+    } catch {
+      showNotification("Failed to submit review", "error");
+    }
+    setSubmittingReview(false);
+  };
 
   if (loading)
     return (
@@ -382,9 +549,9 @@ export default function ProductPage() {
       </main>
     );
 
-  const images: string[] = JSON.parse(product.images);
-  const sizes: string[] = JSON.parse(product.sizes);
-  const colors: string[] = JSON.parse(product.colors);
+  const images: string[] = JSON.parse(product.images || "[]");
+  const sizes: string[] = JSON.parse(product.sizes || "[]");
+  const colors: string[] = JSON.parse(product.colors || "[]");
   const inWishlist = isInWishlist(product.id);
 
   // Delivery dates: 5-7 business days (approx 7-9 calendar days)
@@ -402,8 +569,8 @@ export default function ProductPage() {
   });
 
   // Rating distribution
-  const distribution = localReviews.length > 0
-    ? getRatingDistribution(localReviews)
+  const distribution = reviews.length > 0
+    ? getRatingDistribution(reviews)
     : [
         { count: 0, pct: 0 },
         { count: 0, pct: 0 },
@@ -842,15 +1009,12 @@ export default function ProductPage() {
                   Reviews
                 </h2>
                 <p className="text-[13px] text-[#999] mt-1">
-                  {localReviews.length > 0
-                    ? localReviews.length
-                    : product.reviewCount}{" "}
-                  reviews
+                  {reviewTotal} reviews
                 </p>
               </div>
               <div className="flex items-center gap-5">
                 {/* Average rating summary */}
-                {localReviews.length > 0 && (
+                {reviews.length > 0 && (
                   <div className="flex items-center gap-2.5">
                     <span className="text-[32px] font-medium text-[#111] leading-none">
                       {product.rating.toFixed(1)}
@@ -867,26 +1031,33 @@ export default function ProductPage() {
                   </div>
                 )}
 
-                {/* Write a Review — Locked / Disabled */}
-                <button
-                  onClick={() =>
-                    showNotification(
-                      "Please sign in to write a review",
-                      "info"
-                    )
-                  }
-                  disabled
-                  className="inline-flex items-center gap-2 bg-[#E8E8E8] text-[#999] text-[12px] tracking-wide px-5 py-2.5 rounded-[4px] cursor-not-allowed select-none"
-                >
-                  <Lock className="w-3.5 h-3.5" strokeWidth={1.5} />
-                  Write a Review
-                </button>
+                {/* Write a Review — Auth-aware */}
+                {isAuthenticated ? null : (
+                  <button
+                    onClick={() => setAuthOpen(true)}
+                    className="inline-flex items-center gap-2 text-[#666] text-[12px] tracking-wide px-5 py-2.5 border border-[#E8E8E8] hover:border-[#999] hover:text-[#111] transition-colors rounded-[4px]"
+                  >
+                    <Lock className="w-3.5 h-3.5" strokeWidth={1.5} />
+                    Sign in to review
+                  </button>
+                )}
               </div>
             </div>
           </ScrollReveal>
 
+          {/* Review Form (only if authenticated) */}
+          {isAuthenticated && (
+            <div className="mb-8">
+              <ReviewForm
+                productId={product.id}
+                onSubmit={handleReviewSubmit}
+                submitting={submittingReview}
+              />
+            </div>
+          )}
+
           {/* Rating Distribution + Reviews Grid */}
-          {localReviews.length > 0 && (
+          {reviews.length > 0 && (
             <div className="grid lg:grid-cols-[220px_1fr] gap-8 lg:gap-12">
               {/* Distribution sidebar */}
               <ScrollReveal>
@@ -928,7 +1099,7 @@ export default function ProductPage() {
 
               {/* Reviews list */}
               <div className="space-y-0">
-                {localReviews.map((review, i) => (
+                {reviews.map((review, i) => (
                   <ScrollReveal
                     key={review.id}
                     delay={i * 0.05}
@@ -993,12 +1164,25 @@ export default function ProductPage() {
                     </div>
                   </ScrollReveal>
                 ))}
+
+                {/* Load More Reviews */}
+                {reviewPage < reviewTotalPages && (
+                  <div className="pt-6">
+                    <button
+                      onClick={() => fetchReviews(reviewPage + 1, true)}
+                      disabled={reviewsLoading}
+                      className="w-full py-3 border border-[#E8E8E8] text-[12px] tracking-widest uppercase text-[#111] hover:border-[#999] hover:bg-[#F0EFED] transition-colors disabled:opacity-50"
+                    >
+                      {reviewsLoading ? "Loading..." : "Load More Reviews"}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
           {/* Empty reviews state */}
-          {localReviews.length === 0 && (
+          {reviews.length === 0 && (
             <div className="text-center py-12 border border-[#E8E8E8] bg-white">
               <StarRating rating={0} size={28} />
               <p className="text-[14px] text-[#999] mt-4">
@@ -1100,14 +1284,10 @@ export default function ProductPage() {
             )}
 
             {/* Image */}
-            <motion.img
+            <img
               key={lightboxIndex}
               src={images[lightboxIndex]}
               alt={`${product.name} - Image ${lightboxIndex + 1}`}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.25 }}
               className="max-h-[85vh] max-w-[85vw] object-contain"
               onClick={(e) => e.stopPropagation()}
             />

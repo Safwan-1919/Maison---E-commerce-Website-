@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useStore } from "@/lib/store";
 import { ProductCard } from "@/components/shared/ProductCard";
@@ -28,8 +28,22 @@ interface Product {
   stock: number;
 }
 
-const allCategories = ["T-Shirts", "Shirts", "Blazers", "Sweaters", "Jeans", "Trousers", "Outerwear", "Footwear", "Bags", "Accessories"];
-const allBrands = ["MAISON Essentials", "MAISON Tailored", "MAISON Denim", "MAISON Knitwear", "MAISON Footwear", "MAISON Outerwear", "MAISON Accessories", "MAISON Leather", "MAISON Timepieces"];
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  icon: string | null;
+  description: string | null;
+  productCount: number;
+}
+
+interface Brand {
+  id: string;
+  name: string;
+  slug: string;
+  productCount: number;
+}
+
 const allSizes = ["XS", "S", "M", "L", "XL", "XXL", "28", "30", "32", "34", "36", "ONE SIZE"];
 const colorSwatches = [
   { name: "White", hex: "#FFFFFF" },
@@ -51,7 +65,7 @@ const priceRanges = [
   { label: "₹2,000 - ₹5,000", min: 2000, max: 5000 },
   { label: "₹5,000 - ₹10,000", min: 5000, max: 10000 },
   { label: "₹10,000 - ₹20,000", min: 10000, max: 20000 },
-  { label: "Over ₹20,000", min: 20000, max: 999999 },
+  { label: "Over ₹20,000", min: 20000, max: 99999 },
 ];
 
 const discountOptions = [
@@ -116,7 +130,15 @@ function CheckboxItem({ label, checked, onChange, count }: { label: string; chec
   );
 }
 
-function FilterSidebar({ onClose, products }: { onClose?: () => void; products?: Product[] }) {
+function FilterSidebar({
+  onClose,
+  categories,
+  brands,
+}: {
+  onClose?: () => void;
+  categories?: Category[];
+  brands?: Brand[];
+}) {
   const { filters, setFilter, resetFilters } = useStore();
   const activeCount = useMemo(() => {
     let count = 0;
@@ -126,26 +148,24 @@ function FilterSidebar({ onClose, products }: { onClose?: () => void; products?:
     if (filters.colors.length) count += filters.colors.length;
     if (filters.ratings > 0) count++;
     if (filters.availability) count++;
-    if (filters.priceRange[0] > 0 || filters.priceRange[1] < 999999) count++;
+    if (filters.priceRange[0] > 0 || filters.priceRange[1] < 99999) count++;
     return count;
   }, [filters]);
-
-  // Count products per category
-  const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    if (products && products.length > 0) {
-      products.forEach((p) => {
-        counts[p.category] = (counts[p.category] || 0) + 1;
-      });
-    }
-    return counts;
-  }, [products]);
 
   const toggleArrayFilter = (key: "category" | "brands" | "sizes" | "colors", value: string) => {
     const current = filters[key];
     const updated = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
     setFilter(key, updated);
   };
+
+  // Build a map of category name -> productCount from API data
+  const categoryCountMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    if (categories) {
+      categories.forEach((c) => { map[c.name] = c.productCount; });
+    }
+    return map;
+  }, [categories]);
 
   return (
     <div className="flex flex-col h-full">
@@ -170,13 +190,13 @@ function FilterSidebar({ onClose, products }: { onClose?: () => void; products?:
       <div className="flex-1 overflow-y-auto scrollbar-thin -mx-1 px-1">
         <FilterSection title="Category">
           <div className="space-y-0.5 max-h-48 overflow-y-auto scrollbar-thin">
-            {allCategories.map((cat) => (
+            {(categories || []).map((cat) => (
               <CheckboxItem
-                key={cat}
-                label={cat}
-                checked={filters.category.includes(cat)}
-                onChange={() => toggleArrayFilter("category", cat)}
-                count={categoryCounts[cat] || 0}
+                key={cat.id}
+                label={cat.name}
+                checked={filters.category.includes(cat.name)}
+                onChange={() => toggleArrayFilter("category", cat.name)}
+                count={categoryCountMap[cat.name] || 0}
               />
             ))}
           </div>
@@ -203,12 +223,12 @@ function FilterSidebar({ onClose, products }: { onClose?: () => void; products?:
 
         <FilterSection title="Brand">
           <div className="space-y-0.5 max-h-48 overflow-y-auto scrollbar-thin">
-            {allBrands.map((brand) => (
+            {(brands || []).map((brand) => (
               <CheckboxItem
-                key={brand}
-                label={brand.replace("MAISON ", "")}
-                checked={filters.brands.includes(brand)}
-                onChange={() => toggleArrayFilter("brands", brand)}
+                key={brand.id}
+                label={brand.name.replace("MAISON ", "")}
+                checked={filters.brands.includes(brand.name)}
+                onChange={() => toggleArrayFilter("brands", brand.name)}
               />
             ))}
           </div>
@@ -361,68 +381,90 @@ function ProductListItem({ product, index }: { product: Product; index: number }
   );
 }
 
-const suggestedCategories = ["T-Shirts", "Footwear", "Accessories"];
-
 export default function ShopPage() {
   const { filters, setFilter, resetFilters, searchQuery, navigate, goBack } = useStore();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [page, setPage] = useState(1);
   const [mobileFilters, setMobileFilters] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [mobileSortOpen, setMobileSortOpen] = useState(false);
-  const limit = 20;
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const productGridRef = useRef<HTMLDivElement>(null);
+  const limit = 12;
 
+  // Fetch categories and brands on mount
+  useEffect(() => {
+    fetch("/api/categories?withCounts=true")
+      .then((r) => r.json())
+      .then((data) => setCategories(data.categories || []))
+      .catch(() => {});
+
+    fetch("/api/brands")
+      .then((r) => r.json())
+      .then((data) => setBrands(data.brands || []))
+      .catch(() => {});
+  }, []);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [filters, searchQuery]);
+
+  // Fetch products
   const fetchProducts = useCallback(async () => {
-    queueMicrotask(() => setLoading(true));
+    setLoading(true);
     const params = new URLSearchParams();
-    if (filters.category.length === 1) params.set("category", filters.category[0]);
-    if (filters.brands.length === 1) params.set("brand", filters.brands[0]);
-    if (searchQuery) params.set("search", searchQuery);
-    params.set("sort", filters.sortBy);
+
+    if (filters.category.length) params.set("categories", filters.category.join(","));
+    if (filters.brands.length) params.set("brands", filters.brands.join(","));
+    if (filters.sizes.length) params.set("sizes", filters.sizes.join(","));
+    if (filters.colors.length) params.set("colors", filters.colors.join(","));
     params.set("minPrice", filters.priceRange[0].toString());
     params.set("maxPrice", filters.priceRange[1].toString());
-    params.set("limit", limit.toString());
+    if (filters.ratings > 0) params.set("minRating", filters.ratings.toString());
+    if (filters.availability) params.set("inStock", "true");
+    if (filters.search) params.set("search", filters.search);
+    if (searchQuery) params.set("search", searchQuery);
+
+    const sortMap: Record<string, string> = {
+      "popularity": "popularity",
+      "newest": "newest",
+      "price-low": "price-low",
+      "price-high": "price-high",
+      "rating": "rating",
+    };
+    params.set("sort", sortMap[filters.sortBy] || "popularity");
     params.set("page", page.toString());
+    params.set("limit", limit.toString());
 
     try {
       const res = await fetch(`/api/products?${params}`);
       const data = await res.json();
-      let filtered = data.products || [];
-
-      // Client-side filtering for arrays
-      if (filters.category.length > 1) {
-        filtered = filtered.filter((p: Product) => filters.category.includes(p.category));
-      }
-      if (filters.brands.length > 1) {
-        filtered = filtered.filter((p: Product) => filters.brands.includes(p.brand));
-      }
-      if (filters.ratings > 0) {
-        filtered = filtered.filter((p: Product) => p.rating >= filters.ratings);
-      }
-      if (filters.availability) {
-        filtered = filtered.filter((p: Product) => p.stock > 0);
-      }
-      if (filters.sizes.length > 0) {
-        filtered = filtered.filter((p: Product) => {
-          try {
-            const sizes = JSON.parse(p.images ? "" : "[]");
-            return true; // Simplified - sizes stored as JSON in sizes field
-          } catch { return true; }
-        });
-      }
-
-      setProducts(filtered);
-      setTotal(data.total || filtered.length);
+      setProducts(data.products || []);
+      setTotal(data.total || 0);
+      setTotalPages(data.totalPages || 1);
     } catch (e) {
       console.error(e);
     }
     setLoading(false);
   }, [filters, searchQuery, page]);
 
-  useEffect(() => { const id = setTimeout(fetchProducts, 0); return () => clearTimeout(id); }, [fetchProducts]);
+  useEffect(() => {
+    const id = setTimeout(fetchProducts, 0);
+    return () => clearTimeout(id);
+  }, [fetchProducts]);
+
+  // Scroll to top of product grid when page changes
+  useEffect(() => {
+    if (productGridRef.current) {
+      productGridRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [page]);
 
   const sortOptions = [
     { label: "Popularity", value: "popularity" },
@@ -431,8 +473,6 @@ export default function ShopPage() {
     { label: "Newest First", value: "newest" },
     { label: "Best Rating", value: "rating" },
   ];
-
-  const totalPages = Math.ceil(total / limit);
 
   const activeFilterTags = useMemo(() => {
     const tags: { label: string; onRemove: () => void }[] = [];
@@ -449,10 +489,42 @@ export default function ShopPage() {
     setFilter("category", [cat]);
   };
 
-  // Compute the "showing X of Y" text
+  // Compute the "showing X-Y of Z" text
+  const showingStart = total > 0 ? (page - 1) * limit + 1 : 0;
+  const showingEnd = Math.min(page * limit, total);
   const showingText = !loading && total > 0
-    ? `Showing ${products.length} of ${total} products`
+    ? `Showing ${showingStart}–${showingEnd} of ${total} products`
     : loading ? "Loading products..." : "";
+
+  // Build page numbers for pagination with windowing
+  const pageNumbers = useMemo(() => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    const pages: number[] = [];
+    if (page <= 3) {
+      for (let i = 1; i <= 5; i++) pages.push(i);
+      pages.push(-1); // ellipsis
+      pages.push(totalPages);
+    } else if (page >= totalPages - 2) {
+      pages.push(1);
+      pages.push(-1);
+      for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      pages.push(-1);
+      for (let i = page - 1; i <= page + 1; i++) pages.push(i);
+      pages.push(-1);
+      pages.push(totalPages);
+    }
+    return pages;
+  }, [page, totalPages]);
+
+  // Suggested categories from API data
+  const suggestedCategories = categories
+    .filter((c) => c.productCount > 0)
+    .slice(0, 3)
+    .map((c) => c.name);
 
   return (
     <main className="min-h-screen bg-[#F8F8F6] pt-20 pb-20 lg:pb-0">
@@ -481,7 +553,7 @@ export default function ShopPage() {
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto p-4">
-                <FilterSidebar onClose={() => setMobileFilters(false)} products={products} />
+                <FilterSidebar onClose={() => setMobileFilters(false)} categories={categories} brands={brands} />
               </div>
               <div className="p-4 border-t border-[#E8E8E8]">
                 <button
@@ -682,16 +754,16 @@ export default function ShopPage() {
           {/* Desktop Sidebar */}
           <div className="hidden lg:block w-[240px] flex-shrink-0">
             <div className="sticky top-[88px]">
-              <FilterSidebar products={products} />
+              <FilterSidebar categories={categories} brands={brands} />
             </div>
           </div>
 
           {/* Product Grid / List */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0" ref={productGridRef}>
             {loading ? (
               viewMode === "grid" ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 lg:gap-5">
-                  {Array.from({ length: 8 }).map((_, i) => (
+                  {Array.from({ length: 12 }).map((_, i) => (
                     <div key={i} className="space-y-3">
                       <div
                         className="aspect-[3/4] rounded-[4px]"
@@ -745,18 +817,20 @@ export default function ShopPage() {
                   </button>
                 </div>
                 {/* Suggested category pills */}
-                <div className="flex items-center gap-2 mt-6 flex-wrap justify-center">
-                  <span className="text-[11px] text-[#999] tracking-wide uppercase mr-1">Try:</span>
-                  {suggestedCategories.map((cat) => (
-                    <button
-                      key={cat}
-                      onClick={() => handleBrowseCategory(cat)}
-                      className="px-3.5 py-1.5 border border-[#E8E8E8] text-[11px] text-[#666] tracking-wide hover:border-[#4D5B47] hover:text-[#4D5B47] transition-colors rounded-[4px]"
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
+                {suggestedCategories.length > 0 && (
+                  <div className="flex items-center gap-2 mt-6 flex-wrap justify-center">
+                    <span className="text-[11px] text-[#999] tracking-wide uppercase mr-1">Try:</span>
+                    {suggestedCategories.map((cat) => (
+                      <button
+                        key={cat}
+                        onClick={() => handleBrowseCategory(cat)}
+                        className="px-3.5 py-1.5 border border-[#E8E8E8] text-[11px] text-[#666] tracking-wide hover:border-[#4D5B47] hover:text-[#4D5B47] transition-colors rounded-[4px]"
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             ) : (
               <>
@@ -799,31 +873,46 @@ export default function ShopPage() {
                 {totalPages > 1 && (
                   <div className="flex items-center justify-center gap-1 mt-12">
                     <button
-                      onClick={() => setPage(Math.max(1, page - 1))}
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
                       disabled={page === 1}
-                      className="w-9 h-9 flex items-center justify-center border border-[#E8E8E8] text-[13px] disabled:opacity-30 hover:border-[#999] transition-colors"
+                      className="w-9 h-9 flex items-center justify-center text-[13px] disabled:opacity-30 text-[#666] hover:text-[#111] transition-colors"
                     >
-                      ‹
+                      &lt;
                     </button>
-                    {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((p) => (
-                      <button
-                        key={p}
-                        onClick={() => setPage(p)}
-                        className={`w-9 h-9 flex items-center justify-center text-[13px] transition-colors ${
-                          page === p ? "bg-[#111] text-[#F8F8F6]" : "border border-[#E8E8E8] hover:border-[#999]"
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    ))}
+                    {pageNumbers.map((p, i) =>
+                      p === -1 ? (
+                        <span key={`ellipsis-${i}`} className="w-9 h-9 flex items-center justify-center text-[13px] text-[#999]">
+                          ...
+                        </span>
+                      ) : (
+                        <button
+                          key={p}
+                          onClick={() => setPage(p)}
+                          className={`w-9 h-9 flex items-center justify-center text-[13px] transition-colors ${
+                            page === p
+                              ? "bg-[#111] text-white"
+                              : "text-[#666] hover:text-[#111]"
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      )
+                    )}
                     <button
-                      onClick={() => setPage(Math.min(totalPages, page + 1))}
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                       disabled={page === totalPages}
-                      className="w-9 h-9 flex items-center justify-center border border-[#E8E8E8] text-[13px] disabled:opacity-30 hover:border-[#999] transition-colors"
+                      className="w-9 h-9 flex items-center justify-center text-[13px] disabled:opacity-30 text-[#666] hover:text-[#111] transition-colors"
                     >
-                      ›
+                      &gt;
                     </button>
                   </div>
+                )}
+
+                {/* Page X of Y text */}
+                {totalPages > 1 && (
+                  <p className="text-center text-[13px] text-[#999] mt-3">
+                    Page {page} of {totalPages}
+                  </p>
                 )}
               </>
             )}

@@ -1,0 +1,531 @@
+     1→     1→"use client";
+     2→     2→
+     3→     3→import { useState } from "react";
+     4→     4→import { motion, AnimatePresence } from "framer-motion";
+     5→     5→import { useStore } from "@/lib/store";
+     6→     6→import {
+     7→     7→  ChevronRight, CreditCard, Wallet, Building2, Smartphone, Truck,
+     8→     8→  CheckCircle, ArrowLeft, Shield, Lock
+     9→     9→} from "lucide-react";
+    10→    10→
+    11→    11→const steps = ["Shipping", "Payment", "Review"];
+    12→    12→
+    13→    13→function StepIndicator({ currentStep }: { currentStep: number }) {
+    14→    14→  return (
+    15→    15→    <div className="flex items-center justify-center mb-10">
+    16→    16→      {steps.map((step, i) => (
+    17→    17→        <div key={step} className="flex items-center">
+    18→    18→          <div className="flex items-center gap-2">
+    19→    19→            <div
+    20→    20→              className={`w-7 h-7 flex items-center justify-center text-[12px] font-medium transition-colors ${
+    21→    21→                i <= currentStep
+    22→    22→                  ? "bg-[#111] text-[#F8F8F6]"
+    23→    23→                  : "bg-[#F0EFED] text-[#999]"
+    24→    24→              }`}
+    25→    25→            >
+    26→    26→              {i < currentStep ? <CheckCircle className="w-4 h-4" /> : i + 1}
+    27→    27→            </div>
+    28→    28→            <span className={`text-[12px] tracking-widest uppercase hidden sm:inline ${
+    29→    29→              i <= currentStep ? "text-[#111] font-medium" : "text-[#999]"
+    30→    30→            }`}>
+    31→    31→              {step}
+    32→    32→            </span>
+    33→    33→          </div>
+    34→    34→          {i < steps.length - 1 && (
+    35→    35→            <div className="w-12 sm:w-20 h-px mx-3 relative overflow-hidden bg-[#E8E8E8]">
+    36→    36→              <motion.div
+    37→    37→                initial={false}
+    38→    38→                animate={{ width: i < currentStep ? "100%" : "0%" }}
+    39→    39→                transition={{ duration: 0.5, ease: "easeInOut" }}
+    40→    40→                className="absolute inset-y-0 left-0 bg-[#4D5B47]"
+    41→    41→              />
+    42→    42→            </div>
+    43→    43→          )}
+    44→    44→        </div>
+    45→    45→      ))}
+    46→    46→    </div>
+    47→    47→  );
+    48→    48→}
+    49→    49→
+    50→    50→export default function CheckoutPage() {
+    51→    51→  const { cartItems, getCartTotal, getCartMrpTotal, getCartCount, navigate, clearCart, showNotification } = useStore();
+    52→    52→  const [step, setStep] = useState(0);
+    53→    53→  const [placing, setPlacing] = useState(false);
+    54→    54→  const [orderSuccess, setOrderSuccess] = useState(false);
+    55→    55→  const [orderNumber, setOrderNumber] = useState("");
+    56→    56→
+    57→    57→  const [shipping, setShipping] = useState({
+    58→    58→    fullName: "", email: "", phone: "",
+    59→    59→    address1: "", address2: "", city: "", state: "", pincode: "", country: "India",
+    60→    60→    notes: "",
+    61→    61→  });
+    62→    62→  const [paymentMethod, setPaymentMethod] = useState("card");
+    63→    63→  const [cardDetails, setCardDetails] = useState({ number: "", expiry: "", cvv: "", name: "" });
+    64→    64→  const [upiId, setUpiId] = useState("");
+    65→    65→  const [agreed, setAgreed] = useState(false);
+    66→    66→
+    67→    67→  const total = getCartTotal();
+    68→    68→  const mrpTotal = getCartMrpTotal();
+    69→    69→  const shippingCost = total >= 2000 ? 0 : 149;
+    70→    70→  const finalTotal = total + shippingCost;
+    71→    71→
+    72→    72→  const paymentMethods = [
+    73→    73→    { id: "card", label: "Credit / Debit Card", icon: CreditCard, brand: "Visa, Mastercard, RuPay" },
+    74→    74→    { id: "upi", label: "UPI", icon: Smartphone, brand: "GPay, PhonePe, Paytm" },
+    75→    75→    { id: "netbanking", label: "Net Banking", icon: Building2, brand: "All major banks" },
+    76→    76→    { id: "wallet", label: "Wallet", icon: Wallet, brand: "Paytm, Amazon Pay" },
+    77→    77→    { id: "cod", label: "Cash on Delivery", icon: Truck, brand: "Pay on delivery" },
+    78→    78→  ];
+    79→    79→
+    80→    80→  const handlePlaceOrder = async () => {
+    81→    81→    if (!agreed) return;
+    82→    82→    setPlacing(true);
+    83→    83→    try {
+    84→    84→      const res = await fetch("/api/orders", {
+    85→    85→        method: "POST",
+    86→    86→        headers: { "Content-Type": "application/json" },
+    87→    87→        body: JSON.stringify({
+    88→    88→          items: cartItems.map((item) => ({
+    89→    89→            productId: item.productId,
+    90→    90→            name: item.name,
+    91→    91→            price: item.price,
+    92→    92→            quantity: item.quantity,
+    93→    93→            size: item.size,
+    94→    94→            color: item.color,
+    95→    95→            image: item.image,
+    96→    96→          })),
+    97→    97→          shippingAddress: shipping,
+    98→    98→          paymentMethod,
+    99→    99→          shipping: shippingCost,
+   100→   100→        }),
+   101→   101→      });
+   102→   102→      const data = await res.json();
+   103→   103→      if (data.success) {
+   104→   104→        setOrderNumber(data.order.orderNumber);
+   105→   105→        setOrderSuccess(true);
+   106→   106→        clearCart();
+   107→   107→      }
+   108→   108→    } catch (e) {
+   109→   109→      console.error(e);
+   110→   110→    }
+   111→   111→    setPlacing(false);
+   112→   112→  };
+   113→   113→
+   114→   114→  if (cartItems.length === 0 && !orderSuccess) {
+   115→   115→    return (
+   116→   116→      <main className="min-h-screen bg-[#F8F8F6] pt-20 flex items-center justify-center">
+   117→   117→        <div className="text-center">
+   118→   118→          <p className="text-[15px] text-[#666] mb-4">Your bag is empty</p>
+   119→   119→          <button onClick={() => navigate("shop")} className="px-6 py-2.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-widest uppercase">
+   120→   120→            Shop Now
+   121→   121→          </button>
+   122→   122→        </div>
+   123→   123→      </main>
+   124→   124→    );
+   125→   125→  }
+   126→   126→
+   127→   127→  if (orderSuccess) {
+   128→   128→    const deliveryMin = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+   129→   129→    const deliveryMax = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+   130→   130→    const confettiParticles = Array.from({ length: 14 }, (_, i) => {
+   131→   131→      const angle = (i / 14) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+   132→   132→      const distance = 120 + Math.random() * 140;
+   133→   133→      const size = 6 + Math.random() * 8;
+   134→   134→      const colors = ["#4D5B47", "#B79B7B", "#111", "#E8E8E8", "#6B8F5E", "#D4A853"];
+   135→   135→      return {
+   136→   136→        id: i,
+   137→   137→        x: Math.cos(angle) * distance,
+   138→   138→        y: Math.sin(angle) * distance - 40,
+   139→   139→        size,
+   140→   140→        color: colors[i % colors.length],
+   141→   141→        delay: 0.3 + Math.random() * 0.3,
+   142→   142→      };
+   143→   143→    });
+   144→   144→
+   145→   145→    const fmtDate = (d: Date) =>
+   146→   146→      d.toLocaleDateString("en-IN", { weekday: "short", month: "short", day: "numeric" });
+   147→   147→
+   148→   148→    return (
+   149→   149→      <main className="min-h-screen bg-[#F8F8F6] pt-20 flex items-center justify-center relative overflow-hidden">
+   150→   150→        {/* Confetti particles */}
+   151→   151→        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+   152→   152→          {confettiParticles.map((p) => (
+   153→   153→            <motion.div
+   154→   154→              key={p.id}
+   155→   155→              initial={{ opacity: 0, x: 0, y: 0, scale: 0 }}
+   156→   156→              animate={{ opacity: [0, 1, 1, 0], x: p.x, y: p.y, scale: [0, 1, 1, 0] }}
+   157→   157→              transition={{ duration: 1.6, delay: p.delay, ease: "easeOut" }}
+   158→   158→              className="absolute rounded-full"
+   159→   159→              style={{ width: p.size, height: p.size, backgroundColor: p.color }}
+   160→   160→            />
+   161→   161→          ))}
+   162→   162→        </div>
+   163→   163→
+   164→   164→        <motion.div
+   165→   165→          initial={{ opacity: 0, y: 20 }}
+   166→   166→          animate={{ opacity: 1, y: 0 }}
+   167→   167→          transition={{ duration: 0.5 }}
+   168→   168→          className="text-center max-w-md mx-auto px-4 relative z-10"
+   169→   169→        >
+   170→   170→          {/* Large animated checkmark circle */}
+   171→   171→          <motion.div
+   172→   172→            initial={{ scale: 0 }}
+   173→   173→            animate={{ scale: 1 }}
+   174→   174→            transition={{ delay: 0.15, type: "spring", damping: 12, stiffness: 180 }}
+   175→   175→            className="w-24 h-24 bg-[#4D5B47] rounded-full flex items-center justify-center mx-auto mb-8"
+   176→   176→          >
+   177→   177→            <motion.svg
+   178→   178→              initial={{ pathLength: 0, opacity: 0 }}
+   179→   179→              animate={{ pathLength: 1, opacity: 1 }}
+   180→   180→              transition={{ delay: 0.45, duration: 0.5, ease: "easeOut" }}
+   181→   181→              width="44"
+   182→   182→              height="44"
+   183→   183→              viewBox="0 0 44 44"
+   184→   184→              fill="none"
+   185→   185→              stroke="white"
+   186→   186→              strokeWidth="3"
+   187→   187→              strokeLinecap="round"
+   188→   188→              strokeLinejoin="round"
+   189→   189→            >
+   190→   190→              <motion.path
+   191→   191→                d="M10 22 L19 31 L34 13"
+   192→   192→                initial={{ pathLength: 0 }}
+   193→   193→                animate={{ pathLength: 1 }}
+   194→   194→                transition={{ delay: 0.45, duration: 0.5, ease: "easeOut" }}
+   195→   195→              />
+   196→   196→            </motion.svg>
+   197→   197→          </motion.div>
+   198→   198→
+   199→   199→          <h1 className="text-[26px] sm:text-[30px] font-medium tracking-[-0.02em] mb-2">
+   200→   200→            Thank you for your order
+   201→   201→          </h1>
+   202→   202→          <p className="text-[14px] text-[#666] mb-8">
+   203→   203→            Your order has been placed successfully and is being processed.
+   204→   204→          </p>
+   205→   205→
+   206→   206→          {/* Order number card */}
+   207→   207→          <motion.div
+   208→   208→            initial={{ opacity: 0, y: 10 }}
+   209→   209→            animate={{ opacity: 1, y: 0 }}
+   210→   210→            transition={{ delay: 0.6, duration: 0.4 }}
+   211→   211→            className="bg-white border border-[#E8E8E8] rounded-[4px] p-5 mb-4 text-left"
+   212→   212→          >
+   213→   213→            <div className="flex items-center justify-between mb-3">
+   214→   214→              <span className="text-[11px] font-medium tracking-wider uppercase text-[#999]">
+   215→   215→                Order Number
+   216→   216→              </span>
+   217→   217→              <span className="text-[12px] font-medium text-[#4D5B47]">Confirmed</span>
+   218→   218→            </div>
+   219→   219→            <p className="text-[18px] font-medium tracking-[-0.01em]">#{orderNumber}</p>
+   220→   220→            <div className="mt-3 pt-3 border-t border-[#E8E8E8]">
+   221→   221→              <div className="flex items-center justify-between">
+   222→   222→                <span className="text-[12px] text-[#999]">Estimated Delivery</span>
+   223→   223→                <span className="text-[13px] font-medium">
+   224→   224→                  {fmtDate(deliveryMin)} – {fmtDate(deliveryMax)}
+   225→   225→                </span>
+   226→   226→              </div>
+   227→   227→            </div>
+   228→   228→            <div className="mt-2 pt-2 border-t border-[#E8E8E8]">
+   229→   229→              <div className="flex items-center justify-between">
+   230→   230→                <span className="text-[12px] text-[#999]">Order Total</span>
+   231→   231→                <span className="text-[16px] font-medium">
+   232→   232→                  {"\u20B9"}{finalTotal.toLocaleString("en-IN")}
+   233→   233→                </span>
+   234→   234→              </div>
+   235→   235→            </div>
+   236→   236→          </motion.div>
+   237→   237→
+   238→   238→          {/* Delivery info */}
+   239→   239→          <motion.div
+   240→   240→            initial={{ opacity: 0 }}
+   241→   241→            animate={{ opacity: 1 }}
+   242→   242→            transition={{ delay: 0.8, duration: 0.4 }}
+   243→   243→            className="flex items-center justify-center gap-2 mb-8"
+   244→   244→          >
+   245→   245→            <Truck className="w-4 h-4 text-[#4D5B47]" strokeWidth={1.5} />
+   246→   246→            <span className="text-[12px] text-[#999]">
+   247→   247→              A confirmation email has been sent to your email address
+   248→   248→            </span>
+   249→   249→          </motion.div>
+   250→   250→
+   251→   251→          {/* Action buttons */}
+   252→   252→          <motion.div
+   253→   253→            initial={{ opacity: 0, y: 10 }}
+   254→   254→            animate={{ opacity: 1, y: 0 }}
+   255→   255→            transition={{ delay: 0.9, duration: 0.4 }}
+   256→   256→            className="flex flex-col sm:flex-row gap-3"
+   257→   257→          >
+   258→   258→            <button
+   259→   259→              onClick={() => navigate("home")}
+   260→   260→              className="flex-1 py-3.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#333] transition-colors"
+   261→   261→            >
+   262→   262→              Continue Shopping
+   263→   263→            </button>
+   264→   264→            <button
+   265→   265→              onClick={() => navigate("order-tracking")}
+   266→   266→              className="flex-1 py-3.5 border border-[#E8E8E8] text-[#111] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#F0EFED] transition-colors flex items-center justify-center gap-2"
+   267→   267→            >
+   268→   268→              <Truck className="w-4 h-4" strokeWidth={1.5} />
+   269→   269→              Track Order
+   270→   270→            </button>
+   271→   271→          </motion.div>
+   272→   272→        </motion.div>
+   273→   273→      </main>
+   274→   274→    );
+   275→   275→  }
+   276→   276→
+   277→   277→  const InputField = ({ label, name, value, onChange, type = "text", placeholder, required = true }: {
+   278→   278→    label: string; name: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string; required?: boolean;
+   279→   279→  }) => (
+   280→   280→    <div>
+   281→   281→      <label className="block text-[11px] font-medium tracking-wider uppercase text-[#999] mb-1.5">
+   282→   282→        {label} {required && <span className="text-[#C53030]">*</span>}
+   283→   283→      </label>
+   284→   284→      <input
+   285→   285→        type={type}
+   286→   286→        value={value}
+   287→   287→        onChange={(e) => onChange(e.target.value)}
+   288→   288→        placeholder={placeholder}
+   289→   289→        className="w-full px-3 py-2.5 border border-[#E8E8E8] text-[14px] outline-none focus:border-[#111] transition-colors bg-white placeholder:text-[#D1D1D1]"
+   290→   290→      />
+   291→   291→    </div>
+   292→   292→  );
+   293→   293→
+   294→   294→  return (
+   295→   295→    <main className="min-h-screen bg-[#F8F8F6] pt-20 pb-16">
+   296→   296→      <div className="max-w-[960px] mx-auto px-4 sm:px-6 lg:px-8">
+   297→   297→        <StepIndicator currentStep={step} />
+   298→   298→
+   299→   299→        <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
+   300→   300→          {/* Form */}
+   301→   301→          <div className="flex-1 min-w-0">
+   302→   302→            <AnimatePresence mode="wait">
+   303→   303→              {step === 0 && (
+   304→   304→                <motion.div key="shipping" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
+   305→   305→                  <h2 className="text-[20px] font-medium mb-6">Shipping Address</h2>
+   306→   306→                  <div className="space-y-4">
+   307→   307→                    <div className="grid grid-cols-2 gap-4">
+   308→   308→                      <InputField label="Full Name" name="fullName" value={shipping.fullName} onChange={(v) => setShipping({ ...shipping, fullName: v })} placeholder="John Doe" />
+   309→   309→                      <InputField label="Email" name="email" value={shipping.email} onChange={(v) => setShipping({ ...shipping, email: v })} type="email" placeholder="john@example.com" />
+   310→   310→                    </div>
+   311→   311→                    <InputField label="Phone" name="phone" value={shipping.phone} onChange={(v) => setShipping({ ...shipping, phone: v })} type="tel" placeholder="+91 98765 43210" />
+   312→   312→                    <InputField label="Address Line 1" name="address1" value={shipping.address1} onChange={(v) => setShipping({ ...shipping, address1: v })} placeholder="Street address, apartment, suite" />
+   313→   313→                    <InputField label="Address Line 2" name="address2" value={shipping.address2} onChange={(v) => setShipping({ ...shipping, address2: v })} placeholder="Optional" required={false} />
+   314→   314→                    <div className="grid grid-cols-3 gap-4">
+   315→   315→                      <InputField label="City" name="city" value={shipping.city} onChange={(v) => setShipping({ ...shipping, city: v })} />
+   316→   316→                      <InputField label="State" name="state" value={shipping.state} onChange={(v) => setShipping({ ...shipping, state: v })} />
+   317→   317→                      <InputField label="Pincode" name="pincode" value={shipping.pincode} onChange={(v) => setShipping({ ...shipping, pincode: v })} />
+   318→   318→                    </div>
+   319→   319→
+   320→   320→                    {/* Order Notes */}
+   321→   321→                    <div>
+   322→   322→                      <label className="block text-[11px] font-medium tracking-wider uppercase text-[#999] mb-1.5">
+   323→   323→                        Order Notes <span className="text-[#999] font-normal normal-case tracking-normal">(optional)</span>
+   324→   324→                      </label>
+   325→   325→                      <textarea
+   326→   326→                        value={shipping.notes}
+   327→   327→                        onChange={(e) => setShipping({ ...shipping, notes: e.target.value })}
+   328→   328→                        placeholder="Special delivery instructions, e.g. leave at the door, ring the bell twice..."
+   329→   329→                        rows={3}
+   330→   330→                        className="w-full px-3 py-2.5 border border-[#E8E8E8] text-[14px] outline-none focus:border-[#111] transition-colors bg-white placeholder:text-[#D1D1D1] resize-none"
+   331→   331→                      />
+   332→   332→                    </div>
+   333→   333→                  </div>
+   334→   334→                  <button
+   335→   335→                    onClick={() => setStep(1)}
+   336→   336→                    disabled={!shipping.fullName || !shipping.email || !shipping.phone || !shipping.address1 || !shipping.city || !shipping.pincode}
+   337→   337→                    className="mt-8 w-full py-3.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#333] transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
+   338→   338→                  >
+   339→   339→                    Continue to Payment <ChevronRight className="w-4 h-4" />
+   340→   340→                  </button>
+   341→   341→                </motion.div>
+   342→   342→              )}
+   343→   343→
+   344→   344→              {step === 1 && (
+   345→   345→                <motion.div key="payment" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
+   346→   346→                  <h2 className="text-[20px] font-medium mb-6">Payment Method</h2>
+   347→   347→
+   348→   348→                  <div className="space-y-2 mb-6">
+   349→   349→                    {paymentMethods.map((pm) => (
+   350→   350→                      <motion.button
+   351→   351→                        key={pm.id}
+   352→   352→                        onClick={() => setPaymentMethod(pm.id)}
+   353→   353→                        whileTap={{ scale: 0.99 }}
+   354→   354→                        className={`w-full flex items-center gap-3 p-4 border-l-2 transition-all text-left ${
+   355→   355→                          paymentMethod === pm.id
+   356→   356→                            ? "border-l-[#4D5B47] border-y border-r border-[#4D5B47] bg-[#F8FAF7]"
+   357→   357→                            : "border-l-transparent border border-[#E8E8E8] hover:border-[#999]"
+   358→   358→                        }`}
+   359→   359→                      >
+   360→   360→                        <pm.icon className={`w-5 h-5 ${paymentMethod === pm.id ? "text-[#4D5B47]" : "text-[#999]"}`} strokeWidth={1.5} />
+   361→   361→                        <div className="flex-1 min-w-0">
+   362→   362→                          <span className={`text-[14px] block ${paymentMethod === pm.id ? "font-medium text-[#111]" : "text-[#666]"}`}>{pm.label}</span>
+   363→   363→                          <span className="text-[11px] text-[#999]">{pm.brand}</span>
+   364→   364→                        </div>
+   365→   365→                        {paymentMethod === pm.id && <CheckCircle className="w-4 h-4 text-[#4D5B47] flex-shrink-0" />}
+   366→   366→                      </motion.button>
+   367→   367→                    ))}
+   368→   368→                  </div>
+   369→   369→
+   370→   370→                  <AnimatePresence mode="wait">
+   371→   371→                    {paymentMethod === "card" && (
+   372→   372→                      <motion.div key="card-form" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-4 overflow-hidden">
+   373→   373→                        <InputField label="Card Number" name="card" value={cardDetails.number} onChange={(v) => setCardDetails({ ...cardDetails, number: v })} placeholder="4242 4242 4242 4242" />
+   374→   374→                        <div className="grid grid-cols-2 gap-4">
+   375→   375→                          <InputField label="Expiry" name="expiry" value={cardDetails.expiry} onChange={(v) => setCardDetails({ ...cardDetails, expiry: v })} placeholder="MM/YY" />
+   376→   376→                          <InputField label="CVV" name="cvv" value={cardDetails.cvv} onChange={(v) => setCardDetails({ ...cardDetails, cvv: v })} placeholder="123" />
+   377→   377→                        </div>
+   378→   378→                        <InputField label="Name on Card" name="cardName" value={cardDetails.name} onChange={(v) => setCardDetails({ ...cardDetails, name: v })} />
+   379→   379→                      </motion.div>
+   380→   380→                    )}
+   381→   381→                    {paymentMethod === "upi" && (
+   382→   382→                      <motion.div key="upi-form" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+   383→   383→                        <InputField label="UPI ID" name="upi" value={upiId} onChange={setUpiId} placeholder="yourname@upi" />
+   384→   384→                      </motion.div>
+   385→   385→                    )}
+   386→   386→                    {paymentMethod === "cod" && (
+   387→   387→                      <motion.div key="cod-info" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="p-4 bg-[#F0EFED] overflow-hidden">
+   388→   388→                        <p className="text-[13px] text-[#666]">Pay with cash when your order is delivered. A small handling fee may apply.</p>
+   389→   389→                      </motion.div>
+   390→   390→                    )}
+   391→   391→                  </AnimatePresence>
+   392→   392→
+   393→   393→                  <div className="flex gap-3 mt-8">
+   394→   394→                    <button
+   395→   395→                      onClick={() => setStep(0)}
+   396→   396→                      className="flex-1 py-3.5 border border-[#E8E8E8] text-[12px] tracking-[0.15em] uppercase text-[#666] hover:border-[#999] transition-colors flex items-center justify-center gap-2"
+   397→   397→                    >
+   398→   398→                      <ArrowLeft className="w-4 h-4" /> Back
+   399→   399→                    </button>
+   400→   400→                    <button
+   401→   401→                      onClick={() => setStep(2)}
+   402→   402→                      className="flex-[2] py-3.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#333] transition-colors flex items-center justify-center gap-2"
+   403→   403→                    >
+   404→   404→                      Review Order <ChevronRight className="w-4 h-4" />
+   405→   405→                    </button>
+   406→   406→                  </div>
+   407→   407→                </motion.div>
+   408→   408→              )}
+   409→   409→
+   410→   410→              {step === 2 && (
+   411→   411→                <motion.div key="review" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
+   412→   412→                  <h2 className="text-[20px] font-medium mb-6">Review Your Order</h2>
+   413→   413→
+   414→   414→                  {/* Shipping Summary */}
+   415→   415→                  <div className="p-4 border border-[#E8E8E8] bg-white mb-4">
+   416→   416→                    <div className="flex items-center justify-between mb-2">
+   417→   417→                      <span className="text-[11px] font-medium tracking-wider uppercase text-[#999]">Shipping Address</span>
+   418→   418→                      <button onClick={() => setStep(0)} className="text-[11px] text-[#4D5B47] hover:text-[#111]">Edit</button>
+   419→   419→                    </div>
+   420→   420→                    <p className="text-[13px] text-[#111]">{shipping.fullName}</p>
+   421→   421→                    <p className="text-[13px] text-[#666]">{shipping.address1}{shipping.address2 ? `, ${shipping.address2}` : ""}</p>
+   422→   422→                    <p className="text-[13px] text-[#666]">{shipping.city}, {shipping.state} - {shipping.pincode}</p>
+   423→   423→                    <p className="text-[13px] text-[#666]">{shipping.phone} &middot; {shipping.email}</p>
+   424→   424→                    {shipping.notes && (
+   425→   425→                      <div className="mt-2 pt-2 border-t border-[#E8E8E8]">
+   426→   426→                        <span className="text-[11px] text-[#999] uppercase tracking-wider">Notes: </span>
+   427→   427→                        <span className="text-[12px] text-[#666]">{shipping.notes}</span>
+   428→   428→                      </div>
+   429→   429→                    )}
+   430→   430→                  </div>
+   431→   431→
+   432→   432→                  {/* Payment Summary */}
+   433→   433→                  <div className="p-4 border border-[#E8E8E8] bg-white mb-4">
+   434→   434→                    <div className="flex items-center justify-between mb-2">
+   435→   435→                      <span className="text-[11px] font-medium tracking-wider uppercase text-[#999]">Payment Method</span>
+   436→   436→                      <button onClick={() => setStep(1)} className="text-[11px] text-[#4D5B47] hover:text-[#111]">Edit</button>
+   437→   437→                    </div>
+   438→   438→                    <p className="text-[13px] text-[#111]">{paymentMethods.find((p) => p.id === paymentMethod)?.label}</p>
+   439→   439→                  </div>
+   440→   440→
+   441→   441→                  {/* Items */}
+   442→   442→                  <div className="border border-[#E8E8E8] bg-white mb-6">
+   443→   443→                    <div className="p-4 border-b border-[#E8E8E8]">
+   444→   444→                      <span className="text-[11px] font-medium tracking-wider uppercase text-[#999]">
+   445→   445→                        Items ({getCartCount()})
+   446→   446→                      </span>
+   447→   447→                    </div>
+   448→   448→                    {cartItems.map((item) => (
+   449→   449→                      <div key={item.id} className="flex items-center gap-3 p-4 border-b border-[#F0EFED] last:border-0">
+   450→   450→                        <div className="w-12 h-16 bg-[#F0EFED] relative overflow-hidden flex-shrink-0">
+   451→   451→                          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+   452→   452→                        </div>
+   453→   453→                        <div className="flex-1 min-w-0">
+   454→   454→                          <p className="text-[13px] text-[#111] line-clamp-1">{item.name}</p>
+   455→   455→                          <p className="text-[11px] text-[#999]">{item.size} / {item.color} &middot; Qty: {item.quantity}</p>
+   456→   456→                        </div>
+   457→   457→                        <span className="text-[13px] font-medium">{"\u20B9"}{(item.price * item.quantity).toLocaleString("en-IN")}</span>
+   458→   458→                      </div>
+   459→   459→                    ))}
+   460→   460→                  </div>
+   461→   461→
+   462→   462→                  {/* Terms */}
+   463→   463→                  <label className="flex items-start gap-2.5 mb-6 cursor-pointer">
+   464→   464→                    <div
+   465→   465→                      className={`w-4 h-4 border flex-shrink-0 mt-0.5 flex items-center justify-center transition-colors ${
+   466→   466→                        agreed ? "bg-[#111] border-[#111]" : "border-[#D1D1D1]"
+   467→   467→                      }`}
+   468→   468→                      onClick={() => setAgreed(!agreed)}
+   469→   469→                    >
+   470→   470→                      {agreed && <CheckCircle className="w-3 h-3 text-[#F8F8F6]" />}
+   471→   471→                    </div>
+   472→   472→                    <span className="text-[12px] text-[#666] leading-relaxed">
+   473→   473→                      I agree to the <button className="underline text-[#111]">Terms &amp; Conditions</button> and{" "}
+   474→   474→                      <button className="underline text-[#111]">Privacy Policy</button>. I understand this is a demo checkout.
+   475→   475→                    </span>
+   476→   476→                  </label>
+   477→   477→
+   478→   478→                  <div className="flex gap-3">
+   479→   479→                    <button
+   480→   480→                      onClick={() => setStep(1)}
+   481→   481→                      className="flex-1 py-3.5 border border-[#E8E8E8] text-[12px] tracking-[0.15em] uppercase text-[#666] hover:border-[#999] transition-colors flex items-center justify-center gap-2"
+   482→   482→                    >
+   483→   483→                      <ArrowLeft className="w-4 h-4" /> Back
+   484→   484→                    </button>
+   485→   485→                    <button
+   486→   486→                      onClick={handlePlaceOrder}
+   487→   487→                      disabled={!agreed || placing}
+   488→   488→                      className="flex-[2] py-3.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#333] transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
+   489→   489→                    >
+   490→   490→                      <Lock className="w-3.5 h-3.5" />
+   491→   491→                      {placing ? "Placing Order..." : `Place Order \u2022 \u20B9${finalTotal.toLocaleString("en-IN")}`}
+   492→   492→                    </button>
+   493→   493→                  </div>
+   494→   494→                </motion.div>
+   495→   495→              )}
+   496→   496→            </AnimatePresence>
+   497→   497→          </div>
+   498→   498→
+   499→   499→          {/* Sidebar Summary */}
+   500→   500→          <div className="lg:w-[320px] flex-shrink-0">
+   501→   501→            <div className="sticky top-[88px] bg-white border border-[#E8E8E8] p-5">
+   502→   502→              <h3 className="text-[13px] font-medium tracking-wider uppercase text-[#999] mb-4">Order Summary</h3>
+   503→   503→              <div className="space-y-3 pb-4 border-b border-[#E8E8E8]">
+   504→   504→                <div className="flex justify-between text-[13px]">
+   505→   505→                  <span className="text-[#666]">Subtotal</span>
+   506→   506→                  <span>{"\u20B9"}{total.toLocaleString("en-IN")}</span>
+   507→   507→                </div>
+   508→   508→                <div className="flex justify-between text-[13px]">
+   509→   509→                  <span className="text-[#666]">Discount</span>
+   510→   510→                  <span className="text-[#4D5B47]">-{"\u20B9"}{(mrpTotal - total).toLocaleString("en-IN")}</span>
+   511→   511→                </div>
+   512→   512→                <div className="flex justify-between text-[13px]">
+   513→   513→                  <span className="text-[#666]">Shipping</span>
+   514→   514→                  <span>{shippingCost === 0 ? <span className="text-[#4D5B47]">FREE</span> : "\u20B9149"}</span>
+   515→   515→                </div>
+   516→   516→              </div>
+   517→   517→              <div className="flex justify-between py-4">
+   518→   518→                <span className="text-[15px] font-medium">Total</span>
+   519→   519→                <span className="text-[15px] font-medium">{"\u20B9"}{finalTotal.toLocaleString("en-IN")}</span>
+   520→   520→              </div>
+   521→   521→              <div className="flex items-center gap-2 pt-3 border-t border-[#E8E8E8]">
+   522→   522→                <Shield className="w-3.5 h-3.5 text-[#4D5B47]" strokeWidth={1.5} />
+   523→   523→                <span className="text-[11px] text-[#999]">256-bit SSL encrypted checkout</span>
+   524→   524→              </div>
+   525→   525→            </div>
+   526→   526→          </div>
+   527→   527→        </div>
+   528→   528→      </div>
+   529→   529→    </main>
+   530→   530→  );
+   531→   531→}

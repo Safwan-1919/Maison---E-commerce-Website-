@@ -1,5 +1,14 @@
 import { db } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
+import { z } from "zod";
+
+const createReviewSchema = z.object({
+  productId: z.string().min(1, "productId is required"),
+  rating: z.number().int().min(1).max(5, "Rating must be between 1 and 5"),
+  title: z.string().optional(),
+  comment: z.string().optional(),
+});
 
 // GET /api/reviews?productId=xxx
 // Returns reviews with averageRating, totalCount, and distribution
@@ -77,42 +86,27 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/reviews
-// Submit a new review
+// Submit a new review (authenticated)
 export async function POST(request: NextRequest) {
   try {
+    const user = await requireAuth();
+
+    const contentType = request.headers.get("content-type");
+    if (!contentType?.includes("application/json")) {
+      return NextResponse.json({ error: "Content-Type must be application/json" }, { status: 400 });
+    }
+
     const body = await request.json();
-    const { productId, userName, rating, title, comment } = body;
+    const parsed = createReviewSchema.safeParse(body);
 
-    // Validate required fields
-    if (!productId) {
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "productId is required" },
+        { error: parsed.error.issues[0]?.message || "Validation failed" },
         { status: 400 }
       );
     }
 
-    if (!userName || typeof userName !== "string" || userName.trim().length === 0) {
-      return NextResponse.json(
-        { error: "userName is required" },
-        { status: 400 }
-      );
-    }
-
-    if (rating === undefined || rating === null) {
-      return NextResponse.json(
-        { error: "rating is required" },
-        { status: 400 }
-      );
-    }
-
-    // Validate rating range
-    const ratingValue = Number(rating);
-    if (!Number.isInteger(ratingValue) || ratingValue < 1 || ratingValue > 5) {
-      return NextResponse.json(
-        { error: "rating must be an integer between 1 and 5" },
-        { status: 400 }
-      );
-    }
+    const { productId, rating, title, comment } = parsed.data;
 
     // Verify the product exists
     const product = await db.product.findUnique({
@@ -121,20 +115,27 @@ export async function POST(request: NextRequest) {
     });
 
     if (!product) {
-      return NextResponse.json(
-        { error: "Product not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
+    // Check if user already reviewed this product
+    const existingReview = await db.review.findFirst({
+      where: { productId, userId: user.id },
+    });
+
+    if (existingReview) {
+      return NextResponse.json({ error: "You have already reviewed this product" }, { status: 409 });
     }
 
     // Create the review
     const review = await db.review.create({
       data: {
         productId,
-        userName: userName.trim(),
-        rating: ratingValue,
-        title: title ? String(title).trim() : null,
-        comment: comment ? String(comment).trim() : null,
+        userId: user.id,
+        userName: user.name || "Anonymous",
+        rating,
+        title: title?.trim() || null,
+        comment: comment?.trim() || null,
       },
     });
 
@@ -153,15 +154,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(
-      { success: true, review },
-      { status: 201 }
-    );
-  } catch (error) {
+    return NextResponse.json({ success: true, review }, { status: 201 });
+  } catch (error: any) {
+    if (error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
     console.error("Review creation error:", error);
-    return NextResponse.json(
-      { error: "Failed to create review" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to create review" }, { status: 500 });
   }
 }

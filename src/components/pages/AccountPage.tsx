@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   User,
@@ -31,10 +31,11 @@ import {
   Sparkles,
   RotateCcw,
   Truck,
-
-  ShoppingBag,
+  ChevronRight,
+  Loader2,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -86,19 +87,32 @@ interface Order {
   shippingAddress: string;
   paymentMethod: string;
   paymentStatus: string;
+  couponCode?: string;
   createdAt: string;
   updatedAt: string;
 }
 
 interface Address {
-  id: string;
   name: string;
   street: string;
   city: string;
   state: string;
   zip: string;
   phone: string;
-  isDefault: boolean;
+  [key: string]: string | undefined;
+}
+
+interface UserProfile {
+  id: string;
+  email: string;
+  name: string | null;
+  phone: string | null;
+  addresses: string;
+  paymentMethods: string | null;
+  role: string;
+  loyaltyPoints: number;
+  isVerified: boolean;
+  createdAt: string;
 }
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -111,182 +125,11 @@ const STATUS_COLORS: Record<string, string> = {
   processing: "bg-[#F0EFED] text-[#666666]",
 };
 
-const MOCK_ORDERS: Order[] = [
-  {
-    id: "1",
-    orderNumber: "MSN-K4X9P2",
-    status: "delivered",
-    total: 12490,
-    subtotal: 12990,
-    discount: 500,
-    shipping: 0,
-    shippingAddress: JSON.stringify({
-      name: "Arjun Mehta",
-      street: "42, Altamount Road",
-      city: "Mumbai",
-      state: "Maharashtra",
-      zip: "400026",
-    }),
-    paymentMethod: "card",
-    paymentStatus: "completed",
-    createdAt: "2025-01-15T10:30:00Z",
-    updatedAt: "2025-01-20T14:00:00Z",
-    items: [
-      { id: "i1", name: "Italian Wool Overcoat", price: 8990, quantity: 1, size: "M", color: "Charcoal", image: "" },
-      { id: "i2", name: "Merino Crew Neck Tee", price: 2000, quantity: 2, size: "L", color: "Ivory", image: "" },
-    ],
-  },
-  {
-    id: "2",
-    orderNumber: "MSN-R7W3N1",
-    status: "shipped",
-    total: 6490,
-    subtotal: 6490,
-    discount: 0,
-    shipping: 0,
-    shippingAddress: JSON.stringify({
-      name: "Arjun Mehta",
-      street: "42, Altamount Road",
-      city: "Mumbai",
-      state: "Maharashtra",
-      zip: "400026",
-    }),
-    paymentMethod: "upi",
-    paymentStatus: "completed",
-    createdAt: "2025-02-08T15:45:00Z",
-    updatedAt: "2025-02-10T09:20:00Z",
-    items: [
-      { id: "i3", name: "Linen Relaxed Trousers", price: 4490, quantity: 1, size: "32", color: "Sand", image: "" },
-      { id: "i4", name: "Leather Minimal Belt", price: 2000, quantity: 1, size: "M", color: "Black", image: "" },
-    ],
-  },
-  {
-    id: "3",
-    orderNumber: "MSN-P2Q8T5",
-    status: "confirmed",
-    total: 3490,
-    subtotal: 3490,
-    discount: 0,
-    shipping: 0,
-    shippingAddress: JSON.stringify({
-      name: "Arjun Mehta",
-      street: "7, Juhu Tara Road",
-      city: "Mumbai",
-      state: "Maharashtra",
-      zip: "400049",
-    }),
-    paymentMethod: "card",
-    paymentStatus: "completed",
-    createdAt: "2025-02-12T11:00:00Z",
-    updatedAt: "2025-02-12T11:05:00Z",
-    items: [
-      { id: "i5", name: "Cashmere V-Neck Sweater", price: 3490, quantity: 1, size: "S", color: "Olive", image: "" },
-    ],
-  },
-  {
-    id: "4",
-    orderNumber: "MSN-L5M1X8",
-    status: "cancelled",
-    total: 5490,
-    subtotal: 5490,
-    discount: 0,
-    shipping: 0,
-    shippingAddress: JSON.stringify({
-      name: "Arjun Mehta",
-      street: "42, Altamount Road",
-      city: "Mumbai",
-      state: "Maharashtra",
-      zip: "400026",
-    }),
-    paymentMethod: "card",
-    paymentStatus: "refunded",
-    createdAt: "2024-12-28T09:15:00Z",
-    updatedAt: "2024-12-30T16:30:00Z",
-    items: [
-      { id: "i6", name: "Structured Blazer", price: 5490, quantity: 1, size: "L", color: "Navy", image: "" },
-    ],
-  },
-  {
-    id: "5",
-    orderNumber: "MSN-T9Y2J6",
-    status: "processing",
-    total: 8970,
-    subtotal: 8970,
-    discount: 0,
-    shipping: 0,
-    shippingAddress: JSON.stringify({
-      name: "Arjun Mehta",
-      street: "42, Altamount Road",
-      city: "Mumbai",
-      state: "Maharashtra",
-      zip: "400026",
-    }),
-    paymentMethod: "card",
-    paymentStatus: "completed",
-    createdAt: "2025-02-14T08:30:00Z",
-    updatedAt: "2025-02-14T09:00:00Z",
-    items: [
-      { id: "i7", name: "Tailored Wool Blazer", price: 6990, quantity: 1, size: "M", color: "Charcoal", image: "" },
-      { id: "i8", name: "Oxford Button-Down Shirt", price: 1990, quantity: 1, size: "M", color: "White", image: "" },
-    ],
-  },
-];
-
-const INITIAL_ADDRESSES: Address[] = [
-  {
-    id: "a1",
-    name: "Arjun Mehta",
-    street: "42, Altamount Road",
-    city: "Mumbai",
-    state: "Maharashtra",
-    zip: "400026",
-    phone: "+91 98765 43210",
-    isDefault: true,
-  },
-  {
-    id: "a2",
-    name: "Arjun Mehta",
-    street: "7, Juhu Tara Road, Juhu",
-    city: "Mumbai",
-    state: "Maharashtra",
-    zip: "400049",
-    phone: "+91 98765 43210",
-    isDefault: false,
-  },
-  {
-    id: "a3",
-    name: "Office - Arjun Mehta",
-    street: "14th Floor, BKC Tower",
-    city: "Mumbai",
-    state: "Maharashtra",
-    zip: "400051",
-    phone: "+91 87654 32109",
-    isDefault: false,
-  },
-];
-
-const RECENT_ACTIVITY = [
-  { id: "a1", type: "order", label: "Order MSN-T9Y2J6 placed", detail: "2 items · ₹8,970", time: "2 hours ago", icon: ShoppingBag },
-  { id: "a2", type: "review", label: "Wrote a review for Italian Wool Overcoat", detail: "★★★★★ · Great quality!", time: "3 days ago", icon: Star },
-  { id: "a3", type: "reward", label: "Earned 150 loyalty points", detail: "From order MSN-R7W3N1", time: "6 days ago", icon: Gift },
-  { id: "a4", type: "order", label: "Order MSN-P2Q8T5 delivered", detail: "Cashmere V-Neck Sweater", time: "1 week ago", icon: Package },
-  { id: "a5", type: "wishlist", label: "Added Structured Blazer to wishlist", detail: "Navy · Size L", time: "2 weeks ago", icon: Sparkles },
-];
-
 const TIER_CONFIG = {
   Silver: { min: 0, max: 3000, color: "#999999", nextTier: "Gold", nextMin: 3000, icon: Shield },
   Gold: { min: 3000, max: 10000, color: "#B79B7B", nextTier: "Platinum", nextMin: 10000, icon: Crown },
   Platinum: { min: 10000, max: 100000, color: "#4D5B47", nextTier: null, nextMin: null, icon: Crown },
 };
-
-const DELIVERY_ESTIMATES: Record<string, string> = {
-  "400026": "Usually delivers in 2-3 business days",
-  "400049": "Usually delivers in 3-5 business days",
-  "400051": "Usually delivers in 2-4 business days",
-};
-
-const getDeliveryEstimate = (zip: string) =>
-  DELIVERY_ESTIMATES[zip] || "Usually delivers in 3-5 business days";
 
 const getEstimatedDelivery = (order: Order) => {
   if (order.status === "delivered" || order.status === "cancelled") return null;
@@ -309,11 +152,15 @@ const fadeUp = {
   transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] as const },
 };
 
+const getTierForPoints = (points: number): string => {
+  if (points >= 10000) return "Platinum";
+  if (points >= 3000) return "Gold";
+  return "Silver";
+};
 
 // ── Loyalty Points Section ──────────────────────────────────────────────────
-function LoyaltySection() {
-  const points = 2450;
-  const currentTier = "Silver" as keyof typeof TIER_CONFIG;
+function LoyaltySection({ points }: { points: number }) {
+  const currentTier = getTierForPoints(points) as keyof typeof TIER_CONFIG;
   const config = TIER_CONFIG[currentTier];
   const progressPercent = Math.min(((points - config.min) / (config.max - config.min)) * 100, 100);
   const TierIcon = config.icon;
@@ -349,27 +196,29 @@ function LoyaltySection() {
         </Badge>
       </div>
 
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-[#666]">Progress to {config.nextTier}</span>
-          <span className="text-[#999] font-medium">
-            {points.toLocaleString()} / {config.nextMin?.toLocaleString()} pts
-          </span>
+      {config.nextTier && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-[#666]">Progress to {config.nextTier}</span>
+            <span className="text-[#999] font-medium">
+              {points.toLocaleString()} / {config.nextMin?.toLocaleString()} pts
+            </span>
+          </div>
+          <div className="relative h-1.5 bg-[#F0EFED] rounded-full overflow-hidden">
+            <motion.div
+              className="absolute inset-y-0 left-0 rounded-full"
+              style={{ backgroundColor: config.color }}
+              initial={{ width: 0 }}
+              animate={{ width: `${progressPercent}%` }}
+              transition={{ duration: 1, delay: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+            />
+          </div>
+          <p className="text-[11px] text-[#999]">
+            Earn {((config.nextMin || 100000) - points).toLocaleString()} more points to unlock{" "}
+            <span className="font-medium" style={{ color: config.color }}>{config.nextTier}</span> benefits
+          </p>
         </div>
-        <div className="relative h-1.5 bg-[#F0EFED] rounded-full overflow-hidden">
-          <motion.div
-            className="absolute inset-y-0 left-0 rounded-full"
-            style={{ backgroundColor: config.color }}
-            initial={{ width: 0 }}
-            animate={{ width: `${progressPercent}%` }}
-            transition={{ duration: 1, delay: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-          />
-        </div>
-        <p className="text-[11px] text-[#999]">
-          Earn {((config.nextMin || 100000) - points).toLocaleString()} more points to unlock{" "}
-          <span className="font-medium" style={{ color: config.color }}>{config.nextTier}</span> benefits
-        </p>
-      </div>
+      )}
 
       <div className="mt-4 pt-4 border-t border-[#E8E8E8] flex items-center gap-4">
         <div className="flex items-center gap-2">
@@ -386,77 +235,67 @@ function LoyaltySection() {
   );
 }
 
-// ── Recent Activity Timeline ────────────────────────────────────────────────
-function RecentActivityTimeline() {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay: 0.1, ease: [0.25, 0.1, 0.25, 1] }}
-      className="bg-white rounded-[4px] border border-[#E8E8E8] p-5"
-    >
-      <h3 className="text-sm font-medium text-[#111] mb-4">Recent Activity</h3>
-      <div className="space-y-0">
-        {RECENT_ACTIVITY.map((activity, idx) => {
-          const Icon = activity.icon;
-          return (
-            <motion.div
-              key={activity.id}
-              initial={{ opacity: 0, x: -8 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.15 + idx * 0.06, duration: 0.25 }}
-              className="relative flex gap-3 pb-4 last:pb-0"
-            >
-              {/* Timeline line */}
-              {idx < RECENT_ACTIVITY.length - 1 && (
-                <div className="absolute left-[11px] top-[26px] bottom-0 w-px bg-[#E8E8E8]" />
-              )}
-              {/* Icon dot */}
-              <div className="relative z-10 w-[22px] h-[22px] rounded-full bg-[#F0EFED] flex items-center justify-center shrink-0 mt-0.5">
-                <Icon className="w-3 h-3 text-[#666]" strokeWidth={1.5} />
-              </div>
-              {/* Content */}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-[#111] leading-snug">{activity.label}</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-xs text-[#999]">{activity.detail}</span>
-                </div>
-                <span className="text-[11px] text-[#ccc] mt-0.5 block">{activity.time}</span>
-              </div>
-            </motion.div>
-          );
-        })}
-      </div>
-    </motion.div>
-  );
-}
-
 // ── Profile Tab ─────────────────────────────────────────────────────────────
-function ProfileTab() {
-  const [name, setName] = useState("Arjun Mehta");
-  const [email, setEmail] = useState("arjun.mehta@email.com");
-  const [phone, setPhone] = useState("+91 98765 43210");
+function ProfileTab({ profile }: { profile: UserProfile | null }) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [avatarHover, setAvatarHover] = useState(false);
   const { showNotification } = useStore();
+  const { user } = useAuth();
+
+  // Populate from profile
+  useEffect(() => {
+    if (profile) {
+      setName(profile.name || "");
+      setEmail(profile.email || "");
+      setPhone(profile.phone || "");
+    } else if (user) {
+      setEmail(user.email || "");
+      setName(user.name || "");
+    }
+  }, [profile, user]);
 
   const handleSave = async () => {
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 800));
+    setSaveError("");
+    try {
+      const res = await fetch("/api/user", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, phone }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showNotification("Profile updated successfully", "success");
+      } else {
+        setSaveError(data.error || "Failed to update profile");
+      }
+    } catch {
+      setSaveError("Something went wrong");
+    }
     setSaving(false);
-    showNotification("Profile updated successfully", "success");
   };
 
-  const initials = name
+  const initials = (name || "U")
     .split(" ")
     .map((n) => n[0])
     .join("")
     .toUpperCase()
     .slice(0, 2);
 
+  const joinDate = profile?.createdAt
+    ? new Date(profile.createdAt).toLocaleDateString("en-IN", { month: "long", year: "numeric" })
+    : "Recently";
+
+  const loyaltyPoints = profile?.loyaltyPoints || 0;
+  const currentTier = getTierForPoints(loyaltyPoints);
+
   return (
     <motion.div {...fadeUp} className="space-y-6">
-      {/* Avatar Section - Enhanced */}
+      {/* Avatar Section */}
       <motion.div
         className="flex items-center gap-6"
         initial={{ opacity: 0, y: 12 }}
@@ -489,13 +328,19 @@ function ProfileTab() {
           </AnimatePresence>
         </div>
         <div>
-          <h3 className="text-lg font-medium text-[#111]">{name}</h3>
-          <p className="text-sm text-[#666] mt-0.5">Member since January 2024</p>
+          <h3 className="text-lg font-medium text-[#111]">{name || "User"}</h3>
+          <p className="text-sm text-[#666] mt-0.5">Member since {joinDate}</p>
           <div className="flex items-center gap-2 mt-2">
             <Badge className="rounded-[4px] text-[10px] uppercase tracking-wider bg-[#B79B7B]/15 text-[#B79B7B] border-0 px-2 py-0.5">
               <Crown className="w-2.5 h-2.5 mr-1" />
-              Silver Member
+              {currentTier} Member
             </Badge>
+            {profile?.isVerified && (
+              <Badge className="rounded-[4px] text-[10px] uppercase tracking-wider bg-[#4D5B47]/15 text-[#4D5B47] border-0 px-2 py-0.5">
+                <Check className="w-2.5 h-2.5 mr-1" />
+                Verified
+              </Badge>
+            )}
           </div>
         </div>
       </motion.div>
@@ -503,14 +348,11 @@ function ProfileTab() {
       <Separator className="bg-[#E8E8E8]" />
 
       {/* Loyalty Points Section */}
-      <LoyaltySection />
-
-      {/* Recent Activity Timeline */}
-      <RecentActivityTimeline />
+      <LoyaltySection points={loyaltyPoints} />
 
       <Separator className="bg-[#E8E8E8]" />
 
-      {/* Form - Unchanged */}
+      {/* Form */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl">
         <div className="space-y-2">
           <Label htmlFor="name" className="text-[13px] uppercase tracking-wider text-[#666]">
@@ -531,8 +373,8 @@ function ProfileTab() {
             id="email"
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="rounded-[4px] border-[#E8E8E8] h-11"
+            disabled
+            className="rounded-[4px] border-[#E8E8E8] h-11 bg-[#F0EFED] text-[#999]"
           />
         </div>
         <div className="space-y-2">
@@ -547,6 +389,10 @@ function ProfileTab() {
           />
         </div>
       </div>
+
+      {saveError && (
+        <p className="text-[13px] text-[#C53030]">{saveError}</p>
+      )}
 
       <Button
         onClick={handleSave}
@@ -573,26 +419,31 @@ function OrdersTab() {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
   const { navigate, addToCart, showNotification } = useStore();
 
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const res = await fetch("/api/orders");
-        const data = await res.json();
-        if (data.orders && data.orders.length > 0) {
-          setOrders(data.orders);
-        } else {
-          setOrders(MOCK_ORDERS);
-        }
-      } catch {
-        setOrders(MOCK_ORDERS);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchOrders();
+  const fetchOrders = useCallback(async (statusFilter = "all", pageNum = 1) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ page: String(pageNum), limit: "10" });
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      const res = await fetch(`/api/orders?${params}`);
+      const data = await res.json();
+      setOrders(data.orders || []);
+      setTotalPages(data.totalPages || 1);
+      setTotal(data.total || 0);
+    } catch {
+      setOrders([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchOrders(activeFilter, page);
+  }, [activeFilter, page, fetchOrders]);
 
   const statusCounts = orders.reduce<Record<string, number>>((acc, o) => {
     const s = o.status.toLowerCase();
@@ -608,9 +459,6 @@ function OrdersTab() {
     { key: "cancelled", label: "Cancelled" },
     { key: "confirmed", label: "Confirmed" },
   ];
-
-  const filteredOrders =
-    activeFilter === "all" ? orders : orders.filter((o) => o.status.toLowerCase() === activeFilter);
 
   const handleTrackOrder = (orderNumber: string) => {
     navigate("order-tracking");
@@ -633,7 +481,7 @@ function OrdersTab() {
     showNotification(`${order.items.length} item(s) added to cart`, "success");
   };
 
-  if (loading) {
+  if (loading && orders.length === 0) {
     return (
       <div className="space-y-4">
         {[1, 2, 3].map((i) => (
@@ -643,7 +491,7 @@ function OrdersTab() {
     );
   }
 
-  if (orders.length === 0) {
+  if (orders.length === 0 && !loading) {
     return (
       <motion.div {...fadeUp} className="flex flex-col items-center justify-center py-16 text-center">
         <div className="w-16 h-16 rounded-full bg-[#F0EFED] flex items-center justify-center mb-4">
@@ -667,12 +515,12 @@ function OrdersTab() {
         className="flex flex-wrap gap-2"
       >
         {filterOptions.map((opt) => {
-          const count = opt.key === "all" ? orders.length : statusCounts[opt.key] || 0;
+          const count = opt.key === "all" ? total : statusCounts[opt.key] || 0;
           if (opt.key !== "all" && count === 0) return null;
           return (
             <button
               key={opt.key}
-              onClick={() => setActiveFilter(opt.key)}
+              onClick={() => { setActiveFilter(opt.key); setPage(1); }}
               className={`inline-flex items-center gap-1.5 px-3 h-9 rounded-[4px] text-xs uppercase tracking-wider font-medium border transition-all duration-200 ${
                 activeFilter === opt.key
                   ? "bg-[#111] text-white border-[#111]"
@@ -696,7 +544,7 @@ function OrdersTab() {
 
       {/* Orders List */}
       <div className="space-y-3">
-        {filteredOrders.map((order, idx) => {
+        {orders.map((order, idx) => {
           const isExpanded = expandedId === order.id;
           const estDelivery = getEstimatedDelivery(order);
           return (
@@ -752,9 +600,15 @@ function OrdersTab() {
                       <div className="space-y-3">
                         {order.items?.map((item) => (
                           <div key={item.id} className="flex items-center gap-3">
-                            <div className="w-14 h-14 rounded-[4px] bg-[#F0EFED] shrink-0 flex items-center justify-center">
-                              <Package className="w-5 h-5 text-[#999]" strokeWidth={1} />
-                            </div>
+                            {item.image ? (
+                              <div className="w-14 h-14 rounded-[4px] bg-[#F0EFED] shrink-0 overflow-hidden">
+                                <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                              </div>
+                            ) : (
+                              <div className="w-14 h-14 rounded-[4px] bg-[#F0EFED] shrink-0 flex items-center justify-center">
+                                <Package className="w-5 h-5 text-[#999]" strokeWidth={1} />
+                              </div>
+                            )}
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-[#111] line-clamp-1">{item.name}</p>
                               <p className="text-xs text-[#666]">
@@ -777,6 +631,9 @@ function OrdersTab() {
                         <div className="text-[#666]">
                           <p>Payment: <span className="text-[#111] font-medium capitalize">{order.paymentMethod}</span></p>
                           <p>Payment Status: <span className="text-[#111] font-medium capitalize">{order.paymentStatus}</span></p>
+                          {order.couponCode && (
+                            <p>Coupon: <span className="text-[#4D5B47] font-medium">{order.couponCode}</span></p>
+                          )}
                         </div>
                         <div className="text-right space-y-0.5">
                           {order.discount > 0 && (
@@ -821,12 +678,35 @@ function OrdersTab() {
         })}
       </div>
 
-      {filteredOrders.length === 0 && !loading && (
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 pt-4">
+          <button
+            disabled={page <= 1}
+            onClick={() => setPage(page - 1)}
+            className="px-3 py-2 border border-[#E8E8E8] rounded-[4px] text-xs uppercase tracking-wider text-[#666] hover:border-[#999] disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            Previous
+          </button>
+          <span className="text-xs text-[#999] px-2">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            disabled={page >= totalPages}
+            onClick={() => setPage(page + 1)}
+            className="px-3 py-2 border border-[#E8E8E8] rounded-[4px] text-xs uppercase tracking-wider text-[#666] hover:border-[#999] disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        </div>
+      )}
+
+      {orders.length === 0 && !loading && (
         <motion.div {...fadeUp} className="flex flex-col items-center justify-center py-12 text-center">
           <Package className="w-8 h-8 text-[#ccc] mb-3" strokeWidth={1.5} />
           <p className="text-sm text-[#666]">No {activeFilter} orders found</p>
           <button
-            onClick={() => setActiveFilter("all")}
+            onClick={() => { setActiveFilter("all"); setPage(1); }}
             className="text-xs text-[#4D5B47] font-medium uppercase tracking-wider mt-2 hover:underline"
           >
             View all orders
@@ -838,54 +718,86 @@ function OrdersTab() {
 }
 
 // ── Addresses Tab ───────────────────────────────────────────────────────────
-function AddressesTab() {
-  const [addresses, setAddresses] = useState<Address[]>(INITIAL_ADDRESSES);
+function AddressesTab({ profile, onAddressesChange }: { profile: UserProfile | null; onAddressesChange: () => void }) {
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: "", street: "", city: "", state: "", zip: "", phone: "" });
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const { showNotification } = useStore();
 
-  const openNew = () => {
-    setEditingId(null);
-    setForm({ name: "", street: "", city: "", state: "", zip: "", phone: "" });
-    setDialogOpen(true);
-  };
-
-  const openEdit = (addr: Address) => {
-    setEditingId(addr.id);
-    setForm({ name: addr.name, street: addr.street, city: addr.city, state: addr.state, zip: addr.zip, phone: addr.phone });
-    setDialogOpen(true);
-  };
-
-  const handleSave = () => {
-    if (!form.name || !form.street || !form.city) return;
-    if (editingId) {
-      setAddresses((prev) =>
-        prev.map((a) => (a.id === editingId ? { ...a, ...form } : a))
-      );
-      showNotification("Address updated", "success");
-    } else {
-      const newAddr: Address = {
-        id: `a${Date.now()}`,
-        ...form,
-        isDefault: addresses.length === 0,
-      };
-      setAddresses((prev) => [...prev, newAddr]);
-      showNotification("Address added", "success");
+  // Load addresses from profile
+  useEffect(() => {
+    if (!profile) { setLoading(false); return; }
+    try {
+      const parsed = profile.addresses ? JSON.parse(profile.addresses) : [];
+      setAddresses(Array.isArray(parsed) ? parsed : []);
+    } catch {
+      setAddresses([]);
     }
-    setDialogOpen(false);
+    setLoading(false);
+  }, [profile]);
+
+  const openNew = () => {
+    setForm({ name: profile?.name || "", street: "", city: "", state: "", zip: "", phone: profile?.phone || "" });
+    setDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    setAddresses((prev) => prev.filter((a) => a.id !== id));
-    showNotification("Address removed", "info");
+  const handleSave = async () => {
+    if (!form.name || !form.street || !form.city) return;
+    setSaving(true);
+    try {
+      const newAddr = { ...form };
+      const res = await fetch("/api/user/addresses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newAddr),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setAddresses(data.addresses ? JSON.parse(data.addresses) : [...addresses, newAddr]);
+        showNotification("Address added", "success");
+        setDialogOpen(false);
+        onAddressesChange();
+      } else {
+        showNotification(data.error || "Failed to add address", "error");
+      }
+    } catch {
+      showNotification("Failed to add address", "error");
+    }
+    setSaving(false);
   };
 
-  const setDefault = (id: string) => {
-    setAddresses((prev) => prev.map((a) => ({ ...a, isDefault: a.id === id })));
-    showNotification("Default address updated", "success");
+  const handleDelete = async (index: number) => {
+    try {
+      const res = await fetch("/api/user/addresses", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ index }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setAddresses(data.addresses ? JSON.parse(data.addresses) : addresses.filter((_, i) => i !== index));
+        showNotification("Address removed", "info");
+        onAddressesChange();
+      } else {
+        showNotification(data.error || "Failed to remove address", "error");
+      }
+    } catch {
+      showNotification("Failed to remove address", "error");
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        {[1, 2].map((i) => (
+          <Skeleton key={i} className="h-24 w-full rounded-[4px] skeleton-shimmer" />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <motion.div {...fadeUp} className="space-y-4">
@@ -904,9 +816,7 @@ function AddressesTab() {
           </DialogTrigger>
           <DialogContent className="rounded-[4px] max-w-md">
             <DialogHeader>
-              <DialogTitle className="text-base font-medium">
-                {editingId ? "Edit Address" : "Add New Address"}
-              </DialogTitle>
+              <DialogTitle className="text-base font-medium">Add New Address</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
@@ -937,93 +847,114 @@ function AddressesTab() {
                   <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="rounded-[4px] border-[#E8E8E8] h-10" />
                 </div>
               </div>
-              <Button onClick={handleSave} className="rounded-[4px] bg-[#111] hover:bg-[#333] text-white h-10 w-full">
-                {editingId ? "Update Address" : "Save Address"}
+              <Button onClick={handleSave} disabled={saving} className="rounded-[4px] bg-[#111] hover:bg-[#333] text-white h-10 w-full">
+                {saving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : "Save Address"}
               </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="space-y-3">
-        {addresses.map((addr, idx) => (
-          <motion.div
-            key={addr.id}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.05, duration: 0.3 }}
-            className="bg-white rounded-[4px] border border-[#E8E8E8] p-4 hover:border-[#999] transition-colors"
-            onMouseEnter={() => setHoveredId(addr.id)}
-            onMouseLeave={() => setHoveredId(null)}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  {/* Animated Map Pin */}
-                  <motion.div
-                    animate={hoveredId === addr.id ? { y: -2 } : { y: 0 }}
-                    transition={{ duration: 0.2, ease: "easeOut" }}
-                  >
-                    <MapPin
-                      className="w-4 h-4 text-[#4D5B47]"
-                      strokeWidth={1.5}
-                    />
-                  </motion.div>
-                  <span className="text-sm font-medium text-[#111]">{addr.name}</span>
-                  {addr.isDefault && (
-                    <Badge className="rounded-[4px] text-[10px] uppercase tracking-wider bg-[#4D5B47] text-white border-0 px-2 py-0.5">
-                      Default
-                    </Badge>
-                  )}
+      {addresses.length === 0 ? (
+        <motion.div {...fadeUp} className="flex flex-col items-center justify-center py-12 text-center">
+          <MapPin className="w-8 h-8 text-[#ccc] mb-3" strokeWidth={1.5} />
+          <h3 className="text-base font-medium text-[#111] mb-1">No saved addresses</h3>
+          <p className="text-sm text-[#666] max-w-xs">
+            Add a shipping address for faster checkout.
+          </p>
+        </motion.div>
+      ) : (
+        <div className="space-y-3">
+          {addresses.map((addr, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.05, duration: 0.3 }}
+              className="bg-white rounded-[4px] border border-[#E8E8E8] p-4 hover:border-[#999] transition-colors"
+              onMouseEnter={() => setHoveredId(String(idx))}
+              onMouseLeave={() => setHoveredId(null)}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <motion.div
+                      animate={hoveredId === String(idx) ? { y: -2 } : { y: 0 }}
+                      transition={{ duration: 0.2, ease: "easeOut" }}
+                    >
+                      <MapPin className="w-4 h-4 text-[#4D5B47]" strokeWidth={1.5} />
+                    </motion.div>
+                    <span className="text-sm font-medium text-[#111]">{addr.name}</span>
+                    {idx === 0 && (
+                      <Badge className="rounded-[4px] text-[10px] uppercase tracking-wider bg-[#4D5B47] text-white border-0 px-2 py-0.5">
+                        Default
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-sm text-[#666] leading-relaxed pl-6">
+                    {addr.street}
+                    <br />
+                    {addr.city}, {addr.state} — {addr.zip}
+                  </p>
+                  <p className="text-xs text-[#999] mt-1 pl-6">{addr.phone}</p>
                 </div>
-                <p className="text-sm text-[#666] leading-relaxed pl-6">
-                  {addr.street}
-                  <br />
-                  {addr.city}, {addr.state} — {addr.zip}
-                </p>
-                <p className="text-xs text-[#999] mt-1 pl-6">{addr.phone}</p>
-                {/* Delivery Estimate */}
-                <div className="flex items-center gap-1.5 mt-2 pl-6">
-                  <Truck className="w-3 h-3 text-[#B79B7B]" strokeWidth={1.5} />
-                  <span className="text-[11px] text-[#B79B7B] font-medium">{getDeliveryEstimate(addr.zip)}</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-1 shrink-0">
-                {!addr.isDefault && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setDefault(addr.id)}
-                    className="rounded-[4px] h-8 px-2.5 text-[10px] uppercase tracking-wider text-[#4D5B47] hover:text-[#4D5B47] hover:bg-[#4D5B47]/5"
-                    title="Set as default"
-                  >
-                    <Check className="w-3 h-3 mr-1" />
-                    <span className="hidden sm:inline">Set Default</span>
-                  </Button>
-                )}
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => openEdit(addr)}
-                  className="rounded-[4px] h-8 w-8"
-                  title="Edit"
-                >
-                  <Pencil className="w-3.5 h-3.5 text-[#666]" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleDelete(addr.id)}
+                  onClick={() => handleDelete(idx)}
                   className="rounded-[4px] h-8 w-8 hover:text-[#C53030]"
                   title="Delete"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </Button>
               </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+// ── Notifications Tab (Placeholder) ─────────────────────────────────────────
+function NotificationsTab() {
+  const demoNotifications = [
+    { id: "n1", title: "Order Confirmed", message: "Your order MSN-XXXX has been confirmed and is being prepared.", time: "2 hours ago", read: false, icon: Package },
+    { id: "n2", title: "Welcome to MAISON", message: "Thank you for creating your account. Explore our latest collection.", time: "1 day ago", read: true, icon: Star },
+    { id: "n3", title: "New Arrival", message: "Check out our fresh Spring/Summer 2025 collection.", time: "3 days ago", read: true, icon: Sparkles },
+  ];
+
+  return (
+    <motion.div {...fadeUp} className="space-y-3">
+      <h3 className="text-base font-medium text-[#111] mb-4">Notifications</h3>
+      {demoNotifications.map((notif, idx) => {
+        const Icon = notif.icon;
+        return (
+          <motion.div
+            key={notif.id}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: idx * 0.05, duration: 0.25 }}
+            className={`bg-white rounded-[4px] border p-4 ${notif.read ? "border-[#E8E8E8]" : "border-[#4D5B47]/30 bg-[#4D5B47]/[0.02]"}`}
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-[4px] bg-[#F0EFED] flex items-center justify-center shrink-0 mt-0.5">
+                <Icon className="w-4 h-4 text-[#666]" strokeWidth={1.5} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-[#111]">{notif.title}</p>
+                  {!notif.read && <div className="w-2 h-2 rounded-full bg-[#4D5B47]" />}
+                </div>
+                <p className="text-xs text-[#666] mt-0.5">{notif.message}</p>
+                <p className="text-[11px] text-[#999] mt-1">{notif.time}</p>
+              </div>
             </div>
           </motion.div>
-        ))}
-      </div>
+        );
+      })}
     </motion.div>
   );
 }
@@ -1043,6 +974,7 @@ function SettingsTab() {
     facebook: false,
   });
   const { showNotification } = useStore();
+  const { logout } = useAuth();
 
   const toggleTheme = () => {
     const next = theme === "light" ? "dark" : "light";
@@ -1060,89 +992,24 @@ function SettingsTab() {
   };
 
   const notificationPreferences = [
-    {
-      key: "orderUpdates" as const,
-      label: "Order Updates",
-      description: "Get notified about your order status",
-      icon: Package,
-      checked: orderUpdates,
-      onChange: setOrderUpdates,
-    },
-    {
-      key: "promoEmails" as const,
-      label: "Promotional Emails",
-      description: "Receive offers and sale alerts",
-      icon: Bell,
-      checked: promoEmails,
-      onChange: setPromoEmails,
-    },
-    {
-      key: "priceDropAlerts" as const,
-      label: "Price Drop Alerts",
-      description: "Get notified when wishlist items go on sale",
-      icon: TrendingDown,
-      checked: priceDropAlerts,
-      onChange: setPriceDropAlerts,
-    },
-    {
-      key: "newArrivals" as const,
-      label: "New Arrivals",
-      description: "Be the first to know about new collections",
-      icon: Sparkles,
-      checked: newArrivals,
-      onChange: setNewArrivals,
-    },
-    {
-      key: "restockAlerts" as const,
-      label: "Restock Alerts",
-      description: "Get notified when out-of-stock items return",
-      icon: RefreshCw,
-      checked: restockAlerts,
-      onChange: setRestockAlerts,
-    },
-    {
-      key: "newsletter" as const,
-      label: "Newsletter",
-      description: "Weekly style picks and editorials",
-      icon: Mail,
-      checked: newsletter,
-      onChange: setNewsletter,
-    },
+    { key: "orderUpdates" as const, label: "Order Updates", description: "Get notified about your order status", icon: Package, checked: orderUpdates, onChange: setOrderUpdates },
+    { key: "promoEmails" as const, label: "Promotional Emails", description: "Receive offers and sale alerts", icon: Bell, checked: promoEmails, onChange: setPromoEmails },
+    { key: "priceDropAlerts" as const, label: "Price Drop Alerts", description: "Get notified when wishlist items go on sale", icon: TrendingDown, checked: priceDropAlerts, onChange: setPriceDropAlerts },
+    { key: "newArrivals" as const, label: "New Arrivals", description: "Be the first to know about new collections", icon: Sparkles, checked: newArrivals, onChange: setNewArrivals },
+    { key: "restockAlerts" as const, label: "Restock Alerts", description: "Get notified when out-of-stock items return", icon: RefreshCw, checked: restockAlerts, onChange: setRestockAlerts },
+    { key: "newsletter" as const, label: "Newsletter", description: "Weekly style picks and editorials", icon: Mail, checked: newsletter, onChange: setNewsletter },
   ];
 
   const connectedAccountList = [
-    {
-      provider: "google" as const,
-      label: "Google",
-      icon: "G",
-      color: "#4285F4",
-      bgColor: "#4285F410",
-    },
-    {
-      provider: "apple" as const,
-      label: "Apple",
-      icon: "",
-      color: "#111",
-      bgColor: "#11111108",
-      isApple: true,
-    },
-    {
-      provider: "facebook" as const,
-      label: "Facebook",
-      icon: "f",
-      color: "#1877F2",
-      bgColor: "#1877F210",
-    },
+    { provider: "google" as const, label: "Google", icon: "G", color: "#4285F4", bgColor: "#4285F410" },
+    { provider: "apple" as const, label: "Apple", icon: "", color: "#111", bgColor: "#11111108", isApple: true },
+    { provider: "facebook" as const, label: "Facebook", icon: "f", color: "#1877F2", bgColor: "#1877F210" },
   ];
 
   return (
     <motion.div {...fadeUp} className="space-y-8">
       {/* Notification Preferences */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05 }}
-      >
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
         <h3 className="text-base font-medium text-[#111] mb-4">Notification Preferences</h3>
         <div className="space-y-3">
           {notificationPreferences.map((pref, idx) => {
@@ -1174,32 +1041,20 @@ function SettingsTab() {
       <Separator className="bg-[#E8E8E8]" />
 
       {/* Theme */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-      >
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
         <h3 className="text-base font-medium text-[#111] mb-4">Appearance</h3>
         <div className="bg-white rounded-[4px] border border-[#E8E8E8] p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-[4px] bg-[#F0EFED] flex items-center justify-center">
-                {theme === "light" ? (
-                  <Sun className="w-4 h-4 text-[#666]" strokeWidth={1.5} />
-                ) : (
-                  <Moon className="w-4 h-4 text-[#666]" strokeWidth={1.5} />
-                )}
+                {theme === "light" ? <Sun className="w-4 h-4 text-[#666]" strokeWidth={1.5} /> : <Moon className="w-4 h-4 text-[#666]" strokeWidth={1.5} />}
               </div>
               <div>
                 <p className="text-sm font-medium text-[#111]">Theme</p>
                 <p className="text-xs text-[#666]">Current: {theme === "light" ? "Light Mode" : "Dark Mode"}</p>
               </div>
             </div>
-            <Button
-              variant="outline"
-              onClick={toggleTheme}
-              className="rounded-[4px] border-[#E8E8E8] h-9 text-xs uppercase tracking-wider"
-            >
+            <Button variant="outline" onClick={toggleTheme} className="rounded-[4px] border-[#E8E8E8] h-9 text-xs uppercase tracking-wider">
               {theme === "light" ? "Switch to Dark" : "Switch to Light"}
             </Button>
           </div>
@@ -1209,11 +1064,7 @@ function SettingsTab() {
       <Separator className="bg-[#E8E8E8]" />
 
       {/* Connected Accounts */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-      >
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
         <h3 className="text-base font-medium text-[#111] mb-4">Connected Accounts</h3>
         <div className="space-y-3">
           {connectedAccountList.map((account, idx) => (
@@ -1225,23 +1076,16 @@ function SettingsTab() {
               className="flex items-center justify-between bg-white rounded-[4px] border border-[#E8E8E8] p-4"
             >
               <div className="flex items-center gap-3">
-                <div
-                  className="w-9 h-9 rounded-[4px] flex items-center justify-center"
-                  style={{ backgroundColor: account.bgColor }}
-                >
+                <div className="w-9 h-9 rounded-[4px] flex items-center justify-center" style={{ backgroundColor: account.bgColor }}>
                   {account.isApple ? (
                     <Smartphone className="w-4 h-4" style={{ color: account.color }} strokeWidth={1.5} />
                   ) : (
-                    <span className="text-sm font-bold" style={{ color: account.color }}>
-                      {account.icon}
-                    </span>
+                    <span className="text-sm font-bold" style={{ color: account.color }}>{account.icon}</span>
                   )}
                 </div>
                 <div>
                   <p className="text-sm font-medium text-[#111]">{account.label}</p>
-                  <p className="text-xs text-[#666]">
-                    {connectedAccounts[account.provider] ? "Connected" : "Not connected"}
-                  </p>
+                  <p className="text-xs text-[#666]">{connectedAccounts[account.provider] ? "Connected" : "Not connected"}</p>
                 </div>
               </div>
               <Button
@@ -1263,11 +1107,7 @@ function SettingsTab() {
       <Separator className="bg-[#E8E8E8]" />
 
       {/* Danger Zone */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6 }}
-      >
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
         <h3 className="text-base font-medium text-[#C53030] mb-4">Danger Zone</h3>
         <div className="rounded-[4px] border border-[#C53030]/20 p-4 space-y-3">
           <p className="text-xs text-[#666] mb-2">
@@ -1303,7 +1143,7 @@ function SettingsTab() {
             <Button
               variant="outline"
               className="rounded-[4px] border-[#E8E8E8] h-10 text-xs uppercase tracking-wider"
-              onClick={() => showNotification("Logged out", "info")}
+              onClick={async () => { await logout(); showNotification("Logged out", "info"); }}
             >
               <LogOut className="w-3.5 h-3.5 mr-1.5" />
               Log Out
@@ -1318,6 +1158,50 @@ function SettingsTab() {
 // ── Main Account Page ───────────────────────────────────────────────────────
 export default function AccountPage() {
   const [activeTab, setActiveTab] = useState("profile");
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const { isAuthenticated, setAuthOpen } = useAuth();
+
+  // Fetch user profile
+  const fetchProfile = useCallback(async () => {
+    try {
+      const res = await fetch("/api/user");
+      const data = await res.json();
+      if (res.ok) setProfile(data);
+    } catch {}
+    setProfileLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) fetchProfile();
+  }, [isAuthenticated, fetchProfile]);
+
+  // Auth guard
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#F8F8F6] flex items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center max-w-sm mx-auto px-4"
+        >
+          <div className="w-20 h-20 bg-[#F0EFED] rounded-full flex items-center justify-center mx-auto mb-6">
+            <User className="w-8 h-8 text-[#999]" strokeWidth={1.5} />
+          </div>
+          <h2 className="text-[22px] font-medium tracking-[-0.02em] mb-2">Please Sign In</h2>
+          <p className="text-[14px] text-[#666] mb-8">
+            Sign in to view your account, orders, and manage your profile.
+          </p>
+          <button
+            onClick={() => setAuthOpen(true)}
+            className="px-8 py-3.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#333] transition-colors"
+          >
+            Sign In
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F8F8F6]">
@@ -1341,43 +1225,63 @@ export default function AccountPage() {
               className="rounded-[4px] flex-1 sm:flex-initial gap-2 px-4 h-10 text-xs uppercase tracking-wider font-medium data-[state=active]:bg-[#111] data-[state=active]:text-white data-[state=active]:shadow-none"
             >
               <User className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Profile</span>
-              <span className="sm:hidden">Profile</span>
+              Profile
             </TabsTrigger>
             <TabsTrigger
               value="orders"
               className="rounded-[4px] flex-1 sm:flex-initial gap-2 px-4 h-10 text-xs uppercase tracking-wider font-medium data-[state=active]:bg-[#111] data-[state=active]:text-white data-[state=active]:shadow-none"
             >
               <Package className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Orders</span>
-              <span className="sm:hidden">Orders</span>
+              Orders
             </TabsTrigger>
             <TabsTrigger
               value="addresses"
               className="rounded-[4px] flex-1 sm:flex-initial gap-2 px-4 h-10 text-xs uppercase tracking-wider font-medium data-[state=active]:bg-[#111] data-[state=active]:text-white data-[state=active]:shadow-none"
             >
               <MapPin className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Addresses</span>
-              <span className="sm:hidden">Address</span>
+              Addresses
+            </TabsTrigger>
+            <TabsTrigger
+              value="notifications"
+              className="rounded-[4px] flex-1 sm:flex-initial gap-2 px-4 h-10 text-xs uppercase tracking-wider font-medium data-[state=active]:bg-[#111] data-[state=active]:text-white data-[state=active]:shadow-none"
+            >
+              <Bell className="w-3.5 h-3.5" />
+              Alerts
             </TabsTrigger>
             <TabsTrigger
               value="settings"
               className="rounded-[4px] flex-1 sm:flex-initial gap-2 px-4 h-10 text-xs uppercase tracking-wider font-medium data-[state=active]:bg-[#111] data-[state=active]:text-white data-[state=active]:shadow-none"
             >
               <Settings className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Settings</span>
-              <span className="sm:hidden">Settings</span>
+              Settings
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="profile">
-            <ProfileTab />
+            {profileLoading ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <Skeleton className="w-20 h-20 rounded-[4px]" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-5 w-40" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                </div>
+                <Skeleton className="h-32 w-full rounded-[4px]" />
+                <Skeleton className="h-16 w-full rounded-[4px]" />
+              </div>
+            ) : (
+              <ProfileTab profile={profile} />
+            )}
           </TabsContent>
           <TabsContent value="orders">
             <OrdersTab />
           </TabsContent>
           <TabsContent value="addresses">
-            <AddressesTab />
+            <AddressesTab profile={profile} onAddressesChange={fetchProfile} />
+          </TabsContent>
+          <TabsContent value="notifications">
+            <NotificationsTab />
           </TabsContent>
           <TabsContent value="settings">
             <SettingsTab />

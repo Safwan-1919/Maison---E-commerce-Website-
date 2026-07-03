@@ -24,6 +24,7 @@ import { PageSkeleton } from "@/components/shared/PageSkeleton";
 import { CompareDrawer } from "@/components/layout/CompareDrawer";
 import { SizeGuideModal } from "@/components/shared/SizeGuideModal";
 import { NewsletterPopup } from "@/components/shared/NewsletterPopup";
+import { AuthModal } from "@/components/auth/AuthModal";
 import { GitCompareArrows, X } from "lucide-react";
 import { useCallback, useRef } from "react";
 
@@ -124,7 +125,7 @@ export default function Home() {
   useEffect(() => {
     if (prevPageRef.current !== currentPage) {
       prevPageRef.current = currentPage;
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+       
       setShowSkeleton(true);
       const hideT = setTimeout(() => setShowSkeleton(false), 150);
       return () => clearTimeout(hideT);
@@ -142,6 +143,7 @@ export default function Home() {
       <CompareDrawer />
       <SizeGuideModal />
       <NewsletterPopup />
+      <AuthModal />
 
       {/* Floating Compare Bar */}
       <AnimatePresence>

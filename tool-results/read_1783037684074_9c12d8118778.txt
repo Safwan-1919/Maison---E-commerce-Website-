@@ -1,0 +1,864 @@
+     1→     1→"use client";
+     2→     2→
+     3→     3→import { useEffect, useState, useCallback, useMemo } from "react";
+     4→     4→import { motion, AnimatePresence } from "framer-motion";
+     5→     5→import { useStore } from "@/lib/store";
+     6→     6→import { ProductCard } from "@/components/shared/ProductCard";
+     7→     7→import { ScrollReveal } from "@/components/shared/ScrollReveal";
+     8→     8→import {
+     9→     9→  SlidersHorizontal, X, ChevronDown, ChevronUp, Grid3X3, List,
+    10→    10→  ArrowUp, Star, Check
+    11→    11→} from "lucide-react";
+    12→    12→
+    13→    13→interface Product {
+    14→    14→  id: string;
+    15→    15→  name: string;
+    16→    16→  price: number;
+    17→    17→  mrp: number;
+    18→    18→  image: string;
+    19→    19→  images?: string;
+    20→    20→  category: string;
+    21→    21→  brand: string;
+    22→    22→  rating: number;
+    23→    23→  reviewCount: number;
+    24→    24→  discount: number;
+    25→    25→  isNew: boolean;
+    26→    26→  isTrending: boolean;
+    27→    27→  isBestSeller: boolean;
+    28→    28→  stock: number;
+    29→    29→}
+    30→    30→
+    31→    31→const allCategories = ["T-Shirts", "Shirts", "Blazers", "Sweaters", "Jeans", "Trousers", "Outerwear", "Footwear", "Bags", "Accessories"];
+    32→    32→const allBrands = ["MAISON Essentials", "MAISON Tailored", "MAISON Denim", "MAISON Knitwear", "MAISON Footwear", "MAISON Outerwear", "MAISON Accessories", "MAISON Leather", "MAISON Timepieces"];
+    33→    33→const allSizes = ["XS", "S", "M", "L", "XL", "XXL", "28", "30", "32", "34", "36", "ONE SIZE"];
+    34→    34→const colorSwatches = [
+    35→    35→  { name: "White", hex: "#FFFFFF" },
+    36→    36→  { name: "Black", hex: "#111111" },
+    37→    37→  { name: "Olive", hex: "#4D5B47" },
+    38→    38→  { name: "Sand", hex: "#B79B7B" },
+    39→    39→  { name: "Cream", hex: "#D4C4B0" },
+    40→    40→  { name: "Navy", hex: "#1a2744" },
+    41→    41→  { name: "Charcoal", hex: "#3a3a3a" },
+    42→    42→  { name: "Gray", hex: "#6B6B6B" },
+    43→    43→  { name: "Brown", hex: "#5C3D2E" },
+    44→    44→  { name: "Tan", hex: "#8B6914" },
+    45→    45→  { name: "Sage", hex: "#B7C4B5" },
+    46→    46→  { name: "Ivory", hex: "#F5F0E8" },
+    47→    47→];
+    48→    48→
+    49→    49→const priceRanges = [
+    50→    50→  { label: "Under ₹2,000", min: 0, max: 2000 },
+    51→    51→  { label: "₹2,000 - ₹5,000", min: 2000, max: 5000 },
+    52→    52→  { label: "₹5,000 - ₹10,000", min: 5000, max: 10000 },
+    53→    53→  { label: "₹10,000 - ₹20,000", min: 10000, max: 20000 },
+    54→    54→  { label: "Over ₹20,000", min: 20000, max: 999999 },
+    55→    55→];
+    56→    56→
+    57→    57→const discountOptions = [
+    58→    58→  { label: "10% or more", value: 10 },
+    59→    59→  { label: "20% or more", value: 20 },
+    60→    60→  { label: "30% or more", value: 30 },
+    61→    61→];
+    62→    62→
+    63→    63→// Inline shimmer keyframes for skeleton enhancement
+    64→    64→const shimmerStyle = {
+    65→    65→  background: "linear-gradient(90deg, #F0EFED 0%, #E2E1DF 20%, #EDECEA 40%, #F5F4F2 60%, #E2E1DF 80%, #F0EFED 100%)",
+    66→    66→  backgroundSize: "400% 100%",
+    67→    67→  animation: "shimmer-enhanced 2s ease-in-out infinite",
+    68→    68→};
+    69→    69→
+    70→    70→function FilterSection({ title, children, defaultOpen = true }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
+    71→    71→  const [open, setOpen] = useState(defaultOpen);
+    72→    72→  return (
+    73→    73→    <div className="border-b border-[#E8E8E8]">
+    74→    74→      <button
+    75→    75→        onClick={() => setOpen(!open)}
+    76→    76→        className="flex items-center justify-between w-full py-3 text-[13px] font-medium tracking-wide text-[#111] hover:text-[#666] transition-colors"
+    77→    77→      >
+    78→    78→        {title}
+    79→    79→        {open ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+    80→    80→      </button>
+    81→    81→      <AnimatePresence>
+    82→    82→        {open && (
+    83→    83→          <motion.div
+    84→    84→            initial={{ height: 0, opacity: 0 }}
+    85→    85→            animate={{ height: "auto", opacity: 1 }}
+    86→    86→            exit={{ height: 0, opacity: 0 }}
+    87→    87→            transition={{ duration: 0.2 }}
+    88→    88→            className="overflow-hidden pb-4"
+    89→    89→          >
+    90→    90→            {children}
+    91→    91→          </motion.div>
+    92→    92→        )}
+    93→    93→      </AnimatePresence>
+    94→    94→    </div>
+    95→    95→  );
+    96→    96→}
+    97→    97→
+    98→    98→function CheckboxItem({ label, checked, onChange, count }: { label: string; checked: boolean; onChange: () => void; count?: number }) {
+    99→    99→  return (
+   100→   100→    <label className="flex items-center justify-between py-1 cursor-pointer group">
+   101→   101→      <div className="flex items-center gap-2.5">
+   102→   102→        <div
+   103→   103→          className={`w-4 h-4 border flex items-center justify-center transition-colors ${
+   104→   104→            checked ? "bg-[#111] border-[#111]" : "border-[#D1D1D1] group-hover:border-[#999]"
+   105→   105→          }`}
+   106→   106→          onClick={(e) => { e.preventDefault(); onChange(); }}
+   107→   107→        >
+   108→   108→          {checked && <Check className="w-2.5 h-2.5 text-[#F8F8F6]" />}
+   109→   109→        </div>
+   110→   110→        <span className="text-[13px] text-[#333] group-hover:text-[#111] transition-colors">{label}</span>
+   111→   111→      </div>
+   112→   112→      {count !== undefined && (
+   113→   113→        <span className="text-[11px] text-[#999] tabular-nums">{count}</span>
+   114→   114→      )}
+   115→   115→    </label>
+   116→   116→  );
+   117→   117→}
+   118→   118→
+   119→   119→function FilterSidebar({ onClose, products }: { onClose?: () => void; products?: Product[] }) {
+   120→   120→  const { filters, setFilter, resetFilters } = useStore();
+   121→   121→  const activeCount = useMemo(() => {
+   122→   122→    let count = 0;
+   123→   123→    if (filters.category.length) count += filters.category.length;
+   124→   124→    if (filters.brands.length) count += filters.brands.length;
+   125→   125→    if (filters.sizes.length) count += filters.sizes.length;
+   126→   126→    if (filters.colors.length) count += filters.colors.length;
+   127→   127→    if (filters.ratings > 0) count++;
+   128→   128→    if (filters.availability) count++;
+   129→   129→    if (filters.priceRange[0] > 0 || filters.priceRange[1] < 999999) count++;
+   130→   130→    return count;
+   131→   131→  }, [filters]);
+   132→   132→
+   133→   133→  // Count products per category
+   134→   134→  const categoryCounts = useMemo(() => {
+   135→   135→    const counts: Record<string, number> = {};
+   136→   136→    if (products && products.length > 0) {
+   137→   137→      products.forEach((p) => {
+   138→   138→        counts[p.category] = (counts[p.category] || 0) + 1;
+   139→   139→      });
+   140→   140→    }
+   141→   141→    return counts;
+   142→   142→  }, [products]);
+   143→   143→
+   144→   144→  const toggleArrayFilter = (key: "category" | "brands" | "sizes" | "colors", value: string) => {
+   145→   145→    const current = filters[key];
+   146→   146→    const updated = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
+   147→   147→    setFilter(key, updated);
+   148→   148→  };
+   149→   149→
+   150→   150→  return (
+   151→   151→    <div className="flex flex-col h-full">
+   152→   152→      <div className="flex items-center justify-between pb-4 border-b border-[#E8E8E8]">
+   153→   153→        <h2 className="text-[15px] font-medium tracking-wide">
+   154→   154→          Filters {activeCount > 0 && <span className="text-[#4D5B47]">({activeCount})</span>}
+   155→   155→        </h2>
+   156→   156→        <div className="flex items-center gap-3">
+   157→   157→          {activeCount > 0 && (
+   158→   158→            <button onClick={resetFilters} className="text-[12px] text-[#4D5B47] hover:text-[#111] transition-colors tracking-wide uppercase">
+   159→   159→              Clear All
+   160→   160→            </button>
+   161→   161→          )}
+   162→   162→          {onClose && (
+   163→   163→            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center">
+   164→   164→              <X className="w-4 h-4" />
+   165→   165→            </button>
+   166→   166→          )}
+   167→   167→        </div>
+   168→   168→      </div>
+   169→   169→
+   170→   170→      <div className="flex-1 overflow-y-auto scrollbar-thin -mx-1 px-1">
+   171→   171→        <FilterSection title="Category">
+   172→   172→          <div className="space-y-0.5 max-h-48 overflow-y-auto scrollbar-thin">
+   173→   173→            {allCategories.map((cat) => (
+   174→   174→              <CheckboxItem
+   175→   175→                key={cat}
+   176→   176→                label={cat}
+   177→   177→                checked={filters.category.includes(cat)}
+   178→   178→                onChange={() => toggleArrayFilter("category", cat)}
+   179→   179→                count={categoryCounts[cat] || 0}
+   180→   180→              />
+   181→   181→            ))}
+   182→   182→          </div>
+   183→   183→        </FilterSection>
+   184→   184→
+   185→   185→        <FilterSection title="Price Range">
+   186→   186→          <div className="space-y-1.5">
+   187→   187→            {priceRanges.map((range) => {
+   188→   188→              const active = filters.priceRange[0] === range.min && filters.priceRange[1] === range.max;
+   189→   189→              return (
+   190→   190→                <button
+   191→   191→                  key={range.label}
+   192→   192→                  onClick={() => setFilter("priceRange", [range.min, range.max])}
+   193→   193→                  className={`block w-full text-left text-[13px] py-1 transition-colors ${
+   194→   194→                    active ? "text-[#111] font-medium" : "text-[#666] hover:text-[#111]"
+   195→   195→                  }`}
+   196→   196→                >
+   197→   197→                  {range.label}
+   198→   198→                </button>
+   199→   199→              );
+   200→   200→            })}
+   201→   201→          </div>
+   202→   202→        </FilterSection>
+   203→   203→
+   204→   204→        <FilterSection title="Brand">
+   205→   205→          <div className="space-y-0.5 max-h-48 overflow-y-auto scrollbar-thin">
+   206→   206→            {allBrands.map((brand) => (
+   207→   207→              <CheckboxItem
+   208→   208→                key={brand}
+   209→   209→                label={brand.replace("MAISON ", "")}
+   210→   210→                checked={filters.brands.includes(brand)}
+   211→   211→                onChange={() => toggleArrayFilter("brands", brand)}
+   212→   212→              />
+   213→   213→            ))}
+   214→   214→          </div>
+   215→   215→        </FilterSection>
+   216→   216→
+   217→   217→        <FilterSection title="Size">
+   218→   218→          <div className="flex flex-wrap gap-1.5">
+   219→   219→            {allSizes.map((size) => (
+   220→   220→              <button
+   221→   221→                key={size}
+   222→   222→                onClick={() => toggleArrayFilter("sizes", size)}
+   223→   223→                className={`px-3 py-1.5 text-[12px] border transition-colors ${
+   224→   224→                  filters.sizes.includes(size)
+   225→   225→                    ? "bg-[#111] text-[#F8F8F6] border-[#111]"
+   226→   226→                    : "border-[#E8E8E8] text-[#666] hover:border-[#999] hover:text-[#111]"
+   227→   227→                }`}
+   228→   228→              >
+   229→   229→                {size}
+   230→   230→              </button>
+   231→   231→            ))}
+   232→   232→          </div>
+   233→   233→        </FilterSection>
+   234→   234→
+   235→   235→        <FilterSection title="Color">
+   236→   236→          <div className="flex flex-wrap gap-2">
+   237→   237→            {colorSwatches.map((color) => (
+   238→   238→              <button
+   239→   239→                key={color.hex}
+   240→   240→                onClick={() => toggleArrayFilter("colors", color.name)}
+   241→   241→                className={`w-7 h-7 border-2 transition-all ${
+   242→   242→                  filters.colors.includes(color.name) ? "border-[#111] scale-110" : "border-transparent hover:border-[#D1D1D1]"
+   243→   243→                }`}
+   244→   244→                style={{ backgroundColor: color.hex }}
+   245→   245→                title={color.name}
+   246→   246→              />
+   247→   247→            ))}
+   248→   248→          </div>
+   249→   249→        </FilterSection>
+   250→   250→
+   251→   251→        <FilterSection title="Rating">
+   252→   252→          <div className="space-y-1.5">
+   253→   253→            {[4, 3, 2].map((r) => (
+   254→   254→              <button
+   255→   255→                key={r}
+   256→   256→                onClick={() => setFilter("ratings", filters.ratings === r ? 0 : r)}
+   257→   257→                className={`flex items-center gap-1.5 text-[13px] transition-colors ${
+   258→   258→                  filters.ratings === r ? "text-[#111] font-medium" : "text-[#666] hover:text-[#111]"
+   259→   259→                }`}
+   260→   260→              >
+   261→   261→                {r} <Star className="w-3 h-3 fill-[#111] text-[#111]" /> &amp; above
+   262→   262→              </button>
+   263→   263→            ))}
+   264→   264→          </div>
+   265→   265→        </FilterSection>
+   266→   266→
+   267→   267→        <FilterSection title="Discount">
+   268→   268→          <div className="space-y-1.5">
+   269→   269→            {discountOptions.map((opt) => (
+   270→   270→              <CheckboxItem
+   271→   271→                key={opt.value}
+   272→   272→                label={opt.label}
+   273→   273→                checked={filters.ratings === 0 ? false : false}
+   274→   274→                onChange={() => {}}
+   275→   275→              />
+   276→   276→            ))}
+   277→   277→          </div>
+   278→   278→        </FilterSection>
+   279→   279→
+   280→   280→        <FilterSection title="Availability" defaultOpen={false}>
+   281→   281→          <CheckboxItem
+   282→   282→            label="In Stock Only"
+   283→   283→            checked={filters.availability}
+   284→   284→            onChange={() => setFilter("availability", !filters.availability)}
+   285→   285→          />
+   286→   286→        </FilterSection>
+   287→   287→      </div>
+   288→   288→    </div>
+   289→   289→  );
+   290→   290→}
+   291→   291→
+   292→   292→// List view product card (horizontal layout)
+   293→   293→function ProductListItem({ product, index }: { product: Product; index: number }) {
+   294→   294→  const { navigate } = useStore();
+   295→   295→  const images = product.images ? JSON.parse(product.images) : [product.image];
+   296→   296→  const [imgLoaded, setImgLoaded] = useState(false);
+   297→   297→
+   298→   298→  return (
+   299→   299→    <motion.div
+   300→   300→      layout
+   301→   301→      initial={{ opacity: 0, y: 12 }}
+   302→   302→      animate={{ opacity: 1, y: 0 }}
+   303→   303→      exit={{ opacity: 0, y: -12 }}
+   304→   304→      transition={{ duration: 0.3, delay: Math.min(index * 0.04, 0.2) }}
+   305→   305→      onClick={() => navigate("product", product.id)}
+   306→   306→      className="flex gap-5 p-3 border border-[#E8E8E8] bg-white cursor-pointer group hover:border-[#ccc] transition-colors rounded-[4px]"
+   307→   307→    >
+   308→   308→      {/* Image */}
+   309→   309→      <div className="w-[140px] sm:w-[180px] flex-shrink-0 aspect-[3/4] relative overflow-hidden rounded-[4px] bg-[#F0EFED]">
+   310→   310→        {!imgLoaded && (
+   311→   311→          <div className="absolute inset-0 skeleton-shimmer" />
+   312→   312→        )}
+   313→   313→        <img
+   314→   314→          src={images[0]}
+   315→   315→          alt={product.name}
+   316→   316→          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+   317→   317→          onLoad={() => setImgLoaded(true)}
+   318→   318→        />
+   319→   319→        {product.discount > 0 && (
+   320→   320→          <span className="absolute top-2 left-2 px-2 py-0.5 bg-[#111] text-[#F8F8F6] text-[10px] tracking-wide uppercase">
+   321→   321→            -{product.discount}%
+   322→   322→          </span>
+   323→   323→        )}
+   324→   324→      </div>
+   325→   325→      {/* Details */}
+   326→   326→      <div className="flex-1 min-w-0 py-1 flex flex-col justify-between">
+   327→   327→        <div>
+   328→   328→          <p className="text-[11px] text-[#999] tracking-widest uppercase mb-1">{product.brand}</p>
+   329→   329→          <h3 className="text-[14px] sm:text-[15px] font-medium text-[#111] leading-snug line-clamp-2 group-hover:text-[#4D5B47] transition-colors">
+   330→   330→            {product.name}
+   331→   331→          </h3>
+   332→   332→          <div className="flex items-center gap-1.5 mt-2">
+   333→   333→            <Star className="w-3 h-3 fill-[#111] text-[#111]" />
+   334→   334→            <span className="text-[12px] text-[#333]">{product.rating}</span>
+   335→   335→            <span className="text-[11px] text-[#999]">({product.reviewCount})</span>
+   336→   336→          </div>
+   337→   337→          <p className="text-[11px] text-[#999] mt-1 tracking-wide uppercase">{product.category}</p>
+   338→   338→        </div>
+   339→   339→        <div className="flex items-center gap-3 mt-3">
+   340→   340→          <span className="text-[16px] font-medium text-[#111]">₹{product.price.toLocaleString()}</span>
+   341→   341→          {product.mrp > product.price && (
+   342→   342→            <span className="text-[13px] text-[#999] line-through">₹{product.mrp.toLocaleString()}</span>
+   343→   343→          )}
+   344→   344→          {product.discount > 0 && (
+   345→   345→            <span className="text-[11px] text-[#4D5B47] font-medium">{product.discount}% off</span>
+   346→   346→          )}
+   347→   347→        </div>
+   348→   348→        <div className="flex items-center gap-2 mt-3">
+   349→   349→          {product.isNew && (
+   350→   350→            <span className="px-2 py-0.5 border border-[#4D5B47] text-[10px] text-[#4D5B47] tracking-wide uppercase">New</span>
+   351→   351→          )}
+   352→   352→          {product.isBestSeller && (
+   353→   353→            <span className="px-2 py-0.5 border border-[#B79B7B] text-[10px] text-[#B79B7B] tracking-wide uppercase">Best Seller</span>
+   354→   354→          )}
+   355→   355→          {product.isTrending && (
+   356→   356→            <span className="px-2 py-0.5 border border-[#999] text-[10px] text-[#666] tracking-wide uppercase">Trending</span>
+   357→   357→          )}
+   358→   358→        </div>
+   359→   359→      </div>
+   360→   360→    </motion.div>
+   361→   361→  );
+   362→   362→}
+   363→   363→
+   364→   364→const suggestedCategories = ["T-Shirts", "Footwear", "Accessories"];
+   365→   365→
+   366→   366→export default function ShopPage() {
+   367→   367→  const { filters, setFilter, resetFilters, searchQuery, navigate, goBack } = useStore();
+   368→   368→  const [products, setProducts] = useState<Product[]>([]);
+   369→   369→  const [loading, setLoading] = useState(true);
+   370→   370→  const [total, setTotal] = useState(0);
+   371→   371→  const [page, setPage] = useState(1);
+   372→   372→  const [mobileFilters, setMobileFilters] = useState(false);
+   373→   373→  const [sortOpen, setSortOpen] = useState(false);
+   374→   374→  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+   375→   375→  const [mobileSortOpen, setMobileSortOpen] = useState(false);
+   376→   376→  const limit = 20;
+   377→   377→
+   378→   378→  const fetchProducts = useCallback(async () => {
+   379→   379→    queueMicrotask(() => setLoading(true));
+   380→   380→    const params = new URLSearchParams();
+   381→   381→    if (filters.category.length === 1) params.set("category", filters.category[0]);
+   382→   382→    if (filters.brands.length === 1) params.set("brand", filters.brands[0]);
+   383→   383→    if (searchQuery) params.set("search", searchQuery);
+   384→   384→    params.set("sort", filters.sortBy);
+   385→   385→    params.set("minPrice", filters.priceRange[0].toString());
+   386→   386→    params.set("maxPrice", filters.priceRange[1].toString());
+   387→   387→    params.set("limit", limit.toString());
+   388→   388→    params.set("page", page.toString());
+   389→   389→
+   390→   390→    try {
+   391→   391→      const res = await fetch(`/api/products?${params}`);
+   392→   392→      const data = await res.json();
+   393→   393→      let filtered = data.products || [];
+   394→   394→
+   395→   395→      // Client-side filtering for arrays
+   396→   396→      if (filters.category.length > 1) {
+   397→   397→        filtered = filtered.filter((p: Product) => filters.category.includes(p.category));
+   398→   398→      }
+   399→   399→      if (filters.brands.length > 1) {
+   400→   400→        filtered = filtered.filter((p: Product) => filters.brands.includes(p.brand));
+   401→   401→      }
+   402→   402→      if (filters.ratings > 0) {
+   403→   403→        filtered = filtered.filter((p: Product) => p.rating >= filters.ratings);
+   404→   404→      }
+   405→   405→      if (filters.availability) {
+   406→   406→        filtered = filtered.filter((p: Product) => p.stock > 0);
+   407→   407→      }
+   408→   408→      if (filters.sizes.length > 0) {
+   409→   409→        filtered = filtered.filter((p: Product) => {
+   410→   410→          try {
+   411→   411→            const sizes = JSON.parse(p.images ? "" : "[]");
+   412→   412→            return true; // Simplified - sizes stored as JSON in sizes field
+   413→   413→          } catch { return true; }
+   414→   414→        });
+   415→   415→      }
+   416→   416→
+   417→   417→      setProducts(filtered);
+   418→   418→      setTotal(data.total || filtered.length);
+   419→   419→    } catch (e) {
+   420→   420→      console.error(e);
+   421→   421→    }
+   422→   422→    setLoading(false);
+   423→   423→  }, [filters, searchQuery, page]);
+   424→   424→
+   425→   425→  useEffect(() => { const id = setTimeout(fetchProducts, 0); return () => clearTimeout(id); }, [fetchProducts]);
+   426→   426→
+   427→   427→  const sortOptions = [
+   428→   428→    { label: "Popularity", value: "popularity" },
+   429→   429→    { label: "Price: Low to High", value: "price-low" },
+   430→   430→    { label: "Price: High to Low", value: "price-high" },
+   431→   431→    { label: "Newest First", value: "newest" },
+   432→   432→    { label: "Best Rating", value: "rating" },
+   433→   433→  ];
+   434→   434→
+   435→   435→  const totalPages = Math.ceil(total / limit);
+   436→   436→
+   437→   437→  const activeFilterTags = useMemo(() => {
+   438→   438→    const tags: { label: string; onRemove: () => void }[] = [];
+   439→   439→    filters.category.forEach((c) => tags.push({ label: c, onRemove: () => setFilter("category", filters.category.filter((v) => v !== c)) }));
+   440→   440→    filters.brands.forEach((b) => tags.push({ label: b, onRemove: () => setFilter("brands", filters.brands.filter((v) => v !== b)) }));
+   441→   441→    filters.sizes.forEach((s) => tags.push({ label: `Size: ${s}`, onRemove: () => setFilter("sizes", filters.sizes.filter((v) => v !== s)) }));
+   442→   442→    filters.colors.forEach((c) => tags.push({ label: c, onRemove: () => setFilter("colors", filters.colors.filter((v) => v !== c)) }));
+   443→   443→    if (searchQuery) tags.push({ label: `"${searchQuery}"`, onRemove: () => setFilter("search", "") });
+   444→   444→    return tags;
+   445→   445→  }, [filters, searchQuery, setFilter]);
+   446→   446→
+   447→   447→  const handleBrowseCategory = (cat: string) => {
+   448→   448→    resetFilters();
+   449→   449→    setFilter("category", [cat]);
+   450→   450→  };
+   451→   451→
+   452→   452→  // Compute the "showing X of Y" text
+   453→   453→  const showingText = !loading && total > 0
+   454→   454→    ? `Showing ${products.length} of ${total} products`
+   455→   455→    : loading ? "Loading products..." : "";
+   456→   456→
+   457→   457→  return (
+   458→   458→    <main className="min-h-screen bg-[#F8F8F6] pt-20 pb-20 lg:pb-0">
+   459→   459→      {/* Mobile Filter Drawer */}
+   460→   460→      <AnimatePresence>
+   461→   461→        {mobileFilters && (
+   462→   462→          <>
+   463→   463→            <motion.div
+   464→   464→              initial={{ opacity: 0 }}
+   465→   465→              animate={{ opacity: 1 }}
+   466→   466→              exit={{ opacity: 0 }}
+   467→   467→              className="fixed inset-0 bg-black/40 z-[80] lg:hidden"
+   468→   468→              onClick={() => setMobileFilters(false)}
+   469→   469→            />
+   470→   470→            <motion.div
+   471→   471→              initial={{ y: "100%" }}
+   472→   472→              animate={{ y: 0 }}
+   473→   473→              exit={{ y: "100%" }}
+   474→   474→              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+   475→   475→              className="fixed bottom-0 left-0 right-0 bg-[#F8F8F6] z-[90] lg:hidden max-h-[85vh] flex flex-col"
+   476→   476→            >
+   477→   477→              <div className="p-4 border-b border-[#E8E8E8] flex items-center justify-between">
+   478→   478→                <h3 className="text-[15px] font-medium">Filters</h3>
+   479→   479→                <button onClick={() => setMobileFilters(false)} className="w-8 h-8 flex items-center justify-center">
+   480→   480→                  <X className="w-4 h-4" />
+   481→   481→                </button>
+   482→   482→              </div>
+   483→   483→              <div className="flex-1 overflow-y-auto p-4">
+   484→   484→                <FilterSidebar onClose={() => setMobileFilters(false)} products={products} />
+   485→   485→              </div>
+   486→   486→              <div className="p-4 border-t border-[#E8E8E8]">
+   487→   487→                <button
+   488→   488→                  onClick={() => setMobileFilters(false)}
+   489→   489→                  className="w-full py-3 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-widest uppercase"
+   490→   490→                >
+   491→   491→                  Apply Filters
+   492→   492→                </button>
+   493→   493→              </div>
+   494→   494→            </motion.div>
+   495→   495→          </>
+   496→   496→        )}
+   497→   497→      </AnimatePresence>
+   498→   498→
+   499→   499→      {/* Sort Dropdown (Desktop) */}
+   500→   500→      <AnimatePresence>
+   501→   501→        {sortOpen && (
+   502→   502→          <>
+   503→   503→            <motion.div
+   504→   504→              initial={{ opacity: 0 }}
+   505→   505→              animate={{ opacity: 1 }}
+   506→   506→              exit={{ opacity: 0 }}
+   507→   507→              className="fixed inset-0 z-[70]" onClick={() => setSortOpen(false)}
+   508→   508→            />
+   509→   509→            <motion.div
+   510→   510→              initial={{ opacity: 0, y: -8 }}
+   511→   511→              animate={{ opacity: 1, y: 0 }}
+   512→   512→              exit={{ opacity: 0, y: -8 }}
+   513→   513→              className="absolute right-4 sm:right-8 top-[68px] z-[80] bg-white border border-[#E8E8E8] shadow-lg min-w-[200px] py-1"
+   514→   514→            >
+   515→   515→              {sortOptions.map((opt) => (
+   516→   516→                <button
+   517→   517→                  key={opt.value}
+   518→   518→                  onClick={() => { setFilter("sortBy", opt.value); setSortOpen(false); }}
+   519→   519→                  className={`block w-full text-left px-4 py-2.5 text-[13px] transition-colors ${
+   520→   520→                    filters.sortBy === opt.value ? "text-[#4D5B47] font-medium" : "text-[#666] hover:text-[#111]"
+   521→   521→                  }`}
+   522→   522→                >
+   523→   523→                  {opt.label}
+   524→   524→                </button>
+   525→   525→              ))}
+   526→   526→            </motion.div>
+   527→   527→          </>
+   528→   528→        )}
+   529→   529→      </AnimatePresence>
+   530→   530→
+   531→   531→      {/* Mobile Sort Dropdown */}
+   532→   532→      <AnimatePresence>
+   533→   533→        {mobileSortOpen && (
+   534→   534→          <>
+   535→   535→            <motion.div
+   536→   536→              initial={{ opacity: 0 }}
+   537→   537→              animate={{ opacity: 1 }}
+   538→   538→              exit={{ opacity: 0 }}
+   539→   539→              className="fixed inset-0 bg-black/40 z-[80] lg:hidden"
+   540→   540→              onClick={() => setMobileSortOpen(false)}
+   541→   541→            />
+   542→   542→            <motion.div
+   543→   543→              initial={{ y: "100%" }}
+   544→   544→              animate={{ y: 0 }}
+   545→   545→              exit={{ y: "100%" }}
+   546→   546→              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+   547→   547→              className="fixed bottom-0 left-0 right-0 bg-[#F8F8F6] z-[90] lg:hidden max-h-[50vh] flex flex-col"
+   548→   548→            >
+   549→   549→              <div className="p-4 border-b border-[#E8E8E8] flex items-center justify-between">
+   550→   550→                <h3 className="text-[15px] font-medium">Sort By</h3>
+   551→   551→                <button onClick={() => setMobileSortOpen(false)} className="w-8 h-8 flex items-center justify-center">
+   552→   552→                  <X className="w-4 h-4" />
+   553→   553→                </button>
+   554→   554→              </div>
+   555→   555→              <div className="flex-1 overflow-y-auto py-2">
+   556→   556→                {sortOptions.map((opt) => (
+   557→   557→                  <button
+   558→   558→                    key={opt.value}
+   559→   559→                    onClick={() => { setFilter("sortBy", opt.value); setMobileSortOpen(false); }}
+   560→   560→                    className={`block w-full text-left px-6 py-3 text-[13px] transition-colors ${
+   561→   561→                      filters.sortBy === opt.value ? "text-[#4D5B47] font-medium" : "text-[#666] hover:text-[#111]"
+   562→   562→                    }`}
+   563→   563→                  >
+   564→   564→                    {opt.label}
+   565→   565→                    {filters.sortBy === opt.value && <Check className="w-3.5 h-3.5 inline ml-2" />}
+   566→   566→                  </button>
+   567→   567→                ))}
+   568→   568→              </div>
+   569→   569→            </motion.div>
+   570→   570→          </>
+   571→   571→        )}
+   572→   572→      </AnimatePresence>
+   573→   573→
+   574→   574→      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+   575→   575→        {/* Header */}
+   576→   576→        <div className="py-6 border-b border-[#E8E8E8]">
+   577→   577→          <button onClick={goBack} className="flex items-center gap-1.5 text-[12px] tracking-widest uppercase text-[#999] hover:text-[#111] transition-colors mb-4">
+   578→   578→            <ArrowUp className="w-3 h-3 rotate-[-90deg]" /> Back
+   579→   579→          </button>
+   580→   580→          <div className="flex items-center justify-between">
+   581→   581→            <div>
+   582→   582→              <h1 className="text-[28px] sm:text-[36px] font-medium tracking-[-0.02em]">
+   583→   583→                {searchQuery ? `Search: "${searchQuery}"` : filters.category.length === 1 ? filters.category[0] : "All Products"}
+   584→   584→              </h1>
+   585→   585→              <p className="text-[13px] text-[#999] mt-1">{total} products</p>
+   586→   586→            </div>
+   587→   587→            <div className="flex items-center gap-2">
+   588→   588→              {/* View Mode Toggle (Desktop) */}
+   589→   589→              <div className="hidden sm:flex items-center border border-[#E8E8E8]">
+   590→   590→                <button
+   591→   591→                  onClick={() => setViewMode("grid")}
+   592→   592→                  className={`w-9 h-9 flex items-center justify-center transition-colors ${
+   593→   593→                    viewMode === "grid" ? "bg-[#111] text-[#F8F8F6]" : "text-[#666] hover:text-[#111]"
+   594→   594→                  }`}
+   595→   595→                  title="Grid view"
+   596→   596→                >
+   597→   597→                  <Grid3X3 className="w-3.5 h-3.5" />
+   598→   598→                </button>
+   599→   599→                <button
+   600→   600→                  onClick={() => setViewMode("list")}
+   601→   601→                  className={`w-9 h-9 flex items-center justify-center transition-colors ${
+   602→   602→                    viewMode === "list" ? "bg-[#111] text-[#F8F8F6]" : "text-[#666] hover:text-[#111]"
+   603→   603→                  }`}
+   604→   604→                  title="List view"
+   605→   605→                >
+   606→   606→                  <List className="w-3.5 h-3.5" />
+   607→   607→                </button>
+   608→   608→              </div>
+   609→   609→              <button
+   610→   610→                onClick={() => setMobileFilters(true)}
+   611→   611→                className="lg:hidden flex items-center gap-2 px-3 py-2 border border-[#E8E8E8] text-[12px] tracking-wide uppercase"
+   612→   612→              >
+   613→   613→                <SlidersHorizontal className="w-3.5 h-3.5" />
+   614→   614→                Filters
+   615→   615→              </button>
+   616→   616→              <button
+   617→   617→                onClick={() => setSortOpen(!sortOpen)}
+   618→   618→                className="hidden lg:flex items-center gap-2 px-3 py-2 border border-[#E8E8E8] text-[12px] tracking-wide uppercase hover:border-[#999] transition-colors relative"
+   619→   619→              >
+   620→   620→                Sort
+   621→   621→                <ChevronDown className="w-3 h-3" />
+   622→   622→              </button>
+   623→   623→            </div>
+   624→   624→          </div>
+   625→   625→        </div>
+   626→   626→
+   627→   627→        {/* Results Header Enhancement — Divider + "Showing X of Y" */}
+   628→   628→        {!loading && products.length > 0 && (
+   629→   629→          <div className="flex items-center justify-between py-3">
+   630→   630→            <p className="text-[12px] text-[#999] tracking-wide">{showingText}</p>
+   631→   631→            {/* Mobile view mode toggle */}
+   632→   632→            <div className="flex sm:hidden items-center border border-[#E8E8E8]">
+   633→   633→              <button
+   634→   634→                onClick={() => setViewMode("grid")}
+   635→   635→                className={`w-8 h-8 flex items-center justify-center transition-colors ${
+   636→   636→                  viewMode === "grid" ? "bg-[#111] text-[#F8F8F6]" : "text-[#666] hover:text-[#111]"
+   637→   637→                }`}
+   638→   638→              >
+   639→   639→                <Grid3X3 className="w-3 h-3" />
+   640→   640→              </button>
+   641→   641→              <button
+   642→   642→                onClick={() => setViewMode("list")}
+   643→   643→                className={`w-8 h-8 flex items-center justify-center transition-colors ${
+   644→   644→                  viewMode === "list" ? "bg-[#111] text-[#F8F8F6]" : "text-[#666] hover:text-[#111]"
+   645→   645→                }`}
+   646→   646→              >
+   647→   647→                <List className="w-3 h-3" />
+   648→   648→              </button>
+   649→   649→            </div>
+   650→   650→          </div>
+   651→   651→        )}
+   652→   652→
+   653→   653→        {/* Active Filters */}
+   654→   654→        {activeFilterTags.length > 0 && (
+   655→   655→          <div className="flex items-center gap-2 py-3 flex-wrap">
+   656→   656→            {activeFilterTags.map((tag) => (
+   657→   657→              <motion.span
+   658→   658→                key={tag.label}
+   659→   659→                layout
+   660→   660→                initial={{ opacity: 0, scale: 0.9 }}
+   661→   661→                animate={{ opacity: 1, scale: 1 }}
+   662→   662→                exit={{ opacity: 0, scale: 0.9 }}
+   663→   663→                className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1.5 bg-[#F0EFED] text-[12px] text-[#111] border-l-2 border-l-[#4D5B47] rounded-[4px]"
+   664→   664→              >
+   665→   665→                {tag.label}
+   666→   666→                <button
+   667→   667→                  onClick={tag.onRemove}
+   668→   668→                  className="w-5 h-5 flex items-center justify-center rounded-[2px] hover:bg-[#E8E8E8] hover:text-[#C53030] transition-all hover:scale-110"
+   669→   669→                >
+   670→   670→                  <X className="w-3 h-3" />
+   671→   671→                </button>
+   672→   672→              </motion.span>
+   673→   673→            ))}
+   674→   674→            <button onClick={resetFilters} className="text-[12px] text-[#4D5B47] hover:text-[#111] transition-colors tracking-wide uppercase ml-2">
+   675→   675→              Clear All
+   676→   676→            </button>
+   677→   677→          </div>
+   678→   678→        )}
+   679→   679→
+   680→   680→        {/* Main Content */}
+   681→   681→        <div className="flex gap-8 py-6">
+   682→   682→          {/* Desktop Sidebar */}
+   683→   683→          <div className="hidden lg:block w-[240px] flex-shrink-0">
+   684→   684→            <div className="sticky top-[88px]">
+   685→   685→              <FilterSidebar products={products} />
+   686→   686→            </div>
+   687→   687→          </div>
+   688→   688→
+   689→   689→          {/* Product Grid / List */}
+   690→   690→          <div className="flex-1 min-w-0">
+   691→   691→            {loading ? (
+   692→   692→              viewMode === "grid" ? (
+   693→   693→                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 lg:gap-5">
+   694→   694→                  {Array.from({ length: 8 }).map((_, i) => (
+   695→   695→                    <div key={i} className="space-y-3">
+   696→   696→                      <div
+   697→   697→                        className="aspect-[3/4] rounded-[4px]"
+   698→   698→                        style={shimmerStyle}
+   699→   699→                      />
+   700→   700→                      <div className="h-3 w-16 rounded-[4px]" style={shimmerStyle} />
+   701→   701→                      <div className="h-4 w-full rounded-[4px]" style={shimmerStyle} />
+   702→   702→                      <div className="h-4 w-20 rounded-[4px]" style={shimmerStyle} />
+   703→   703→                    </div>
+   704→   704→                  ))}
+   705→   705→                </div>
+   706→   706→              ) : (
+   707→   707→                <div className="space-y-4">
+   708→   708→                  {Array.from({ length: 5 }).map((_, i) => (
+   709→   709→                    <div key={i} className="flex gap-5 p-3 border border-[#E8E8E8] rounded-[4px]">
+   710→   710→                      <div
+   711→   711→                        className="w-[140px] sm:w-[180px] flex-shrink-0 aspect-[3/4] rounded-[4px]"
+   712→   712→                        style={shimmerStyle}
+   713→   713→                      />
+   714→   714→                      <div className="flex-1 py-2 space-y-3">
+   715→   715→                        <div className="h-3 w-20 rounded-[4px]" style={shimmerStyle} />
+   716→   716→                        <div className="h-4 w-3/4 rounded-[4px]" style={shimmerStyle} />
+   717→   717→                        <div className="h-4 w-1/2 rounded-[4px]" style={shimmerStyle} />
+   718→   718→                        <div className="h-4 w-24 rounded-[4px]" style={shimmerStyle} />
+   719→   719→                      </div>
+   720→   720→                    </div>
+   721→   721→                  ))}
+   722→   722→                </div>
+   723→   723→              )
+   724→   724→            ) : products.length === 0 ? (
+   725→   725→              <div
+   726→   726→                className="flex flex-col items-center justify-center py-24 text-center border-l-2 border-l-[#4D5B47] pl-8 sm:pl-12 ml-0"
+   727→   727→              >
+   728→   728→                <div className="w-16 h-16 bg-[#F0EFED] rounded-full flex items-center justify-center mb-4">
+   729→   729→                  <SlidersHorizontal className="w-6 h-6 text-[#999]" strokeWidth={1.5} />
+   730→   730→                </div>
+   731→   731→                <p className="text-[16px] text-[#111] mb-1">No products found</p>
+   732→   732→                <p className="text-[13px] text-[#999] mb-6">Try adjusting your filters or search query</p>
+   733→   733→                <div className="flex items-center gap-3 flex-wrap justify-center">
+   734→   734→                  <button
+   735→   735→                    onClick={resetFilters}
+   736→   736→                    className="px-6 py-2.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-widest uppercase hover:bg-[#333] transition-colors"
+   737→   737→                  >
+   738→   738→                    Clear Filters
+   739→   739→                  </button>
+   740→   740→                  <button
+   741→   741→                    onClick={() => { resetFilters(); }}
+   742→   742→                    className="px-6 py-2.5 border border-[#E8E8E8] text-[#111] text-[12px] font-medium tracking-widest uppercase hover:border-[#999] transition-colors"
+   743→   743→                  >
+   744→   744→                    Browse Categories
+   745→   745→                  </button>
+   746→   746→                </div>
+   747→   747→                {/* Suggested category pills */}
+   748→   748→                <div className="flex items-center gap-2 mt-6 flex-wrap justify-center">
+   749→   749→                  <span className="text-[11px] text-[#999] tracking-wide uppercase mr-1">Try:</span>
+   750→   750→                  {suggestedCategories.map((cat) => (
+   751→   751→                    <button
+   752→   752→                      key={cat}
+   753→   753→                      onClick={() => handleBrowseCategory(cat)}
+   754→   754→                      className="px-3.5 py-1.5 border border-[#E8E8E8] text-[11px] text-[#666] tracking-wide hover:border-[#4D5B47] hover:text-[#4D5B47] transition-colors rounded-[4px]"
+   755→   755→                    >
+   756→   756→                      {cat}
+   757→   757→                    </button>
+   758→   758→                  ))}
+   759→   759→                </div>
+   760→   760→              </div>
+   761→   761→            ) : (
+   762→   762→              <>
+   763→   763→                {viewMode === "grid" ? (
+   764→   764→                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-5">
+   765→   765→                    <AnimatePresence mode="popLayout">
+   766→   766→                      {products.map((p, i) => (
+   767→   767→                        <ProductCard
+   768→   768→                          key={p.id}
+   769→   769→                          id={p.id}
+   770→   770→                          name={p.name}
+   771→   771→                          price={p.price}
+   772→   772→                          mrp={p.mrp}
+   773→   773→                          image={p.image}
+   774→   774→                          images={p.images ? JSON.parse(p.images) : undefined}
+   775→   775→                          category={p.category}
+   776→   776→                          brand={p.brand}
+   777→   777→                          rating={p.rating}
+   778→   778→                          reviewCount={p.reviewCount}
+   779→   779→                          discount={p.discount}
+   780→   780→                          isNew={p.isNew}
+   781→   781→                          isTrending={p.isTrending}
+   782→   782→                          isBestSeller={p.isBestSeller}
+   783→   783→                          index={i}
+   784→   784→                        />
+   785→   785→                      ))}
+   786→   786→                    </AnimatePresence>
+   787→   787→                  </div>
+   788→   788→                ) : (
+   789→   789→                  <div className="space-y-4">
+   790→   790→                    <AnimatePresence mode="popLayout">
+   791→   791→                      {products.map((p, i) => (
+   792→   792→                        <ProductListItem key={p.id} product={p} index={i} />
+   793→   793→                      ))}
+   794→   794→                    </AnimatePresence>
+   795→   795→                  </div>
+   796→   796→                )}
+   797→   797→
+   798→   798→                {/* Pagination */}
+   799→   799→                {totalPages > 1 && (
+   800→   800→                  <div className="flex items-center justify-center gap-1 mt-12">
+   801→   801→                    <button
+   802→   802→                      onClick={() => setPage(Math.max(1, page - 1))}
+   803→   803→                      disabled={page === 1}
+   804→   804→                      className="w-9 h-9 flex items-center justify-center border border-[#E8E8E8] text-[13px] disabled:opacity-30 hover:border-[#999] transition-colors"
+   805→   805→                    >
+   806→   806→                      ‹
+   807→   807→                    </button>
+   808→   808→                    {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((p) => (
+   809→   809→                      <button
+   810→   810→                        key={p}
+   811→   811→                        onClick={() => setPage(p)}
+   812→   812→                        className={`w-9 h-9 flex items-center justify-center text-[13px] transition-colors ${
+   813→   813→                          page === p ? "bg-[#111] text-[#F8F8F6]" : "border border-[#E8E8E8] hover:border-[#999]"
+   814→   814→                        }`}
+   815→   815→                      >
+   816→   816→                        {p}
+   817→   817→                      </button>
+   818→   818→                    ))}
+   819→   819→                    <button
+   820→   820→                      onClick={() => setPage(Math.min(totalPages, page + 1))}
+   821→   821→                      disabled={page === totalPages}
+   822→   822→                      className="w-9 h-9 flex items-center justify-center border border-[#E8E8E8] text-[13px] disabled:opacity-30 hover:border-[#999] transition-colors"
+   823→   823→                    >
+   824→   824→                      ›
+   825→   825→                    </button>
+   826→   826→                  </div>
+   827→   827→                )}
+   828→   828→              </>
+   829→   829→            )}
+   830→   830→          </div>
+   831→   831→        </div>
+   832→   832→      </div>
+   833→   833→
+   834→   834→      {/* Sticky Mobile Filter Bar */}
+   835→   835→      <AnimatePresence>
+   836→   836→        {!loading && products.length > 0 && (
+   837→   837→          <motion.div
+   838→   838→            initial={{ y: 80, opacity: 0 }}
+   839→   839→            animate={{ y: 0, opacity: 1 }}
+   840→   840→            exit={{ y: 80, opacity: 0 }}
+   841→   841→            transition={{ type: "spring", damping: 30, stiffness: 300 }}
+   842→   842→            className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-[#E8E8E8] z-[50] lg:hidden"
+   843→   843→          >
+   844→   844→            <div className="flex items-center justify-between px-4 py-3 gap-3">
+   845→   845→              <button
+   846→   846→                onClick={() => setMobileFilters(true)}
+   847→   847→                className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-[#E8E8E8] text-[12px] tracking-wide uppercase hover:border-[#999] transition-colors"
+   848→   848→              >
+   849→   849→                <SlidersHorizontal className="w-3.5 h-3.5" />
+   850→   850→                Filters
+   851→   851→              </button>
+   852→   852→              <button
+   853→   853→                onClick={() => setMobileSortOpen(true)}
+   854→   854→                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#111] text-[#F8F8F6] text-[12px] tracking-wide uppercase hover:bg-[#333] transition-colors"
+   855→   855→              >
+   856→   856→                Sort
+   857→   857→              </button>
+   858→   858→            </div>
+   859→   859→          </motion.div>
+   860→   860→        )}
+   861→   861→      </AnimatePresence>
+   862→   862→    </main>
+   863→   863→  );
+   864→   864→}

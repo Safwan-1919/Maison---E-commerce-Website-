@@ -1,0 +1,1119 @@
+     1→     1→"use client";
+     2→     2→
+     3→     3→import { useEffect, useState, useCallback } from "react";
+     4→     4→import { motion, AnimatePresence } from "framer-motion";
+     5→     5→import { useStore } from "@/lib/store";
+     6→     6→import { ProductCard } from "@/components/shared/ProductCard";
+     7→     7→import { ScrollReveal } from "@/components/shared/ScrollReveal";
+     8→     8→import {
+     9→     9→  ArrowLeft, Heart, ShoppingBag, Truck, RotateCcw, Shield,
+    10→    10→  ChevronDown, ChevronRight, ChevronLeft, Minus, Plus, Ruler, X, Lock
+    11→    11→} from "lucide-react";
+    12→    12→
+    13→    13→interface Product {
+    14→    14→  id: string;
+    15→    15→  name: string;
+    16→    16→  slug: string;
+    17→    17→  description: string | null;
+    18→    18→  price: number;
+    19→    19→  mrp: number;
+    20→    20→  category: string;
+    21→    21→  brand: string;
+    22→    22→  sizes: string;
+    23→    23→  colors: string;
+    24→    24→  images: string;
+    25→    25→  rating: number;
+    26→    26→  reviewCount: number;
+    27→    27→  stock: number;
+    28→    28→  isNew: boolean;
+    29→    29→  isTrending: boolean;
+    30→    30→  isBestSeller: boolean;
+    31→    31→  discount: number;
+    32→    32→  material: string | null;
+    33→    33→  care: string | null;
+    34→    34→  tags: string | null;
+    35→    35→  reviews: Review[];
+    36→    36→}
+    37→    37→
+    38→    38→interface Review {
+    39→    39→  id: string;
+    40→    40→  userName: string;
+    41→    41→  rating: number;
+    42→    42→  title: string | null;
+    43→    43→  comment: string | null;
+    44→    44→  createdAt: string;
+    45→    45→}
+    46→    46→
+    47→    47→/* ───────────────────────── SVG Star Rating ───────────────────────── */
+    48→    48→
+    49→    49→const STAR_PATH = "M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z";
+    50→    50→
+    51→    51→function StarRating({ rating, size = 14 }: { rating: number; size?: number }) {
+    52→    52→  return (
+    53→    53→    <div className="flex items-center gap-0.5">
+    54→    54→      {Array.from({ length: 5 }).map((_, i) => {
+    55→    55→        const val = i + 1;
+    56→    56→        const isFull = val <= Math.floor(rating);
+    57→    57→        const isHalf = !isFull && val === Math.ceil(rating) && rating % 1 >= 0.25;
+    58→    58→        return (
+    59→    59→          <svg
+    60→    60→            key={i}
+    61→    61→            width={size}
+    62→    62→            height={size}
+    63→    63→            viewBox="0 0 24 24"
+    64→    64→            xmlns="http://www.w3.org/2000/svg"
+    65→    65→          >
+    66→    66→            {isHalf ? (
+    67→    67→              <>
+    68→    68→                <path d={STAR_PATH} fill="#E8E8E8" />
+    69→    69→                <path
+    70→    70→                  d={STAR_PATH}
+    71→    71→                  fill="#B79B7B"
+    72→    72→                  style={{ clipPath: "inset(0 50% 0 0)" }}
+    73→    73→                />
+    74→    74→              </>
+    75→    75→            ) : (
+    76→    76→              <path
+    77→    77→                d={STAR_PATH}
+    78→    78→                fill={isFull ? "#B79B7B" : "#E8E8E8"}
+    79→    79→              />
+    80→    80→            )}
+    81→    81→          </svg>
+    82→    82→        );
+    83→    83→      })}
+    84→    84→    </div>
+    85→    85→  );
+    86→    86→}
+    87→    87→
+    88→    88→/* ───────────────────────── Relative Time ───────────────────────── */
+    89→    89→
+    90→    90→function getRelativeTime(dateStr: string): string {
+    91→    91→  const now = Date.now();
+    92→    92→  const date = new Date(dateStr).getTime();
+    93→    93→  const diffMs = now - date;
+    94→    94→  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    95→    95→  if (diffDays <= 0) return "Today";
+    96→    96→  if (diffDays === 1) return "Yesterday";
+    97→    97→  if (diffDays < 7) return `${diffDays} days ago`;
+    98→    98→  if (diffDays < 14) return "1 week ago";
+    99→    99→  if (diffDays < 21) return "2 weeks ago";
+   100→   100→  if (diffDays < 30) return "3 weeks ago";
+   101→   101→  if (diffDays < 45) return "1 month ago";
+   102→   102→  if (diffDays < 75) return "2 months ago";
+   103→   103→  if (diffDays < 105) return "3 months ago";
+   104→   104→  if (diffDays < 195) return "6 months ago";
+   105→   105→  return `${Math.floor(diffDays / 30)} months ago`;
+   106→   106→}
+   107→   107→
+   108→   108→/* ───────────────────── Rating Distribution ───────────────────── */
+   109→   109→
+   110→   110→function getRatingDistribution(reviews: Review[]) {
+   111→   111→  const dist = [0, 0, 0, 0, 0]; // index 0 = 5 stars, index 4 = 1 star
+   112→   112→  reviews.forEach((r) => {
+   113→   113→    const star = Math.round(r.rating);
+   114→   114→    if (star >= 1 && star <= 5) dist[5 - star]++;
+   115→   115→  });
+   116→   116→  const total = reviews.length || 1;
+   117→   117→  return dist.map((count) => ({
+   118→   118→    count,
+   119→   119→    pct: Math.round((count / total) * 100),
+   120→   120→  }));
+   121→   121→}
+   122→   122→
+   123→   123→/* ───────────────────────── Skeleton ───────────────────────── */
+   124→   124→
+   125→   125→function ProductSkeleton() {
+   126→   126→  return (
+   127→   127→    <div className="animate-pulse">
+   128→   128→      <div className="grid lg:grid-cols-2 gap-8 lg:gap-16">
+   129→   129→        <div className="aspect-[3/4] bg-[#F0EFED] rounded-[4px]" />
+   130→   130→        <div className="space-y-4">
+   131→   131→          <div className="h-3 w-24 bg-[#F0EFED] rounded-[4px]" />
+   132→   132→          <div className="h-8 w-3/4 bg-[#F0EFED] rounded-[4px]" />
+   133→   133→          <div className="h-4 w-48 bg-[#F0EFED] rounded-[4px]" />
+   134→   134→          <div className="h-6 w-32 bg-[#F0EFED] rounded-[4px]" />
+   135→   135→        </div>
+   136→   136→      </div>
+   137→   137→    </div>
+   138→   138→  );
+   139→   139→}
+   140→   140→
+   141→   141→/* ─────────────────────── Image Gallery ─────────────────────── */
+   142→   142→
+   143→   143→function ImageGallery({
+   144→   144→  images,
+   145→   145→  productName,
+   146→   146→  onImageClick,
+   147→   147→}: {
+   148→   148→  images: string[];
+   149→   149→  productName: string;
+   150→   150→  onImageClick?: (index: number) => void;
+   151→   151→}) {
+   152→   152→  const [activeIndex, setActiveIndex] = useState(0);
+   153→   153→  const [zoomed, setZoomed] = useState(false);
+   154→   154→  const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
+   155→   155→
+   156→   156→  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+   157→   157→    const rect = e.currentTarget.getBoundingClientRect();
+   158→   158→    setMousePos({
+   159→   159→      x: ((e.clientX - rect.left) / rect.width) * 100,
+   160→   160→      y: ((e.clientY - rect.top) / rect.height) * 100,
+   161→   161→    });
+   162→   162→  };
+   163→   163→
+   164→   164→  return (
+   165→   165→    <div className="space-y-3">
+   166→   166→      {/* Main Image */}
+   167→   167→      <div
+   168→   168→        className="relative aspect-[3/4] bg-[#F0EFED] overflow-hidden cursor-zoom-in"
+   169→   169→        onMouseEnter={() => setZoomed(true)}
+   170→   170→        onMouseLeave={() => setZoomed(false)}
+   171→   171→        onMouseMove={handleMouseMove}
+   172→   172→        onClick={() => onImageClick?.(activeIndex)}
+   173→   173→      >
+   174→   174→        <AnimatePresence mode="wait">
+   175→   175→          <motion.div
+   176→   176→            key={activeIndex}
+   177→   177→            initial={{ opacity: 0 }}
+   178→   178→            animate={{ opacity: 1 }}
+   179→   179→            exit={{ opacity: 0 }}
+   180→   180→            transition={{ duration: 0.3 }}
+   181→   181→            className="absolute inset-0"
+   182→   182→          >
+   183→   183→            <img
+   184→   184→              src={images[activeIndex]}
+   185→   185→              alt={`${productName} - Image ${activeIndex + 1}`}
+   186→   186→              className="w-full h-full object-cover transition-transform duration-300"
+   187→   187→              style={
+   188→   188→                zoomed
+   189→   189→                  ? {
+   190→   190→                      transform: "scale(1.8)",
+   191→   191→                      transformOrigin: `${mousePos.x}% ${mousePos.y}%`,
+   192→   192→                    }
+   193→   193→                  : {}
+   194→   194→              }
+   195→   195→            />
+   196→   196→          </motion.div>
+   197→   197→        </AnimatePresence>
+   198→   198→        {images.length > 1 && (
+   199→   199→          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/40 backdrop-blur-sm px-3 py-1">
+   200→   200→            <span className="text-[11px] text-white font-medium">
+   201→   201→              {activeIndex + 1} / {images.length}
+   202→   202→            </span>
+   203→   203→          </div>
+   204→   204→        )}
+   205→   205→      </div>
+   206→   206→
+   207→   207→      {/* Thumbnails */}
+   208→   208→      {images.length > 1 && (
+   209→   209→        <div className="flex gap-2 overflow-x-auto scrollbar-none">
+   210→   210→          {images.map((img, i) => (
+   211→   211→            <button
+   212→   212→              key={i}
+   213→   213→              onClick={() => setActiveIndex(i)}
+   214→   214→              className={`flex-shrink-0 w-16 h-20 border-2 overflow-hidden transition-all ${
+   215→   215→                i === activeIndex
+   216→   216→                  ? "border-[#111]"
+   217→   217→                  : "border-transparent opacity-60 hover:opacity-100"
+   218→   218→              }`}
+   219→   219→            >
+   220→   220→              <img
+   221→   221→                src={img}
+   222→   222→                alt=""
+   223→   223→                className="w-full h-full object-cover"
+   224→   224→              />
+   225→   225→            </button>
+   226→   226→          ))}
+   227→   227→        </div>
+   228→   228→      )}
+   229→   229→    </div>
+   230→   230→  );
+   231→   231→}
+   232→   232→
+   233→   233→/* ─────────────────── Collapsible Section ──────────────────── */
+   234→   234→
+   235→   235→function CollapsibleSection({
+   236→   236→  title,
+   237→   237→  children,
+   238→   238→  defaultOpen = false,
+   239→   239→  isOpen,
+   240→   240→  onToggle,
+   241→   241→}: {
+   242→   242→  title: string;
+   243→   243→  children: React.ReactNode;
+   244→   244→  defaultOpen?: boolean;
+   245→   245→  isOpen?: boolean;
+   246→   246→  onToggle?: (open: boolean) => void;
+   247→   247→}) {
+   248→   248→  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+   249→   249→
+   250→   250→  const isControlled = isOpen !== undefined;
+   251→   251→  const open = isControlled ? isOpen : internalOpen;
+   252→   252→
+   253→   253→  const toggle = () => {
+   254→   254→    const next = !open;
+   255→   255→    if (isControlled && onToggle) {
+   256→   256→      onToggle(next);
+   257→   257→    } else if (!isControlled) {
+   258→   258→      setInternalOpen(next);
+   259→   259→    }
+   260→   260→  };
+   261→   261→
+   262→   262→  return (
+   263→   263→    <div className="border-b border-[#E8E8E8]">
+   264→   264→      <button
+   265→   265→        onClick={toggle}
+   266→   266→        className="flex items-center justify-between w-full py-4 text-[13px] font-medium tracking-wide text-[#111] hover:text-[#666] transition-colors"
+   267→   267→      >
+   268→   268→        {title}
+   269→   269→        {open ? (
+   270→   270→          <ChevronDown className="w-4 h-4" />
+   271→   271→        ) : (
+   272→   272→          <ChevronRight className="w-4 h-4" />
+   273→   273→        )}
+   274→   274→      </button>
+   275→   275→      <AnimatePresence>
+   276→   276→        {open && (
+   277→   277→          <motion.div
+   278→   278→            initial={{ height: 0, opacity: 0 }}
+   279→   279→            animate={{ height: "auto", opacity: 1 }}
+   280→   280→            exit={{ height: 0, opacity: 0 }}
+   281→   281→            transition={{ duration: 0.25 }}
+   282→   282→            className="overflow-hidden pb-4"
+   283→   283→          >
+   284→   284→            {children}
+   285→   285→          </motion.div>
+   286→   286→        )}
+   287→   287→      </AnimatePresence>
+   288→   288→    </div>
+   289→   289→  );
+   290→   290→}
+   291→   291→
+   292→   292→/* ═══════════════════════ MAIN COMPONENT ═══════════════════════ */
+   293→   293→
+   294→   294→export default function ProductPage() {
+   295→   295→  const {
+   296→   296→    selectedProductId,
+   297→   297→    navigate,
+   298→   298→    goBack,
+   299→   299→    addToCart,
+   300→   300→    toggleWishlist,
+   301→   301→    isInWishlist,
+   302→   302→    addToRecentlyViewed,
+   303→   303→    setSizeGuideOpen,
+   304→   304→    showNotification,
+   305→   305→  } = useStore();
+   306→   306→
+   307→   307→  const [product, setProduct] = useState<Product | null>(null);
+   308→   308→  const [similar, setSimilar] = useState<Product[]>([]);
+   309→   309→  const [loading, setLoading] = useState(true);
+   310→   310→  const [selectedSize, setSelectedSize] = useState<string | null>(null);
+   311→   311→  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+   312→   312→  const [quantity, setQuantity] = useState(1);
+   313→   313→  const [lightboxOpen, setLightboxOpen] = useState(false);
+   314→   314→  const [lightboxIndex, setLightboxIndex] = useState(0);
+   315→   315→  const [localReviews, setLocalReviews] = useState<Review[]>([]);
+   316→   316→  const [openDetail, setOpenDetail] = useState<string | null>("description");
+   317→   317→
+   318→   318→  const fetchProduct = useCallback(async () => {
+   319→   319→    if (!selectedProductId) return;
+   320→   320→    setLoading(true);
+   321→   321→    try {
+   322→   322→      const res = await fetch(`/api/products/${selectedProductId}`);
+   323→   323→      const data = await res.json();
+   324→   324→      setProduct(data.product);
+   325→   325→      setSimilar(data.similar || []);
+   326→   326→    } catch (e) {
+   327→   327→      console.error(e);
+   328→   328→    }
+   329→   329→    setLoading(false);
+   330→   330→  }, [selectedProductId]);
+   331→   331→
+   332→   332→  useEffect(() => {
+   333→   333→    fetchProduct();
+   334→   334→  }, [fetchProduct]);
+   335→   335→
+   336→   336→  // Escape key to close lightbox
+   337→   337→  useEffect(() => {
+   338→   338→    if (!lightboxOpen) return;
+   339→   339→    const handleKeyDown = (e: KeyboardEvent) => {
+   340→   340→      if (e.key === "Escape") setLightboxOpen(false);
+   341→   341→    };
+   342→   342→    window.addEventListener("keydown", handleKeyDown);
+   343→   343→    return () => window.removeEventListener("keydown", handleKeyDown);
+   344→   344→  }, [lightboxOpen]);
+   345→   345→
+   346→   346→  // Track recently viewed
+   347→   347→  useEffect(() => {
+   348→   348→    if (product) {
+   349→   349→      const timer = setTimeout(() => {
+   350→   350→        addToRecentlyViewed(product.id);
+   351→   351→      }, 2000);
+   352→   352→      return () => clearTimeout(timer);
+   353→   353→    }
+   354→   354→  }, [product, addToRecentlyViewed]);
+   355→   355→
+   356→   356→  useEffect(() => {
+   357→   357→    if (product) {
+   358→   358→      const sizes: string[] = JSON.parse(product.sizes);
+   359→   359→      const colors: string[] = JSON.parse(product.colors);
+   360→   360→      if (!selectedSize && sizes.length > 0 && sizes[0] !== "ONE SIZE") {
+   361→   361→        setSelectedSize(sizes[Math.min(2, sizes.length - 1)]);
+   362→   362→      }
+   363→   363→      if (!selectedColor && colors.length > 0) {
+   364→   364→        setSelectedColor(colors[0]);
+   365→   365→      }
+   366→   366→      setLocalReviews(product.reviews || []);
+   367→   367→    }
+   368→   368→    }, [product]);
+   369→   369→
+   370→   370→  if (loading)
+   371→   371→    return (
+   372→   372→      <main className="min-h-screen bg-[#F8F8F6] pt-20">
+   373→   373→        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+   374→   374→          <ProductSkeleton />
+   375→   375→        </div>
+   376→   376→      </main>
+   377→   377→    );
+   378→   378→  if (!product)
+   379→   379→    return (
+   380→   380→      <main className="min-h-screen bg-[#F8F8F6] pt-20 flex items-center justify-center">
+   381→   381→        <p className="text-[15px] text-[#666]">Product not found</p>
+   382→   382→      </main>
+   383→   383→    );
+   384→   384→
+   385→   385→  const images: string[] = JSON.parse(product.images);
+   386→   386→  const sizes: string[] = JSON.parse(product.sizes);
+   387→   387→  const colors: string[] = JSON.parse(product.colors);
+   388→   388→  const inWishlist = isInWishlist(product.id);
+   389→   389→
+   390→   390→  // Delivery dates: 5-7 business days (approx 7-9 calendar days)
+   391→   391→  const deliveryMinDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+   392→   392→  const deliveryMaxDate = new Date(Date.now() + 9 * 24 * 60 * 60 * 1000);
+   393→   393→  const deliveryMinStr = deliveryMinDate.toLocaleDateString("en-IN", {
+   394→   394→    weekday: "short",
+   395→   395→    month: "short",
+   396→   396→    day: "numeric",
+   397→   397→  });
+   398→   398→  const deliveryMaxStr = deliveryMaxDate.toLocaleDateString("en-IN", {
+   399→   399→    weekday: "short",
+   400→   400→    month: "short",
+   401→   401→    day: "numeric",
+   402→   402→  });
+   403→   403→
+   404→   404→  // Rating distribution
+   405→   405→  const distribution = localReviews.length > 0
+   406→   406→    ? getRatingDistribution(localReviews)
+   407→   407→    : [
+   408→   408→        { count: 0, pct: 0 },
+   409→   409→        { count: 0, pct: 0 },
+   410→   410→        { count: 0, pct: 0 },
+   411→   411→        { count: 0, pct: 0 },
+   412→   412→        { count: 0, pct: 0 },
+   413→   413→      ];
+   414→   414→
+   415→   415→  // Detail tabs
+   416→   416→  const detailTabs = [
+   417→   417→    { id: "description", label: "Description" },
+   418→   418→    { id: "material", label: "Material & Care" },
+   419→   419→    { id: "shipping", label: "Shipping" },
+   420→   420→  ];
+   421→   421→
+   422→   422→  const handleAddToCart = () => {
+   423→   423→    addToCart({
+   424→   424→      productId: product.id,
+   425→   425→      name: product.name,
+   426→   426→      price: product.price,
+   427→   427→      mrp: product.mrp,
+   428→   428→      image: images[0],
+   429→   429→      size: selectedSize || sizes[0] || "M",
+   430→   430→      color: selectedColor || colors[0] || "Default",
+   431→   431→      quantity,
+   432→   432→    });
+   433→   433→  };
+   434→   434→
+   435→   435→  const handleBuyNow = () => {
+   436→   436→    addToCart({
+   437→   437→      productId: product.id,
+   438→   438→      name: product.name,
+   439→   439→      price: product.price,
+   440→   440→      mrp: product.mrp,
+   441→   441→      image: images[0],
+   442→   442→      size: selectedSize || sizes[0] || "M",
+   443→   443→      color: selectedColor || colors[0] || "Default",
+   444→   444→      quantity,
+   445→   445→    });
+   446→   446→    navigate("checkout");
+   447→   447→  };
+   448→   448→
+   449→   449→  return (
+   450→   450→    <main className="min-h-screen bg-[#F8F8F6] pt-20 pb-16">
+   451→   451→      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+   452→   452→        {/* Breadcrumb */}
+   453→   453→        <ScrollReveal>
+   454→   454→          <nav className="flex items-center gap-2 py-4 text-[12px] text-[#999]">
+   455→   455→            <button
+   456→   456→              onClick={() => navigate("home")}
+   457→   457→              className="hover:text-[#111] transition-colors"
+   458→   458→            >
+   459→   459→              Home
+   460→   460→            </button>
+   461→   461→            <ChevronRight className="w-3 h-3" />
+   462→   462→            <button
+   463→   463→              onClick={() => navigate("shop")}
+   464→   464→              className="hover:text-[#111] transition-colors"
+   465→   465→            >
+   466→   466→              {product.category}
+   467→   467→            </button>
+   468→   468→            <ChevronRight className="w-3 h-3" />
+   469→   469→            <span className="text-[#111] truncate max-w-[200px]">
+   470→   470→              {product.name}
+   471→   471→            </span>
+   472→   472→          </nav>
+   473→   473→        </ScrollReveal>
+   474→   474→
+   475→   475→        {/* Back Button */}
+   476→   476→        <button
+   477→   477→          onClick={goBack}
+   478→   478→          className="flex items-center gap-1.5 text-[12px] tracking-widest uppercase text-[#999] hover:text-[#111] transition-colors mb-6"
+   479→   479→        >
+   480→   480→          <ArrowLeft className="w-3.5 h-3.5" /> Back
+   481→   481→        </button>
+   482→   482→
+   483→   483→        {/* Product Layout */}
+   484→   484→        <div className="grid lg:grid-cols-2 gap-8 lg:gap-16">
+   485→   485→          {/* Gallery */}
+   486→   486→          <ScrollReveal direction="left">
+   487→   487→            <ImageGallery
+   488→   488→              images={images}
+   489→   489→              productName={product.name}
+   490→   490→              onImageClick={(i) => {
+   491→   491→                setLightboxIndex(i);
+   492→   492→                setLightboxOpen(true);
+   493→   493→              }}
+   494→   494→            />
+   495→   495→          </ScrollReveal>
+   496→   496→
+   497→   497→          {/* Product Info */}
+   498→   498→          <ScrollReveal direction="right">
+   499→   499→            <div className="space-y-6">
+   500→   500→              {/* Brand */}
+   501→   501→              <p className="text-[11px] font-medium tracking-[0.2em] uppercase text-[#999]">
+   502→   502→                {product.brand}
+   503→   503→              </p>
+   504→   504→
+   505→   505→              {/* Name */}
+   506→   506→              <h1 className="text-[24px] sm:text-[28px] lg:text-[32px] font-medium tracking-[-0.02em] text-[#111] leading-tight">
+   507→   507→                {product.name}
+   508→   508→              </h1>
+   509→   509→
+   510→   510→              {/* Rating — Enhanced Star Display */}
+   511→   511→              <div className="flex items-center gap-3">
+   512→   512→                <StarRating rating={product.rating} size={16} />
+   513→   513→                <span className="text-[14px] font-medium text-[#111]">
+   514→   514→                  {product.rating.toFixed(1)}
+   515→   515→                </span>
+   516→   516→                <span className="text-[13px] text-[#999]">
+   517→   517→                  ({product.reviewCount} reviews)
+   518→   518→                </span>
+   519→   519→              </div>
+   520→   520→
+   521→   521→              {/* Price */}
+   522→   522→              <div className="flex items-baseline gap-3">
+   523→   523→                <span className="text-[24px] sm:text-[28px] font-medium text-[#111]">
+   524→   524→                  {"\u20B9"}
+   525→   525→                  {product.price.toLocaleString("en-IN")}
+   526→   526→                </span>
+   527→   527→                {product.mrp > product.price && (
+   528→   528→                  <>
+   529→   529→                    <span className="text-[16px] text-[#999] line-through">
+   530→   530→                      {"\u20B9"}
+   531→   531→                      {product.mrp.toLocaleString("en-IN")}
+   532→   532→                    </span>
+   533→   533→                    <span className="px-2 py-0.5 bg-[#F0EFED] text-[11px] font-medium tracking-wide text-[#111]">
+   534→   534→                      {product.discount}% OFF
+   535→   535→                    </span>
+   536→   536→                  </>
+   537→   537→                )}
+   538→   538→              </div>
+   539→   539→
+   540→   540→              {/* Short Description */}
+   541→   541→              {product.description && (
+   542→   542→                <p className="text-[14px] text-[#666] leading-relaxed">
+   543→   543→                  {product.description.length > 200
+   544→   544→                    ? product.description.slice(0, 200) + "..."
+   545→   545→                    : product.description}
+   546→   546→                </p>
+   547→   547→              )}
+   548→   548→
+   549→   549→              <div className="border-t border-[#E8E8E8]" />
+   550→   550→
+   551→   551→              {/* Color Selection */}
+   552→   552→              {colors.length > 0 && (
+   553→   553→                <div>
+   554→   554→                  <p className="text-[12px] font-medium tracking-wider uppercase text-[#111] mb-3">
+   555→   555→                    Color:{" "}
+   556→   556→                    <span className="text-[#999] font-normal normal-case tracking-normal">
+   557→   557→                      {selectedColor}
+   558→   558→                    </span>
+   559→   559→                  </p>
+   560→   560→                  <div className="flex items-center gap-2">
+   561→   561→                    {colors.map((color) => (
+   562→   562→                      <button
+   563→   563→                        key={color}
+   564→   564→                        onClick={() => setSelectedColor(color)}
+   565→   565→                        className={`w-8 h-8 border-2 transition-all ${
+   566→   566→                          selectedColor === color
+   567→   567→                            ? "border-[#111] scale-110"
+   568→   568→                            : "border-[#E8E8E8] hover:border-[#999]"
+   569→   569→                        }`}
+   570→   570→                        style={{ backgroundColor: color }}
+   571→   571→                        title={color}
+   572→   572→                      />
+   573→   573→                    ))}
+   574→   574→                  </div>
+   575→   575→                </div>
+   576→   576→              )}
+   577→   577→
+   578→   578→              {/* Size Selection */}
+   579→   579→              {sizes.length > 0 && (
+   580→   580→                <div>
+   581→   581→                  <div className="flex items-center justify-between mb-3">
+   582→   582→                    <p className="text-[12px] font-medium tracking-wider uppercase text-[#111]">
+   583→   583→                      Size:{" "}
+   584→   584→                      <span className="text-[#999] font-normal normal-case tracking-normal">
+   585→   585→                        {selectedSize || "Select"}
+   586→   586→                      </span>
+   587→   587→                    </p>
+   588→   588→                    {sizes[0] !== "ONE SIZE" && (
+   589→   589→                      <button
+   590→   590→                        onClick={() => setSizeGuideOpen(true)}
+   591→   591→                        className="flex items-center gap-1 text-[11px] text-[#4D5B47] hover:text-[#111] transition-colors"
+   592→   592→                      >
+   593→   593→                        <Ruler className="w-3 h-3" /> Size Guide
+   594→   594→                      </button>
+   595→   595→                    )}
+   596→   596→                  </div>
+   597→   597→
+   598→   598→                  <div className="flex flex-wrap gap-2">
+   599→   599→                    {sizes.map((size) => (
+   600→   600→                      <button
+   601→   601→                        key={size}
+   602→   602→                        onClick={() => setSelectedSize(size)}
+   603→   603→                        className={`min-w-[44px] h-11 px-3 text-[13px] border transition-all flex items-center justify-center ${
+   604→   604→                          selectedSize === size
+   605→   605→                            ? "bg-[#111] text-[#F8F8F6] border-[#111]"
+   606→   606→                            : "border-[#E8E8E8] text-[#333] hover:border-[#999]"
+   607→   607→                        }`}
+   608→   608→                      >
+   609→   609→                        {size}
+   610→   610→                      </button>
+   611→   611→                    ))}
+   612→   612→                  </div>
+   613→   613→                </div>
+   614→   614→              )}
+   615→   615→
+   616→   616→              {/* Quantity */}
+   617→   617→              <div>
+   618→   618→                <p className="text-[12px] font-medium tracking-wider uppercase text-[#111] mb-3">
+   619→   619→                  Quantity
+   620→   620→                </p>
+   621→   621→                <div className="inline-flex items-center border border-[#E8E8E8]">
+   622→   622→                  <button
+   623→   623→                    onClick={() =>
+   624→   624→                      setQuantity(Math.max(1, quantity - 1))
+   625→   625→                    }
+   626→   626→                    className="w-11 h-11 flex items-center justify-center hover:bg-[#F0EFED] transition-colors"
+   627→   627→                  >
+   628→   628→                    <Minus
+   629→   629→                      className="w-3.5 h-3.5"
+   630→   630→                      strokeWidth={1.5}
+   631→   631→                    />
+   632→   632→                  </button>
+   633→   633→                  <span className="w-12 text-center text-[14px] font-medium">
+   634→   634→                    {quantity}
+   635→   635→                  </span>
+   636→   636→                  <button
+   637→   637→                    onClick={() =>
+   638→   638→                      setQuantity(Math.min(product.stock, quantity + 1))
+   639→   639→                    }
+   640→   640→                    className="w-11 h-11 flex items-center justify-center hover:bg-[#F0EFED] transition-colors"
+   641→   641→                  >
+   642→   642→                    <Plus
+   643→   643→                      className="w-3.5 h-3.5"
+   644→   644→                      strokeWidth={1.5}
+   645→   645→                    />
+   646→   646→                  </button>
+   647→   647→                </div>
+   648→   648→                {product.stock <= 5 && product.stock > 0 && (
+   649→   649→                  <p className="text-[12px] text-[#C53030] mt-2">
+   650→   650→                    Only {product.stock} left in stock
+   651→   651→                  </p>
+   652→   652→                )}
+   653→   653→              </div>
+   654→   654→
+   655→   655→              {/* Action Buttons */}
+   656→   656→              <div className="space-y-3 pt-2">
+   657→   657→                <button
+   658→   658→                  onClick={handleAddToCart}
+   659→   659→                  className="w-full py-4 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#333] transition-colors flex items-center justify-center gap-2"
+   660→   660→                >
+   661→   661→                  <ShoppingBag className="w-4 h-4" />
+   662→   662→                  Add to Bag
+   663→   663→                </button>
+   664→   664→                <div className="flex gap-3">
+   665→   665→                  <button
+   666→   666→                    onClick={handleBuyNow}
+   667→   667→                    className="flex-1 py-3.5 border border-[#111] text-[#111] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#111] hover:text-[#F8F8F6] transition-all"
+   668→   668→                  >
+   669→   669→                    Buy Now
+   670→   670→                  </button>
+   671→   671→                  <button
+   672→   672→                    onClick={() => toggleWishlist(product.id)}
+   673→   673→                    className={`w-12 h-12 border flex items-center justify-center transition-all ${
+   674→   674→                      inWishlist
+   675→   675→                        ? "border-[#111] bg-[#111]"
+   676→   676→                        : "border-[#E8E8E8] hover:border-[#999]"
+   677→   677→                    }`}
+   678→   678→                  >
+   679→   679→                    <Heart
+   680→   680→                      className={`w-4 h-4 ${
+   681→   681→                        inWishlist ? "text-[#F8F8F6]" : "text-[#111]"
+   682→   682→                      }`}
+   683→   683→                      fill={inWishlist ? "currentColor" : "none"}
+   684→   684→                      strokeWidth={1.5}
+   685→   685→                    />
+   686→   686→                  </button>
+   687→   687→                </div>
+   688→   688→              </div>
+   689→   689→
+   690→   690→              {/* ──────── Delivery Info — Enhanced ──────── */}
+   691→   691→              <div className="border-t border-b border-[#E8E8E8] py-4 space-y-4">
+   692→   692→                <div className="flex items-start gap-3.5">
+   693→   693→                  <div className="w-9 h-9 bg-[#F0EFED] rounded-[4px] flex items-center justify-center flex-shrink-0 mt-0.5">
+   694→   694→                    <Truck
+   695→   695→                      className="w-4 h-4 text-[#4D5B47]"
+   696→   696→                      strokeWidth={1.5}
+   697→   697→                    />
+   698→   698→                  </div>
+   699→   699→                  <div>
+   700→   700→                    <p className="text-[13px] text-[#111]">
+   701→   701→                      Estimated delivery:{" "}
+   702→   702→                      <span className="font-medium">
+   703→   703→                        {deliveryMinStr} – {deliveryMaxStr}
+   704→   704→                      </span>
+   705→   705→                    </p>
+   706→   706→                    <p className="text-[11px] text-[#999] mt-0.5">
+   707→   707→                      5–7 business days &middot; Free on orders over{" "}
+   708→   708→                      {"\u20B9"}2,000
+   709→   709→                    </p>
+   710→   710→                  </div>
+   711→   711→                </div>
+   712→   712→                <div className="flex items-start gap-3.5">
+   713→   713→                  <div className="w-9 h-9 bg-[#F0EFED] rounded-[4px] flex items-center justify-center flex-shrink-0 mt-0.5">
+   714→   714→                    <RotateCcw
+   715→   715→                      className="w-4 h-4 text-[#4D5B47]"
+   716→   716→                      strokeWidth={1.5}
+   717→   717→                    />
+   718→   718→                  </div>
+   719→   719→                  <div>
+   720→   720→                    <p className="text-[13px] text-[#111]">
+   721→   721→                      Free returns within 30 days
+   722→   722→                    </p>
+   723→   723→                    <p className="text-[11px] text-[#999] mt-0.5">
+   724→   724→                      No questions asked &middot; Free return shipping on
+   725→   725→                      orders over {"\u20B9"}5,000
+   726→   726→                    </p>
+   727→   727→                  </div>
+   728→   728→                </div>
+   729→   729→                <div className="flex items-start gap-3.5">
+   730→   730→                  <div className="w-9 h-9 bg-[#F0EFED] rounded-[4px] flex items-center justify-center flex-shrink-0 mt-0.5">
+   731→   731→                    <Shield
+   732→   732→                      className="w-4 h-4 text-[#4D5B47]"
+   733→   733→                      strokeWidth={1.5}
+   734→   734→                    />
+   735→   735→                  </div>
+   736→   736→                  <div>
+   737→   737→                    <p className="text-[13px] text-[#111]">
+   738→   738→                      100% authentic products
+   739→   739→                    </p>
+   740→   740→                    <p className="text-[11px] text-[#999] mt-0.5">
+   741→   741→                      Sourced directly from brands
+   742→   742→                    </p>
+   743→   743→                  </div>
+   744→   744→                </div>
+   745→   745→              </div>
+   746→   746→
+   747→   747→              {/* ──────── Product Details — Tabbed Accordion ──────── */}
+   748→   748→              <div>
+   749→   749→                {/* Tab navigation bar */}
+   750→   750→                <div className="flex border-b border-[#E8E8E8]">
+   751→   751→                  {detailTabs.map((tab) => (
+   752→   752→                    <button
+   753→   753→                      key={tab.id}
+   754→   754→                      onClick={() =>
+   755→   755→                        setOpenDetail(
+   756→   756→                          openDetail === tab.id ? null : tab.id
+   757→   757→                        )
+   758→   758→                      }
+   759→   759→                      className={`px-4 sm:px-5 py-3.5 text-[12px] sm:text-[13px] font-medium tracking-wide transition-colors border-b-2 -mb-px ${
+   760→   760→                        openDetail === tab.id
+   761→   761→                          ? "text-[#111] border-[#4D5B47]"
+   762→   762→                          : "text-[#999] border-transparent hover:text-[#666]"
+   763→   763→                      }`}
+   764→   764→                    >
+   765→   765→                      {tab.label}
+   766→   766→                    </button>
+   767→   767→                  ))}
+   768→   768→                </div>
+   769→   769→
+   770→   770→                {/* Collapsible sections — controlled by tab state */}
+   771→   771→                <CollapsibleSection
+   772→   772→                  title="Description & Fit"
+   773→   773→                  isOpen={openDetail === "description"}
+   774→   774→                  onToggle={(open) =>
+   775→   775→                    setOpenDetail(open ? "description" : null)
+   776→   776→                  }
+   777→   777→                >
+   778→   778→                  <p className="text-[14px] text-[#666] leading-relaxed">
+   779→   779→                    {product.description}
+   780→   780→                  </p>
+   781→   781→                </CollapsibleSection>
+   782→   782→
+   783→   783→                <CollapsibleSection
+   784→   784→                  title="Material & Care"
+   785→   785→                  isOpen={openDetail === "material"}
+   786→   786→                  onToggle={(open) =>
+   787→   787→                    setOpenDetail(open ? "material" : null)
+   788→   788→                  }
+   789→   789→                >
+   790→   790→                  {product.material && (
+   791→   791→                    <p className="text-[13px] text-[#666] mb-2">
+   792→   792→                      <span className="text-[#111] font-medium">
+   793→   793→                        Material:
+   794→   794→                      </span>{" "}
+   795→   795→                      {product.material}
+   796→   796→                    </p>
+   797→   797→                  )}
+   798→   798→                  {product.care && (
+   799→   799→                    <p className="text-[13px] text-[#666]">
+   800→   800→                      <span className="text-[#111] font-medium">
+   801→   801→                        Care:
+   802→   802→                      </span>{" "}
+   803→   803→                      {product.care}
+   804→   804→                    </p>
+   805→   805→                  )}
+   806→   806→                </CollapsibleSection>
+   807→   807→
+   808→   808→                <CollapsibleSection
+   809→   809→                  title="Shipping & Returns"
+   810→   810→                  isOpen={openDetail === "shipping"}
+   811→   811→                  onToggle={(open) =>
+   812→   812→                    setOpenDetail(open ? "shipping" : null)
+   813→   813→                  }
+   814→   814→                >
+   815→   815→                  <div className="space-y-2 text-[13px] text-[#666]">
+   816→   816→                    <p>
+   817→   817→                      Free shipping on orders over {"\u20B9"}2,000
+   818→   818→                    </p>
+   819→   819→                    <p>Standard delivery: 5–7 business days</p>
+   820→   820→                    <p>
+   821→   821→                      Express delivery: 1–2 business days (
+   822→   822→                      {"\u20B9"}299)
+   823→   823→                    </p>
+   824→   824→                    <p>Free returns within 30 days</p>
+   825→   825→                    <p>
+   826→   826→                      Free return shipping on orders over {"\u20B9"}
+   827→   827→                      5,000
+   828→   828→                    </p>
+   829→   829→                  </div>
+   830→   830→                </CollapsibleSection>
+   831→   831→              </div>
+   832→   832→            </div>
+   833→   833→          </ScrollReveal>
+   834→   834→        </div>
+   835→   835→
+   836→   836→        {/* ═══════════════ Reviews Section — Enhanced ═══════════════ */}
+   837→   837→        <section className="mt-16 lg:mt-24">
+   838→   838→          <ScrollReveal>
+   839→   839→            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+   840→   840→              <div>
+   841→   841→                <h2 className="text-[24px] sm:text-[28px] font-medium tracking-[-0.02em]">
+   842→   842→                  Reviews
+   843→   843→                </h2>
+   844→   844→                <p className="text-[13px] text-[#999] mt-1">
+   845→   845→                  {localReviews.length > 0
+   846→   846→                    ? localReviews.length
+   847→   847→                    : product.reviewCount}{" "}
+   848→   848→                  reviews
+   849→   849→                </p>
+   850→   850→              </div>
+   851→   851→              <div className="flex items-center gap-5">
+   852→   852→                {/* Average rating summary */}
+   853→   853→                {localReviews.length > 0 && (
+   854→   854→                  <div className="flex items-center gap-2.5">
+   855→   855→                    <span className="text-[32px] font-medium text-[#111] leading-none">
+   856→   856→                      {product.rating.toFixed(1)}
+   857→   857→                    </span>
+   858→   858→                    <div>
+   859→   859→                      <StarRating
+   860→   860→                        rating={product.rating}
+   861→   861→                        size={14}
+   862→   862→                      />
+   863→   863→                      <p className="text-[11px] text-[#999] mt-0.5">
+   864→   864→                        Average rating
+   865→   865→                      </p>
+   866→   866→                    </div>
+   867→   867→                  </div>
+   868→   868→                )}
+   869→   869→
+   870→   870→                {/* Write a Review — Locked / Disabled */}
+   871→   871→                <button
+   872→   872→                  onClick={() =>
+   873→   873→                    showNotification(
+   874→   874→                      "Please sign in to write a review",
+   875→   875→                      "info"
+   876→   876→                    )
+   877→   877→                  }
+   878→   878→                  disabled
+   879→   879→                  className="inline-flex items-center gap-2 bg-[#E8E8E8] text-[#999] text-[12px] tracking-wide px-5 py-2.5 rounded-[4px] cursor-not-allowed select-none"
+   880→   880→                >
+   881→   881→                  <Lock className="w-3.5 h-3.5" strokeWidth={1.5} />
+   882→   882→                  Write a Review
+   883→   883→                </button>
+   884→   884→              </div>
+   885→   885→            </div>
+   886→   886→          </ScrollReveal>
+   887→   887→
+   888→   888→          {/* Rating Distribution + Reviews Grid */}
+   889→   889→          {localReviews.length > 0 && (
+   890→   890→            <div className="grid lg:grid-cols-[220px_1fr] gap-8 lg:gap-12">
+   891→   891→              {/* Distribution sidebar */}
+   892→   892→              <ScrollReveal>
+   893→   893→                <div className="space-y-2.5 lg:sticky lg:top-24">
+   894→   894→                  {[5, 4, 3, 2, 1].map((star, i) => (
+   895→   895→                    <div
+   896→   896→                      key={star}
+   897→   897→                      className="flex items-center gap-2 text-[12px]"
+   898→   898→                    >
+   899→   899→                      <span className="w-3.5 text-right text-[#666] tabular-nums">
+   900→   900→                        {star}
+   901→   901→                      </span>
+   902→   902→                      <svg
+   903→   903→                        width="12"
+   904→   904→                        height="12"
+   905→   905→                        viewBox="0 0 24 24"
+   906→   906→                        xmlns="http://www.w3.org/2000/svg"
+   907→   907→                      >
+   908→   908→                        <path
+   909→   909→                          d={STAR_PATH}
+   910→   910→                          fill="#B79B7B"
+   911→   911→                        />
+   912→   912→                      </svg>
+   913→   913→                      <div className="flex-1 h-[6px] bg-[#F0EFED] rounded-full overflow-hidden">
+   914→   914→                        <div
+   915→   915→                          className="h-full bg-[#B79B7B] rounded-full transition-all duration-500"
+   916→   916→                          style={{
+   917→   917→                            width: `${distribution[i].pct}%`,
+   918→   918→                          }}
+   919→   919→                        />
+   920→   920→                      </div>
+   921→   921→                      <span className="w-6 text-right text-[#999] tabular-nums">
+   922→   922→                        {distribution[i].count}
+   923→   923→                      </span>
+   924→   924→                    </div>
+   925→   925→                  ))}
+   926→   926→                </div>
+   927→   927→              </ScrollReveal>
+   928→   928→
+   929→   929→              {/* Reviews list */}
+   930→   930→              <div className="space-y-0">
+   931→   931→                {localReviews.map((review, i) => (
+   932→   932→                  <ScrollReveal
+   933→   933→                    key={review.id}
+   934→   934→                    delay={i * 0.05}
+   935→   935→                  >
+   936→   936→                    <div className="border-t border-[#E8E8E8] py-5 first:pt-0">
+   937→   937→                      <div className="flex items-center justify-between mb-2.5">
+   938→   938→                        <div className="flex items-center gap-3">
+   939→   939→                          <div className="w-8 h-8 bg-[#F0EFED] rounded-full flex items-center justify-center text-[12px] font-medium text-[#666]">
+   940→   940→                            {review.userName.charAt(0).toUpperCase()}
+   941→   941→                          </div>
+   942→   942→                          <div>
+   943→   943→                            <p className="text-[13px] font-medium text-[#111]">
+   944→   944→                              {review.userName}
+   945→   945→                            </p>
+   946→   946→                            <p className="text-[11px] text-[#999]">
+   947→   947→                              {getRelativeTime(review.createdAt)}
+   948→   948→                            </p>
+   949→   949→                          </div>
+   950→   950→                        </div>
+   951→   951→                        <div className="flex items-center gap-2">
+   952→   952→                          {/* Verified Purchase Badge */}
+   953→   953→                          <span className="inline-flex items-center gap-1 text-[10px] text-[#4D5B47] font-medium tracking-wide uppercase">
+   954→   954→                            <svg
+   955→   955→                              width="12"
+   956→   956→                              height="12"
+   957→   957→                              viewBox="0 0 12 12"
+   958→   958→                              fill="none"
+   959→   959→                              xmlns="http://www.w3.org/2000/svg"
+   960→   960→                            >
+   961→   961→                              <circle
+   962→   962→                                cx="6"
+   963→   963→                                cy="6"
+   964→   964→                                r="6"
+   965→   965→                                fill="#EAF0E7"
+   966→   966→                              />
+   967→   967→                              <path
+   968→   968→                                d="M3.5 6L5.25 7.75L8.5 4.5"
+   969→   969→                                stroke="#4D5B47"
+   970→   970→                                strokeWidth="1.1"
+   971→   971→                                strokeLinecap="round"
+   972→   972→                                strokeLinejoin="round"
+   973→   973→                              />
+   974→   974→                            </svg>
+   975→   975→                            Verified
+   976→   976→                          </span>
+   977→   977→                          <StarRating
+   978→   978→                            rating={review.rating}
+   979→   979→                            size={12}
+   980→   980→                          />
+   981→   981→                        </div>
+   982→   982→                      </div>
+   983→   983→                      {review.title && (
+   984→   984→                        <p className="text-[14px] font-medium text-[#111] mb-1">
+   985→   985→                          {review.title}
+   986→   986→                        </p>
+   987→   987→                      )}
+   988→   988→                      {review.comment && (
+   989→   989→                        <p className="text-[13px] text-[#666] leading-relaxed">
+   990→   990→                          {review.comment}
+   991→   991→                        </p>
+   992→   992→                      )}
+   993→   993→                    </div>
+   994→   994→                  </ScrollReveal>
+   995→   995→                ))}
+   996→   996→              </div>
+   997→   997→            </div>
+   998→   998→          )}
+   999→   999→
+  1000→  1000→          {/* Empty reviews state */}
+  1001→  1001→          {localReviews.length === 0 && (
+  1002→  1002→            <div className="text-center py-12 border border-[#E8E8E8] bg-white">
+  1003→  1003→              <StarRating rating={0} size={28} />
+  1004→  1004→              <p className="text-[14px] text-[#999] mt-4">
+  1005→  1005→                No reviews yet. Be the first to share your thoughts.
+  1006→  1006→              </p>
+  1007→  1007→            </div>
+  1008→  1008→          )}
+  1009→  1009→        </section>
+  1010→  1010→
+  1011→  1011→        {/* Similar Products */}
+  1012→  1012→        {similar.length > 0 && (
+  1013→  1013→          <section className="mt-16 lg:mt-24">
+  1014→  1014→            <ScrollReveal>
+  1015→  1015→              <h2 className="text-[24px] sm:text-[28px] font-medium tracking-[-0.02em] mb-8">
+  1016→  1016→                You May Also Like
+  1017→  1017→              </h2>
+  1018→  1018→            </ScrollReveal>
+  1019→  1019→            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
+  1020→  1020→              {similar.slice(0, 4).map((p, i) => (
+  1021→  1021→                <ProductCard
+  1022→  1022→                  key={p.id}
+  1023→  1023→                  id={p.id}
+  1024→  1024→                  name={p.name}
+  1025→  1025→                  price={p.price}
+  1026→  1026→                  mrp={p.mrp}
+  1027→  1027→                  image={p.image}
+  1028→  1028→                  images={
+  1029→  1029→                    p.images
+  1030→  1030→                      ? JSON.parse(p.images)
+  1031→  1031→                      : undefined
+  1032→  1032→                  }
+  1033→  1033→                  category={p.category}
+  1034→  1034→                  brand={p.brand}
+  1035→  1035→                  rating={p.rating}
+  1036→  1036→                  reviewCount={p.reviewCount}
+  1037→  1037→                  discount={p.discount}
+  1038→  1038→                  isNew={p.isNew}
+  1039→  1039→                  isTrending={p.isTrending}
+  1040→  1040→                  isBestSeller={p.isBestSeller}
+  1041→  1041→                  index={i}
+  1042→  1042→                />
+  1043→  1043→              ))}
+  1044→  1044→            </div>
+  1045→  1045→          </section>
+  1046→  1046→        )}
+  1047→  1047→      </div>
+  1048→  1048→
+  1049→  1049→      {/* Image Lightbox */}
+  1050→  1050→      <AnimatePresence>
+  1051→  1051→        {lightboxOpen && (
+  1052→  1052→          <motion.div
+  1053→  1053→            initial={{ opacity: 0 }}
+  1054→  1054→            animate={{ opacity: 1 }}
+  1055→  1055→            exit={{ opacity: 0 }}
+  1056→  1056→            transition={{ duration: 0.2 }}
+  1057→  1057→            className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center"
+  1058→  1058→            onClick={() => setLightboxOpen(false)}
+  1059→  1059→          >
+  1060→  1060→            {/* Close button */}
+  1061→  1061→            <button
+  1062→  1062→              onClick={() => setLightboxOpen(false)}
+  1063→  1063→              className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors rounded"
+  1064→  1064→              aria-label="Close lightbox"
+  1065→  1065→            >
+  1066→  1066→              <X className="w-5 h-5" />
+  1067→  1067→            </button>
+  1068→  1068→
+  1069→  1069→            {/* Counter */}
+  1070→  1070→            <div className="absolute top-4 left-4 text-white/60 text-[12px] tracking-wider">
+  1071→  1071→              {lightboxIndex + 1} / {images.length}
+  1072→  1072→            </div>
+  1073→  1073→
+  1074→  1074→            {/* Left arrow */}
+  1075→  1075→            {lightboxIndex > 0 && (
+  1076→  1076→              <button
+  1077→  1077→                onClick={(e) => {
+  1078→  1078→                  e.stopPropagation();
+  1079→  1079→                  setLightboxIndex(lightboxIndex - 1);
+  1080→  1080→                }}
+  1081→  1081→                className="absolute left-4 w-10 h-10 bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors rounded"
+  1082→  1082→                aria-label="Previous image"
+  1083→  1083→              >
+  1084→  1084→                <ChevronLeft className="w-5 h-5" />
+  1085→  1085→              </button>
+  1086→  1086→            )}
+  1087→  1087→
+  1088→  1088→            {/* Right arrow */}
+  1089→  1089→            {lightboxIndex < images.length - 1 && (
+  1090→  1090→              <button
+  1091→  1091→                onClick={(e) => {
+  1092→  1092→                  e.stopPropagation();
+  1093→  1093→                  setLightboxIndex(lightboxIndex + 1);
+  1094→  1094→                }}
+  1095→  1095→                className="absolute right-4 w-10 h-10 bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors rounded"
+  1096→  1096→                aria-label="Next image"
+  1097→  1097→              >
+  1098→  1098→                <ChevronRight className="w-5 h-5" />
+  1099→  1099→              </button>
+  1100→  1100→            )}
+  1101→  1101→
+  1102→  1102→            {/* Image */}
+  1103→  1103→            <motion.img
+  1104→  1104→              key={lightboxIndex}
+  1105→  1105→              src={images[lightboxIndex]}
+  1106→  1106→              alt={`${product.name} - Image ${lightboxIndex + 1}`}
+  1107→  1107→              initial={{ opacity: 0, scale: 0.95 }}
+  1108→  1108→              animate={{ opacity: 1, scale: 1 }}
+  1109→  1109→              exit={{ opacity: 0, scale: 0.95 }}
+  1110→  1110→              transition={{ duration: 0.25 }}
+  1111→  1111→              className="max-h-[85vh] max-w-[85vw] object-contain"
+  1112→  1112→              onClick={(e) => e.stopPropagation()}
+  1113→  1113→            />
+  1114→  1114→          </motion.div>
+  1115→  1115→        )}
+  1116→  1116→      </AnimatePresence>
+  1117→  1117→    </main>
+  1118→  1118→  );
+  1119→  1119→}

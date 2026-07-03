@@ -1,0 +1,475 @@
+   500→                        className="bg-white border border-[#E8E8E8] p-5"
+   501→                      >
+   502→                        <h3 className="text-[14px] font-medium mb-4">Category Breakdown</h3>
+   503→                        <div className="space-y-3">
+   504→                          {categoryData.map((cat) => (
+   505→                            <div key={cat.category} className="flex items-center justify-between py-1.5">
+   506→                              <div className="flex items-center gap-3">
+   507→                                <span className="text-[13px] text-[#111]">{cat.category}</span>
+   508→                                <span className="text-[11px] text-[#999]">{cat._count} products</span>
+   509→                              </div>
+   510→                              <span className="text-[12px] text-[#666] font-medium">
+   511→                                Avg. {"\u20B9"}{Math.round(cat._avg?.price || 0).toLocaleString("en-IN")}
+   512→                              </span>
+   513→                            </div>
+   514→                          ))}
+   515→                        </div>
+   516→                      </motion.div>
+   517→                    </div>
+   518→                  </>
+   519→                )}
+   520→              </>
+   521→            )}
+   522→
+   523→            {activeSection === "products" && (
+   524→              <>
+   525→                {productsLoading ? (
+   526→                  <div className="space-y-3">
+   527→                    {Array.from({ length: 8 }).map((_, i) => (
+   528→                      <div key={i} className="h-16 skeleton-shimmer rounded-[4px]" />
+   529→                    ))}
+   530→                  </div>
+   531→                ) : (
+   532→                  <>
+   533→                    {/* Search Bar */}
+   534→                    <motion.div
+   535→                      initial={{ opacity: 0, y: 16 }}
+   536→                      animate={{ opacity: 1, y: 0 }}
+   537→                      className="mb-6"
+   538→                    >
+   539→                      <input
+   540→                        type="text"
+   541→                        placeholder="Search products by name..."
+   542→                        value={productSearch}
+   543→                        onChange={(e) => setProductSearch(e.target.value)}
+   544→                        className="w-full sm:w-80 border border-[#E8E8E8] bg-white px-4 py-2.5 text-[13px] outline-none focus:border-[#111] transition-colors placeholder:text-[#999]"
+   545→                      />
+   546→                    </motion.div>
+   547→
+   548→                    {/* Products Table */}
+   549→                    <motion.div
+   550→                      initial={{ opacity: 0, y: 16 }}
+   551→                      animate={{ opacity: 1, y: 0 }}
+   552→                      transition={{ delay: 0.05 }}
+   553→                      className="bg-white border border-[#E8E8E8] overflow-hidden"
+   554→                    >
+   555→                      <div className="p-5 border-b border-[#E8E8E8] flex items-center justify-between">
+   556→                        <h3 className="text-[14px] font-medium">
+   557→                          All Products
+   558→                          <span className="text-[#999] font-normal ml-2">({filteredProducts.length})</span>
+   559→                        </h3>
+   560→                      </div>
+   561→                      <div className="overflow-x-auto">
+   562→                        <table className="w-full text-[13px]">
+   563→                          <thead className="sticky top-0 bg-white z-10">
+   564→                            <tr className="border-b border-[#E8E8E8]">
+   565→                              <th className="text-left py-3 px-4 text-[11px] font-medium tracking-wider uppercase text-[#999]">Image</th>
+   566→                              <th className="text-left py-3 px-4 text-[11px] font-medium tracking-wider uppercase text-[#999]">Name</th>
+   567→                              <th className="text-left py-3 px-4 text-[11px] font-medium tracking-wider uppercase text-[#999]">Category</th>
+   568→                              <th className="text-left py-3 px-4 text-[11px] font-medium tracking-wider uppercase text-[#999]">Brand</th>
+   569→                              <th className="text-right py-3 px-4 text-[11px] font-medium tracking-wider uppercase text-[#999]">Price</th>
+   570→                              <th className="text-left py-3 px-4 text-[11px] font-medium tracking-wider uppercase text-[#999]">Stock</th>
+   571→                              <th className="text-center py-3 px-4 text-[11px] font-medium tracking-wider uppercase text-[#999]">Rating</th>
+   572→                              <th className="text-center py-3 px-4 text-[11px] font-medium tracking-wider uppercase text-[#999]">Status</th>
+   573→                            </tr>
+   574→                          </thead>
+   575→                          <tbody>
+   576→                            {filteredProducts.map((product, idx) => (
+   577→                              <motion.tr
+   578→                                key={product.id}
+   579→                                initial={{ opacity: 0, y: 8 }}
+   580→                                animate={{ opacity: 1, y: 0 }}
+   581→                                transition={{ delay: idx * 0.02 }}
+   582→                                className="border-b border-[#F0EFED] hover:bg-[#FAFAF8] transition-colors cursor-pointer"
+   583→                                onClick={() => navigate("product", product.id)}
+   584→                              >
+   585→                                <td className="py-3 px-4">
+   586→                                  <div className="w-10 h-12 relative overflow-hidden bg-[#F0EFED]">
+   587→                                    <img
+   588→                                      src={product.images?.split(",")[0] || "/placeholder.jpg"}
+   589→                                      alt={product.name}
+   590→                                      className="w-10 h-12 object-cover rounded-[2px]"
+   591→                                    />
+   592→                                  </div>
+   593→                                </td>
+   594→                                <td className="py-3 px-4 font-medium text-[#111] max-w-[200px]">
+   595→                                  <p className="line-clamp-1">{product.name}</p>
+   596→                                </td>
+   597→                                <td className="py-3 px-4 text-[#666]">{product.category}</td>
+   598→                                <td className="py-3 px-4 text-[#666]">{product.brand}</td>
+   599→                                <td className="py-3 px-4 text-right font-medium">{"\u20B9"}{Math.round(product.price).toLocaleString("en-IN")}</td>
+   600→                                <td className="py-3 px-4">
+   601→                                  <div className="flex items-center gap-2">
+   602→                                    <div className="w-16 h-1.5 bg-[#F0EFED]">
+   603→                                      <div
+   604→                                        className={`h-full transition-all ${
+   605→                                          product.stock < 30 ? "bg-[#C53030]" : product.stock < 60 ? "bg-[#B79B7B]" : "bg-[#4D5B47]"
+   606→                                        }`}
+   607→                                        style={{ width: `${Math.min((product.stock / 150) * 100, 100)}%` }}
+   608→                                      />
+   609→                                    </div>
+   610→                                    <span className="text-[11px] text-[#666]">{product.stock}</span>
+   611→                                  </div>
+   612→                                </td>
+   613→                                <td className="py-3 px-4 text-center">
+   614→                                  <span className="text-[11px] text-[#666]">
+   615→                                    <Star className="w-2.5 h-2.5 inline fill-[#111] text-[#111] mr-0.5" />
+   616→                                    {product.rating.toFixed(1)}
+   617→                                  </span>
+   618→                                </td>
+   619→                                <td className="py-3 px-4 text-center">
+   620→                                  <span className={`inline-block px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase ${
+   621→                                    product.stock === 0
+   622→                                      ? "bg-[#C53030] text-[#F8F8F6]"
+   623→                                      : product.stock < 30
+   624→                                        ? "bg-amber-50 text-amber-700 border border-amber-200"
+   625→                                        : "bg-[#4D5B47] text-[#F8F8F6]"
+   626→                                  }`}>
+   627→                                    {product.stock === 0 ? "Out of Stock" : product.stock < 30 ? "Low Stock" : "In Stock"}
+   628→                                  </span>
+   629→                                </td>
+   630→                              </motion.tr>
+   631→                            ))}
+   632→                            {filteredProducts.length === 0 && (
+   633→                              <tr>
+   634→                                <td colSpan={8} className="py-12 text-center text-[13px] text-[#999]">
+   635→                                  {productSearch ? "No products match your search" : "No products found"}
+   636→                                </td>
+   637→                              </tr>
+   638→                            )}
+   639→                          </tbody>
+   640→                        </table>
+   641→                      </div>
+   642→                    </motion.div>
+   643→                  </>
+   644→                )}
+   645→              </>
+   646→            )}
+   647→
+   648→            {activeSection === "orders" && (
+   649→              <>
+   650→                {ordersLoading ? (
+   651→                  <div className="space-y-3">
+   652→                    {Array.from({ length: 8 }).map((_, i) => (
+   653→                      <div key={i} className="h-14 skeleton-shimmer rounded-[4px]" />
+   654→                    ))}
+   655→                  </div>
+   656→                ) : (
+   657→                  <>
+   658→                    {/* Status Filter Buttons */}
+   659→                    <motion.div
+   660→                      initial={{ opacity: 0, y: 16 }}
+   661→                      animate={{ opacity: 1, y: 0 }}
+   662→                      className="mb-6 flex flex-wrap gap-2"
+   663→                    >
+   664→                      {["all", "pending", "confirmed", "shipped", "delivered", "cancelled"].map((s) => {
+   665→                        const count = s === "all" ? allOrders.length : allOrders.filter((o) => o.status === s).length;
+   666→                        return (
+   667→                          <button
+   668→                            key={s}
+   669→                            onClick={() => setOrderStatusFilter(s)}
+   670→                            className={`px-3 py-1.5 text-[11px] tracking-wide uppercase transition-colors border ${
+   671→                              orderStatusFilter === s
+   672→                                ? "bg-[#111] text-[#F8F8F6] border-[#111]"
+   673→                                : "bg-white text-[#666] border-[#E8E8E8] hover:text-[#111] hover:border-[#999]"
+   674→                            }`}
+   675→                          >
+   676→                            {s === "all" ? "All" : s} ({count})
+   677→                          </button>
+   678→                        );
+   679→                      })}
+   680→                    </motion.div>
+   681→
+   682→                    {/* Orders Table */}
+   683→                    <motion.div
+   684→                      initial={{ opacity: 0, y: 16 }}
+   685→                      animate={{ opacity: 1, y: 0 }}
+   686→                      transition={{ delay: 0.05 }}
+   687→                      className="bg-white border border-[#E8E8E8] overflow-hidden"
+   688→                    >
+   689→                      <div className="p-5 border-b border-[#E8E8E8] flex items-center justify-between">
+   690→                        <h3 className="text-[14px] font-medium">
+   691→                          {orderStatusFilter === "all" ? "All Orders" : `${orderStatusFilter.charAt(0).toUpperCase() + orderStatusFilter.slice(1)} Orders`}
+   692→                          <span className="text-[#999] font-normal ml-2">({filteredOrders.length})</span>
+   693→                        </h3>
+   694→                      </div>
+   695→                      <div className="overflow-x-auto">
+   696→                        <table className="w-full text-[13px]">
+   697→                          <thead className="sticky top-0 bg-white z-10">
+   698→                            <tr className="border-b border-[#E8E8E8]">
+   699→                              <th className="text-left py-3 px-5 text-[11px] font-medium tracking-wider uppercase text-[#999]">Order</th>
+   700→                              <th className="text-left py-3 px-5 text-[11px] font-medium tracking-wider uppercase text-[#999]">Date</th>
+   701→                              <th className="text-left py-3 px-5 text-[11px] font-medium tracking-wider uppercase text-[#999]">Items</th>
+   702→                              <th className="text-right py-3 px-5 text-[11px] font-medium tracking-wider uppercase text-[#999]">Total</th>
+   703→                              <th className="text-center py-3 px-5 text-[11px] font-medium tracking-wider uppercase text-[#999]">Status</th>
+   704→                              <th className="text-center py-3 px-5 text-[11px] font-medium tracking-wider uppercase text-[#999]">Payment</th>
+   705→                            </tr>
+   706→                          </thead>
+   707→                          <tbody>
+   708→                            {filteredOrders.map((order, idx) => (
+   709→                              <motion.tr
+   710→                                key={order.id}
+   711→                                initial={{ opacity: 0, y: 8 }}
+   712→                                animate={{ opacity: 1, y: 0 }}
+   713→                                transition={{ delay: idx * 0.02 }}
+   714→                                className="border-b border-[#F0EFED] hover:bg-[#FAFAF8] transition-colors cursor-pointer"
+   715→                                onClick={() => navigate("order-tracking")}
+   716→                              >
+   717→                                <td className="py-3 px-5 font-medium text-[#111]">#{order.orderNumber.slice(-6)}</td>
+   718→                                <td className="py-3 px-5 text-[#666]">
+   719→                                  {new Date(order.createdAt).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })}
+   720→                                </td>
+   721→                                <td className="py-3 px-5 text-[#666]">{order.items?.length || 0} items</td>
+   722→                                <td className="py-3 px-5 text-right font-medium">{"\u20B9"}{Math.round(order.total).toLocaleString("en-IN")}</td>
+   723→                                <td className="py-3 px-5 text-center">
+   724→                                  <span className={`inline-block px-2.5 py-1 text-[10px] font-medium tracking-wide uppercase ${statusColors[order.status] || statusColors.pending}`}>
+   725→                                    {order.status}
+   726→                                  </span>
+   727→                                </td>
+   728→                                <td className="py-3 px-5 text-center">
+   729→                                  <span className={`text-[11px] ${order.paymentStatus === "completed" ? "text-[#4D5B47] font-medium" : "text-[#999]"}`}>
+   730→                                    {order.paymentStatus === "completed" ? "Paid" : order.paymentStatus}
+   731→                                  </span>
+   732→                                </td>
+   733→                              </motion.tr>
+   734→                            ))}
+   735→                            {filteredOrders.length === 0 && (
+   736→                              <tr>
+   737→                                <td colSpan={6} className="py-12 text-center text-[13px] text-[#999]">
+   738→                                  No orders found for this filter
+   739→                                </td>
+   740→                              </tr>
+   741→                            )}
+   742→                          </tbody>
+   743→                        </table>
+   744→                      </div>
+   745→                    </motion.div>
+   746→                  </>
+   747→                )}
+   748→              </>
+   749→            )}
+   750→
+   751→            {activeSection === "analytics" && (
+   752→              <>
+   753→                {analyticsLoading ? (
+   754→                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   755→                    {Array.from({ length: 6 }).map((_, i) => (
+   756→                      <div key={i} className="h-24 skeleton-shimmer rounded-[4px]" />
+   757→                    ))}
+   758→                  </div>
+   759→                ) : analyticsStats ? (
+   760→                  <>
+   761→                    {/* Key Metrics Grid */}
+   762→                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+   763→                      <motion.div
+   764→                        initial={{ opacity: 0, y: 16 }}
+   765→                        animate={{ opacity: 1, y: 0 }}
+   766→                        transition={{ delay: 0 }}
+   767→                        className="bg-white border border-[#E8E8E8] p-5"
+   768→                      >
+   769→                        <div className="flex items-start justify-between">
+   770→                          <div>
+   771→                            <p className="text-[11px] font-medium tracking-wider uppercase text-[#999] mb-2">Total Revenue</p>
+   772→                            <p className="text-[24px] font-medium tracking-tight">{"\u20B9"}{Math.round(analyticsStats.totalRevenue).toLocaleString("en-IN")}</p>
+   773→                          </div>
+   774→                          <DollarSign className="w-5 h-5 text-[#999] mt-0.5" strokeWidth={1.5} />
+   775→                        </div>
+   776→                        <p className="text-[11px] text-[#999] mt-2">Total sales revenue across all orders</p>
+   777→                      </motion.div>
+   778→
+   779→                      <motion.div
+   780→                        initial={{ opacity: 0, y: 16 }}
+   781→                        animate={{ opacity: 1, y: 0 }}
+   782→                        transition={{ delay: 0.05 }}
+   783→                        className="bg-white border border-[#E8E8E8] p-5"
+   784→                      >
+   785→                        <div className="flex items-start justify-between">
+   786→                          <div>
+   787→                            <p className="text-[11px] font-medium tracking-wider uppercase text-[#999] mb-2">Total Orders</p>
+   788→                            <p className="text-[24px] font-medium tracking-tight">{analyticsStats.totalOrders.toLocaleString("en-IN")}</p>
+   789→                          </div>
+   790→                          <ShoppingCart className="w-5 h-5 text-[#999] mt-0.5" strokeWidth={1.5} />
+   791→                        </div>
+   792→                        <p className="text-[11px] text-[#999] mt-2">All placed orders to date</p>
+   793→                      </motion.div>
+   794→
+   795→                      <motion.div
+   796→                        initial={{ opacity: 0, y: 16 }}
+   797→                        animate={{ opacity: 1, y: 0 }}
+   798→                        transition={{ delay: 0.1 }}
+   799→                        className="bg-white border border-[#E8E8E8] p-5"
+   800→                      >
+   801→                        <div className="flex items-start justify-between">
+   802→                          <div>
+   803→                            <p className="text-[11px] font-medium tracking-wider uppercase text-[#999] mb-2">Products</p>
+   804→                            <p className="text-[24px] font-medium tracking-tight">{analyticsStats.totalProducts}</p>
+   805→                          </div>
+   806→                          <Package className="w-5 h-5 text-[#999] mt-0.5" strokeWidth={1.5} />
+   807→                        </div>
+   808→                        <p className="text-[11px] text-[#999] mt-2">Active products in catalog</p>
+   809→                      </motion.div>
+   810→
+   811→                      <motion.div
+   812→                        initial={{ opacity: 0, y: 16 }}
+   813→                        animate={{ opacity: 1, y: 0 }}
+   814→                        transition={{ delay: 0.15 }}
+   815→                        className="bg-white border border-[#E8E8E8] p-5"
+   816→                      >
+   817→                        <div className="flex items-start justify-between">
+   818→                          <div>
+   819→                            <p className="text-[11px] font-medium tracking-wider uppercase text-[#999] mb-2">Avg. Order Value</p>
+   820→                            <p className="text-[24px] font-medium tracking-tight">{"\u20B9"}{Math.round(analyticsStats.avgOrderValue).toLocaleString("en-IN")}</p>
+   821→                          </div>
+   822→                          <TrendingUp className="w-5 h-5 text-[#999] mt-0.5" strokeWidth={1.5} />
+   823→                        </div>
+   824→                        <p className="text-[11px] text-[#999] mt-2">Average revenue per order</p>
+   825→                      </motion.div>
+   826→
+   827→                      <motion.div
+   828→                        initial={{ opacity: 0, y: 16 }}
+   829→                        animate={{ opacity: 1, y: 0 }}
+   830→                        transition={{ delay: 0.2 }}
+   831→                        className="bg-white border border-[#E8E8E8] p-5"
+   832→                      >
+   833→                        <div className="flex items-start justify-between">
+   834→                          <div>
+   835→                            <p className="text-[11px] font-medium tracking-wider uppercase text-[#999] mb-2">Conversion Rate</p>
+   836→                            <p className="text-[24px] font-medium tracking-tight">{analyticsStats.conversionRate}%</p>
+   837→                          </div>
+   838→                          <BarChart3 className="w-5 h-5 text-[#999] mt-0.5" strokeWidth={1.5} />
+   839→                        </div>
+   840→                        <p className="text-[11px] text-[#999] mt-2">Visitor to buyer ratio</p>
+   841→                      </motion.div>
+   842→
+   843→                      <motion.div
+   844→                        initial={{ opacity: 0, y: 16 }}
+   845→                        animate={{ opacity: 1, y: 0 }}
+   846→                        transition={{ delay: 0.25 }}
+   847→                        className="bg-white border border-[#E8E8E8] p-5"
+   848→                      >
+   849→                        <div className="flex items-start justify-between">
+   850→                          <div>
+   851→                            <p className="text-[11px] font-medium tracking-wider uppercase text-[#999] mb-2">Stock Value</p>
+   852→                            <p className="text-[24px] font-medium tracking-tight">{"\u20B9"}{Math.round(analyticsStockValue).toLocaleString("en-IN")}</p>
+   853→                          </div>
+   854→                          <ArrowUpRight className="w-5 h-5 text-[#999] mt-0.5" strokeWidth={1.5} />
+   855→                        </div>
+   856→                        <p className="text-[11px] text-[#999] mt-2">Total inventory value at retail</p>
+   857→                      </motion.div>
+   858→                    </div>
+   859→
+   860→                    {/* Charts Row */}
+   861→                    <div className="grid lg:grid-cols-2 gap-6 mb-8">
+   862→                      {/* Order Status Pie/Donut Chart */}
+   863→                      <motion.div
+   864→                        initial={{ opacity: 0, y: 16 }}
+   865→                        animate={{ opacity: 1, y: 0 }}
+   866→                        transition={{ delay: 0.3 }}
+   867→                        className="bg-white border border-[#E8E8E8] p-5"
+   868→                      >
+   869→                        <div className="flex items-center justify-between mb-6">
+   870→                          <h3 className="text-[14px] font-medium">Order Status Distribution</h3>
+   871→                          <span className="text-[11px] text-[#999] tracking-wide">All time</span>
+   872→                        </div>
+   873→                        <div className="flex items-center gap-6">
+   874→                          <div className="h-[220px] w-[220px] flex-shrink-0">
+   875→                            <ResponsiveContainer width="100%" height="100%">
+   876→                              <PieChart>
+   877→                                <Pie
+   878→                                  data={analyticsOrdersByStatus}
+   879→                                  cx="50%"
+   880→                                  cy="50%"
+   881→                                  innerRadius={55}
+   882→                                  outerRadius={90}
+   883→                                  paddingAngle={3}
+   884→                                  dataKey="_count"
+   885→                                  nameKey="status"
+   886→                                  stroke="none"
+   887→                                >
+   888→                                  {analyticsOrdersByStatus.map((entry, index) => (
+   889→                                    <Cell key={entry.status} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+   890→                                  ))}
+   891→                                </Pie>
+   892→                                <Tooltip
+   893→                                  formatter={(value: number) => [`${value} orders`, ""]}
+   894→                                  contentStyle={{
+   895→                                    border: "1px solid #E8E8E8",
+   896→                                    fontSize: "12px",
+   897→                                    borderRadius: "4px",
+   898→                                  }}
+   899→                                />
+   900→                              </PieChart>
+   901→                            </ResponsiveContainer>
+   902→                          </div>
+   903→                          <div className="flex-1 space-y-2.5">
+   904→                            {analyticsOrdersByStatus.map((entry, index) => (
+   905→                              <div key={entry.status} className="flex items-center gap-2.5">
+   906→                                <div className={`w-2.5 h-2.5 ${PIE_LABEL_COLORS[entry.status] || "bg-[#E8E8E8]"}`} />
+   907→                                <span className="text-[12px] text-[#666] capitalize flex-1">{entry.status}</span>
+   908→                                <span className="text-[12px] font-medium text-[#111]">{entry._count}</span>
+   909→                              </div>
+   910→                            ))}
+   911→                          </div>
+   912→                        </div>
+   913→                      </motion.div>
+   914→
+   915→                      {/* Category Revenue Horizontal Bar Chart */}
+   916→                      <motion.div
+   917→                        initial={{ opacity: 0, y: 16 }}
+   918→                        animate={{ opacity: 1, y: 0 }}
+   919→                        transition={{ delay: 0.35 }}
+   920→                        className="bg-white border border-[#E8E8E8] p-5"
+   921→                      >
+   922→                        <div className="flex items-center justify-between mb-6">
+   923→                          <h3 className="text-[14px] font-medium">Category Revenue</h3>
+   924→                          <span className="text-[11px] text-[#999] tracking-wide">Estimated</span>
+   925→                        </div>
+   926→                        <div className="h-[220px]">
+   927→                          <ResponsiveContainer width="100%" height="100%">
+   928→                            <BarChart
+   929→                              data={categoryRevenueData}
+   930→                              layout="vertical"
+   931→                              margin={{ top: 0, right: 20, left: 0, bottom: 0 }}
+   932→                            >
+   933→                              <CartesianGrid strokeDasharray="3 3" stroke="#F0EFED" horizontal={false} />
+   934→                              <XAxis
+   935→                                type="number"
+   936→                                axisLine={false}
+   937→                                tickLine={false}
+   938→                                tick={{ fontSize: 11, fill: "#999" }}
+   939→                                tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+   940→                              />
+   941→                              <YAxis
+   942→                                type="category"
+   943→                                dataKey="name"
+   944→                                axisLine={false}
+   945→                                tickLine={false}
+   946→                                tick={{ fontSize: 11, fill: "#666" }}
+   947→                                width={90}
+   948→                              />
+   949→                              <Tooltip
+   950→                                formatter={(value: number) => [`\u20B9${value.toLocaleString("en-IN")}`, "Revenue"]}
+   951→                                contentStyle={{
+   952→                                  border: "1px solid #E8E8E8",
+   953→                                  fontSize: "12px",
+   954→                                  borderRadius: "4px",
+   955→                                }}
+   956→                              />
+   957→                              <Bar dataKey="revenue" fill="#4D5B47" radius={[0, 2, 2, 0]} barSize={16} />
+   958→                            </BarChart>
+   959→                          </ResponsiveContainer>
+   960→                        </div>
+   961→                      </motion.div>
+   962→                    </div>
+   963→                  </>
+   964→                ) : null}
+   965→              </>
+   966→            )}
+   967→
+   968→            {activeSection === "users" && <ComingSoon />}
+   969→          </div>
+   970→        </div>
+   971→      </div>
+   972→    </main>
+   973→  );
+   974→}

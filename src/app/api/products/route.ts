@@ -19,14 +19,41 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const skip = (page - 1) * limit;
 
+    // Enhanced filters
+    const brands = searchParams.get("brands"); // comma-separated
+    const categories = searchParams.get("categories"); // comma-separated
+    const sizes = searchParams.get("sizes"); // comma-separated
+    const colors = searchParams.get("colors"); // comma-separated
+    const minRating = parseFloat(searchParams.get("minRating") || "0");
+    const inStock = searchParams.get("inStock"); // "true" to filter in-stock only
+    const minDiscount = parseFloat(searchParams.get("discount") || "0");
+
     const where: Record<string, unknown> = {};
 
-    if (category && category !== "All") {
+    // Category filter (single or array)
+    if (categories) {
+      const cats = categories.split(",").map((c) => c.trim()).filter(Boolean);
+      if (cats.length === 1) {
+        where.category = cats[0];
+      } else if (cats.length > 1) {
+        where.category = { in: cats };
+      }
+    } else if (category && category !== "All") {
       where.category = category;
     }
-    if (brand && brand !== "All") {
+
+    // Brand filter (single or array)
+    if (brands) {
+      const brs = brands.split(",").map((b) => b.trim()).filter(Boolean);
+      if (brs.length === 1) {
+        where.brand = brs[0];
+      } else if (brs.length > 1) {
+        where.brand = { in: brs };
+      }
+    } else if (brand && brand !== "All") {
       where.brand = brand;
     }
+
     if (search) {
       where.OR = [
         { name: { contains: search } },
@@ -45,7 +72,52 @@ export async function GET(request: NextRequest) {
     if (flashDeal === "true") where.isFlashDeal = true;
     if (isNew === "true") where.isNew = true;
 
-    type SortKey = "createdAt" | "price" | "rating" | "reviewCount";
+    // Sizes filter (JSON contains check)
+    if (sizes) {
+      const sizeList = sizes.split(",").map((s) => s.trim()).filter(Boolean);
+      if (sizeList.length === 1) {
+        where.sizes = { contains: sizeList[0] };
+      } else if (sizeList.length > 1) {
+        where.OR = sizeList.map((s) => ({ sizes: { contains: s } }));
+      }
+    }
+
+    // Colors filter (JSON contains check)
+    if (colors) {
+      const colorList = colors.split(",").map((c) => c.trim()).filter(Boolean);
+      if (colorList.length === 1) {
+        where.colors = { contains: colorList[0] };
+      } else if (colorList.length > 1) {
+        // Combine with existing OR if present
+        const colorFilters = colorList.map((c) => ({ colors: { contains: c } }));
+        if (where.OR) {
+          where.AND = [
+            { OR: where.OR },
+            { OR: colorFilters },
+          ];
+          delete where.OR;
+        } else {
+          where.OR = colorFilters;
+        }
+      }
+    }
+
+    // Minimum rating filter
+    if (minRating > 0) {
+      where.rating = { gte: minRating };
+    }
+
+    // In-stock filter
+    if (inStock === "true") {
+      where.stock = { gt: 0 };
+    }
+
+    // Minimum discount filter
+    if (minDiscount > 0) {
+      where.discount = { gte: minDiscount };
+    }
+
+    type SortKey = "createdAt" | "price" | "rating" | "reviewCount" | "discount";
     type SortDir = "asc" | "desc";
     let orderBy: Record<string, SortDir> = { createdAt: "desc" };
 
@@ -55,6 +127,7 @@ export async function GET(request: NextRequest) {
       case "rating": orderBy = { rating: "desc" }; break;
       case "newest": orderBy = { createdAt: "desc" }; break;
       case "popularity": orderBy = { reviewCount: "desc" }; break;
+      case "discount": orderBy = { discount: "desc" }; break;
       default: orderBy = { createdAt: "desc" };
     }
 
