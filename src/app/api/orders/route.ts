@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
+import { FREE_SHIPPING_THRESHOLD, SHIPPING_COST } from "@/lib/constants";
 import { z } from "zod";
 
 const orderItemSchema = z.object({
@@ -26,8 +27,8 @@ export async function GET(request: NextRequest) {
     const user = await requireAuth();
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "10")));
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = { userId: user.id };
@@ -50,8 +51,9 @@ export async function GET(request: NextRequest) {
       page,
       totalPages: Math.ceil(total / limit),
     });
-  } catch (error: any) {
-    if (error.message === "Unauthorized") {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    if (message === "Unauthorized") {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
     console.error("Orders fetch error:", error);
@@ -124,50 +126,81 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const shipping = 0; // Free shipping for now
+    const shipping = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
     const total = Math.max(0, subtotal - discount + shipping);
 
-    // Generate order number: MSN-YYYY-XXXXX
-    const now = new Date();
-    const year = now.getFullYear();
-    const random = Math.floor(Math.random() * 100000).toString().padStart(5, "0");
-    const orderNumber = `MSN-${year}-${random}`;
+    // Use transaction for stock check + order creation + stock decrement
+    const order = await db.$transaction(async (tx) => {
+      // Check stock availability for all items first
+      for (const item of items) {
+        const product = await tx.product.findUnique({
+          where: { id: item.productId },
+          select: { stock: true, name: true },
+        });
+        if (!product) {
+          throw new Error(`Product not found: ${item.name}`);
+        }
+        if (product.stock < item.quantity) {
+          throw new Error(`Insufficient stock for ${item.name}. Available: ${product.stock}, Requested: ${item.quantity}`);
+        }
+      }
 
-    const order = await db.order.create({
-      data: {
-        orderNumber,
-        userId: user.id,
-        total,
-        subtotal,
-        discount,
-        shipping,
-        shippingAddress: shippingAddress ? JSON.stringify(shippingAddress) : null,
-        paymentMethod,
-        paymentStatus: paymentMethod === "cod" ? "pending" : "completed",
-        couponCode: couponCode ? couponCode.toUpperCase() : null,
-        status: "confirmed",
-        items: {
-          create: items.map((item) => ({
-            productId: item.productId,
-            name: item.name,
-            price: item.price,
-            quantity: item.quantity,
-            size: item.size,
-            color: item.color,
-            image: item.image,
-          })),
+      // Generate unique order number with retry
+      const now = new Date();
+      const year = now.getFullYear();
+      let orderNumber = "";
+      let attempts = 0;
+      do {
+        const random = Math.floor(Math.random() * 1000000).toString().padStart(6, "0");
+        orderNumber = `MSN-${year}-${random}`;
+        const existing = await tx.order.findUnique({ where: { orderNumber } });
+        if (!existing) break;
+        attempts++;
+      } while (attempts < 10);
+
+      if (attempts >= 10) {
+        throw new Error("Failed to generate unique order number");
+      }
+
+      // Create order with items
+      const newOrder = await tx.order.create({
+        data: {
+          orderNumber,
+          userId: user.id,
+          total,
+          subtotal,
+          discount,
+          shipping,
+          shippingAddress: shippingAddress ? JSON.stringify(shippingAddress) : null,
+          paymentMethod,
+          paymentStatus: paymentMethod === "cod" ? "pending" : "completed",
+          couponCode: couponCode ? couponCode.toUpperCase() : null,
+          status: "confirmed",
+          items: {
+            create: items.map((item) => ({
+              productId: item.productId,
+              name: item.name,
+              price: item.price,
+              quantity: item.quantity,
+              size: item.size,
+              color: item.color,
+              image: item.image,
+            })),
+          },
         },
-      },
-      include: { items: true },
-    });
-
-    // Update stock
-    for (const item of items) {
-      await db.product.update({
-        where: { id: item.productId },
-        data: { stock: { decrement: item.quantity } },
+        include: { items: true },
       });
-    }
+
+      // Decrement stock atomically
+      for (const item of items) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { decrement: item.quantity } },
+        });
+      }
+
+      return newOrder;
+    });
 
     return NextResponse.json({
       success: true,
@@ -179,9 +212,13 @@ export async function POST(request: NextRequest) {
         createdAt: order.createdAt,
       },
     }, { status: 201 });
-  } catch (error: any) {
-    if (error.message === "Unauthorized") {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    if (message === "Unauthorized") {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (message.includes("Insufficient stock") || message.includes("not found")) {
+      return NextResponse.json({ success: false, error: message }, { status: 400 });
     }
     console.error("Order creation error:", error);
     return NextResponse.json({ success: false, error: "Failed to create order" }, { status: 500 });

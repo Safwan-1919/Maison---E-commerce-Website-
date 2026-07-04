@@ -139,7 +139,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, ...fields } = body;
+    const { id, ...rawFields } = body;
 
     if (!id) {
       return NextResponse.json({ error: "Product id is required" }, { status: 400 });
@@ -151,13 +151,24 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
-    // Remove fields that shouldn't be updated directly
-    delete (fields as any).id;
-    delete (fields as any).createdAt;
-    delete (fields as any).updatedAt;
-    delete (fields as any).reviews;
-    delete (fields as any).orderItems;
-    delete (fields as any).wishlistItems;
+    // Whitelist of allowed update fields
+    const allowedFields = [
+      "name", "slug", "description", "price", "mrp", "category", "brand",
+      "sizes", "colors", "images", "stock", "isFeatured", "isNew",
+      "isTrending", "isBestSeller", "isFlashDeal", "discount",
+      "material", "care", "tags", "categoryId", "brandId",
+    ];
+
+    const fields: Record<string, unknown> = {};
+    for (const key of allowedFields) {
+      if (key in rawFields) {
+        fields[key] = rawFields[key];
+      }
+    }
+
+    if (Object.keys(fields).length === 0) {
+      return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+    }
 
     const product = await db.product.update({
       where: { id },
@@ -165,11 +176,12 @@ export async function PATCH(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, product });
-  } catch (error: any) {
-    if (error.message === "Unauthorized") {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    if (message === "Unauthorized") {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
-    if (error.message === "Forbidden") {
+    if (message === "Forbidden") {
       return NextResponse.json({ error: "Admin access required" }, { status: 403 });
     }
     console.error("Product update error:", error);

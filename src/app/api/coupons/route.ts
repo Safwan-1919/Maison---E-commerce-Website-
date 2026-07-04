@@ -2,62 +2,106 @@ import { db } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 
-// GET /api/coupons - Admin only, returns all coupons with usage stats
+// GET /api/coupons - Admin only, returns all coupons
 export async function GET() {
   try {
     await requireAdmin();
-
-    const coupons = await db.coupon.findMany({
-      orderBy: { createdAt: "desc" },
-    });
-
+    const coupons = await db.coupon.findMany({ orderBy: { createdAt: "desc" } });
     return NextResponse.json({ coupons });
   } catch (error: any) {
-    if (error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    }
-    if (error.message === "Forbidden") {
-      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
-    }
-    console.error("Coupons fetch error:", error);
+    if (error.message === "Unauthorized") return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    if (error.message === "Forbidden") return NextResponse.json({ error: "Admin access required" }, { status: 403 });
     return NextResponse.json({ error: "Failed to fetch coupons" }, { status: 500 });
   }
 }
 
-// POST /api/coupons - Validate coupon (kept for backward compatibility)
+// POST /api/coupons - Create or validate coupon
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { code } = body;
 
-    const coupon = await db.coupon.findUnique({
-      where: { code: code.toUpperCase() },
+    // If called with just { code }, validate it (used by cart/checkout)
+    if (body.code && !body.type) {
+      const coupon = await db.coupon.findUnique({ where: { code: body.code.toUpperCase() } });
+      if (!coupon) return NextResponse.json({ valid: false, message: "Invalid coupon code" });
+      if (!coupon.isActive) return NextResponse.json({ valid: false, message: "This coupon is no longer active" });
+      if (coupon.expiresAt && new Date(coupon.expiresAt) < new Date()) return NextResponse.json({ valid: false, message: "This coupon has expired" });
+      if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) return NextResponse.json({ valid: false, message: "This coupon has reached its usage limit" });
+      return NextResponse.json({ valid: true, discount: coupon.discount, type: coupon.type, minOrder: coupon.minOrder });
+    }
+
+    // Otherwise, create a new coupon (admin only)
+    await requireAdmin();
+    const { code, type, discount, minOrder, maxUses, expiresAt, isActive } = body;
+
+    if (!code || !type || discount === undefined) {
+      return NextResponse.json({ error: "Code, type, and discount are required" }, { status: 400 });
+    }
+
+    const existing = await db.coupon.findUnique({ where: { code: code.toUpperCase() } });
+    if (existing) return NextResponse.json({ error: "Coupon code already exists" }, { status: 400 });
+
+    const coupon = await db.coupon.create({
+      data: {
+        code: code.toUpperCase(),
+        type,
+        discount: Number(discount),
+        minOrder: minOrder ? Number(minOrder) : null,
+        maxUses: maxUses ? Number(maxUses) : null,
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+        isActive: isActive !== false,
+      },
     });
 
-    if (!coupon) {
-      return NextResponse.json({ valid: false, message: "Invalid coupon code" });
-    }
+    return NextResponse.json({ success: true, coupon }, { status: 201 });
+  } catch (error: any) {
+    if (error.message === "Unauthorized") return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    if (error.message === "Forbidden") return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    console.error("Coupon create error:", error);
+    return NextResponse.json({ error: "Failed to create coupon" }, { status: 500 });
+  }
+}
 
-    if (!coupon.isActive) {
-      return NextResponse.json({ valid: false, message: "This coupon is no longer active" });
-    }
+// PUT /api/coupons - Update coupon
+export async function PUT(request: NextRequest) {
+  try {
+    await requireAdmin();
+    const body = await request.json();
+    const { id, ...updates } = body;
 
-    if (coupon.expiresAt && new Date(coupon.expiresAt) < new Date()) {
-      return NextResponse.json({ valid: false, message: "This coupon has expired" });
-    }
+    if (!id) return NextResponse.json({ error: "Coupon ID is required" }, { status: 400 });
 
-    if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
-      return NextResponse.json({ valid: false, message: "This coupon has reached its usage limit" });
-    }
+    const data: Record<string, unknown> = {};
+    if (updates.code !== undefined) data.code = updates.code.toUpperCase();
+    if (updates.type !== undefined) data.type = updates.type;
+    if (updates.discount !== undefined) data.discount = Number(updates.discount);
+    if (updates.minOrder !== undefined) data.minOrder = updates.minOrder ? Number(updates.minOrder) : null;
+    if (updates.maxUses !== undefined) data.maxUses = updates.maxUses ? Number(updates.maxUses) : null;
+    if (updates.expiresAt !== undefined) data.expiresAt = updates.expiresAt ? new Date(updates.expiresAt) : null;
+    if (updates.isActive !== undefined) data.isActive = updates.isActive;
 
-    return NextResponse.json({
-      valid: true,
-      discount: coupon.discount,
-      type: coupon.type,
-      minOrder: coupon.minOrder,
-    });
-  } catch (error) {
-    console.error("Coupon error:", error);
-    return NextResponse.json({ valid: false, message: "Failed to validate coupon" }, { status: 500 });
+    const coupon = await db.coupon.update({ where: { id }, data });
+    return NextResponse.json({ success: true, coupon });
+  } catch (error: any) {
+    if (error.message === "Unauthorized") return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    if (error.message === "Forbidden") return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return NextResponse.json({ error: "Failed to update coupon" }, { status: 500 });
+  }
+}
+
+// DELETE /api/coupons - Delete coupon
+export async function DELETE(request: NextRequest) {
+  try {
+    await requireAdmin();
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+    if (!id) return NextResponse.json({ error: "Coupon ID is required" }, { status: 400 });
+
+    await db.coupon.delete({ where: { id } });
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    if (error.message === "Unauthorized") return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    if (error.message === "Forbidden") return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return NextResponse.json({ error: "Failed to delete coupon" }, { status: 500 });
   }
 }

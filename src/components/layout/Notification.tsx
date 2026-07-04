@@ -15,13 +15,13 @@ export function Notification() {
           animate={{ opacity: 1, y: 0, x: "-50%" }}
           exit={{ opacity: 0, y: -20, x: "-50%" }}
           transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-          className="fixed top-20 left-1/2 z-[100] flex items-center gap-3 px-5 py-3.5 bg-[#111] text-[#F8F8F6] shadow-lg premium-shadow-lg"
+          className="fixed top-20 left-1/2 z-[100] flex items-center gap-3 px-5 py-3.5 bg-[#111] text-[#F8F8F6] shadow-lg premium-shadow-lg max-w-[calc(100vw-2rem)]"
         >
           {notification.type === "success" && <CheckCircle className="w-4 h-4 text-[#4D5B47] flex-shrink-0" />}
           {notification.type === "error" && <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />}
           {notification.type === "info" && <Info className="w-4 h-4 text-[#B79B7B] flex-shrink-0" />}
           <span className="text-[13px] font-medium tracking-wide">{notification.message}</span>
-          <button
+          <button suppressHydrationWarning
             onClick={clearNotification}
             className="ml-1 opacity-50 hover:opacity-100 transition-opacity flex-shrink-0"
             aria-label="Dismiss"

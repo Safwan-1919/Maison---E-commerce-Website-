@@ -61,9 +61,15 @@ async function main() {
   };
 
   for (const [name, data] of Object.entries(categoryUpdates)) {
-    await prisma.category.updateMany({
+    await prisma.category.upsert({
       where: { name },
-      data,
+      update: data,
+      create: {
+        name,
+        slug: slugify(name),
+        icon: data.icon,
+        description: data.description,
+      },
     });
   }
   console.log("  ✓ Categories updated\n");
@@ -263,6 +269,27 @@ async function main() {
     categoryMap[c.name] = c.id;
   }
   console.log(`  Found ${allCategories.length} categories`);
+
+  // ============================================================
+  // 3b. SEED BRANDS (if empty)
+  // ============================================================
+  const existingBrands = await prisma.brand.findMany();
+  if (existingBrands.length === 0) {
+    console.log("🏷️  Seeding brands...");
+    const brandNames = [
+      "H&M", "ZARA", "Uniqlo", "Levi's", "Arrow", "Allen Solly", "Peter England",
+      "Hugo Boss", "Armani Exchange", "Van Heusen", "Marks & Spencer", "Wrangler",
+      "Pepe Jeans", "Blackberrys", "United Colors of Benetton", "Nike", "Adidas",
+      "Steve Madden", "Clarks", "Puma", "Tommy Hilfiger", "Titan", "Fossil",
+      "MAISON Basics", "MAISON Essentials", "MAISON",
+    ];
+    for (const name of brandNames) {
+      await prisma.brand.create({
+        data: { name, slug: slugify(name) },
+      });
+    }
+    console.log(`  ✓ Created ${brandNames.length} brands\n`);
+  }
 
   const allBrands = await prisma.brand.findMany();
   const brandMap: Record<string, string> = {};
@@ -1330,6 +1357,105 @@ async function main() {
       create: { email, isActive: true },
     });
     console.log(`  ✓ ${email}`);
+  }
+  console.log();
+
+  // ============================================================
+  // 11. SEED SITE CONTENT (dynamic page content)
+  // ============================================================
+  console.log("🌐 Seeding site content...");
+
+  const siteContent: Record<string, string> = {
+    heroBadge: "New Season 2025",
+    heroTitle: "Redefine Your Style",
+    heroSubtitle: "Considered essentials crafted from the world's finest materials. Less noise, more substance.",
+    heroCtaPrimary: "Shop Collection",
+    heroCtaSecondary: "Our Story",
+    heroImage: "/images/hero-bg.png",
+
+    marqueeItems: JSON.stringify([
+      "Free shipping on orders over \u20B92,000",
+      "30-day hassle-free returns",
+      "100% authentic products",
+      "Crafted with premium materials",
+      "Sustainable practices",
+      "Worldwide delivery",
+    ]),
+
+    trustItems: JSON.stringify([
+      { icon: "Truck", title: "Free Shipping", desc: "On all orders over \u20B92,000" },
+      { icon: "RotateCcw", title: "Easy Returns", desc: "30-day no questions asked" },
+      { icon: "Shield", title: "Authenticity", desc: "100% genuine products" },
+      { icon: "Sparkles", title: "Premium Quality", desc: "Finest materials only" },
+    ]),
+
+    editorialBadge: "Our Philosophy",
+    editorialTitle: "Less noise. More substance.",
+    editorialTitleColor: "#4D5B47",
+    editorialText: "At MAISON, we believe the best style is invisible. No logos screaming for attention, no trends chasing the moment. Just exceptional materials, considered design, and pieces that speak for themselves.|Every garment is a result of hundreds of decisions \u2014 from the mill where the fabric is woven to the last stitch. We partner with the same artisans and suppliers as the world's most prestigious houses, making true luxury accessible.",
+    editorialImage: "/images/products/product-6.png",
+    editorialCta: "Discover Our Collection",
+    editorialLabel: "SS25 Collection",
+
+    features: JSON.stringify([
+      { image: "/images/products/product-4.png", badge: "New Season", title: "Knitwear", subtitle: "Cashmere & merino essentials" },
+      { image: "/images/products/product-5.png", badge: "Handcrafted", title: "Footwear", subtitle: "Boots, sneakers & more" },
+      { image: "/images/products/product-10.png", badge: "Investment Pieces", title: "Outerwear", subtitle: "Coats & jackets for every season" },
+    ]),
+
+    stats: JSON.stringify([
+      { value: "15K+", label: "Happy Customers" },
+      { value: "44", label: "Premium Products" },
+      { value: "26", label: "In-House Brands" },
+      { value: "4.7", label: "Average Rating" },
+    ]),
+
+    shopFilters: JSON.stringify({
+      sizes: ["XS", "S", "M", "L", "XL", "XXL", "28", "30", "32", "34", "36", "ONE SIZE"],
+      colors: [
+        { name: "White", hex: "#FFFFFF" },
+        { name: "Black", hex: "#111111" },
+        { name: "Olive", hex: "#4D5B47" },
+        { name: "Sand", hex: "#B79B7B" },
+        { name: "Cream", hex: "#D4C4B0" },
+        { name: "Navy", hex: "#1a2744" },
+        { name: "Charcoal", hex: "#3a3a3a" },
+        { name: "Gray", hex: "#6B6B6B" },
+        { name: "Brown", hex: "#5C3D2E" },
+        { name: "Tan", hex: "#8B6914" },
+        { name: "Sage", hex: "#B7C4B5" },
+        { name: "Ivory", hex: "#F5F0E8" },
+      ],
+      priceRanges: [
+        { label: "Under \u20B92,000", min: 0, max: 2000 },
+        { label: "\u20B92,000 - \u20B95,000", min: 2000, max: 5000 },
+        { label: "\u20B95,000 - \u20B910,000", min: 5000, max: 10000 },
+        { label: "\u20B910,000 - \u20B920,000", min: 10000, max: 20000 },
+        { label: "Over \u20B920,000", min: 20000, max: 99999 },
+      ],
+      discountOptions: [
+        { label: "10% or more", value: 10 },
+        { label: "20% or more", value: 20 },
+        { label: "30% or more", value: 30 },
+      ],
+    }),
+
+    paymentMethods: JSON.stringify([
+      { id: "card", label: "Credit / Debit Card", brand: "Visa, Mastercard, RuPay" },
+      { id: "upi", label: "UPI", brand: "GPay, PhonePe, Paytm" },
+      { id: "netbanking", label: "Net Banking", brand: "All major banks" },
+      { id: "wallet", label: "Wallet", brand: "Paytm, Amazon Pay" },
+      { id: "cod", label: "Cash on Delivery", brand: "Pay on delivery" },
+    ]),
+  };
+
+  for (const [key, value] of Object.entries(siteContent)) {
+    await prisma.siteContent.upsert({
+      where: { key },
+      update: { value },
+      create: { key, value },
+    });
+    console.log(`  ✓ ${key}`);
   }
   console.log();
 

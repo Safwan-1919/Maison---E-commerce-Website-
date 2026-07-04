@@ -21,7 +21,6 @@ interface ProductCardProps {
   isTrending?: boolean;
   isBestSeller?: boolean;
   index?: number;
-  quickView?: boolean;
 }
 
 export function ProductCard({
@@ -75,7 +74,7 @@ export function ProductCard({
     addToCompare(id);
   };
 
-  const currentImage = isHovered && images && images[1] ? images[1] : image;
+  const hoverImage = images && images[1] ? images[1] : null;
 
   return (
     <motion.div
@@ -99,12 +98,22 @@ export function ProductCard({
             <ShoppingBag className="w-8 h-8 text-[#999]" strokeWidth={1} />
           </div>
         ) : (
-          <img
-            src={currentImage}
-            alt={name}
-            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; setImgError(true); }}
-          />
+          <>
+            <img
+              src={image}
+              alt={name}
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; setImgError(true); }}
+            />
+            {hoverImage && (
+              <img
+                src={hoverImage}
+                alt={name}
+                className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ease-out opacity-0 group-hover:opacity-100 group-hover:scale-105"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            )}
+          </>
         )}
 
         {/* Labels */}
@@ -123,7 +132,7 @@ export function ProductCard({
 
         {/* Actions - Desktop hover only */}
         <div className="absolute top-3 right-3 flex-col gap-2 max-md:hidden">
-          <motion.button
+          <motion.button suppressHydrationWarning
             initial={false}
             animate={{ opacity: isHovered ? 1 : 0, y: isHovered ? 0 : -4 }}
             transition={{ duration: 0.2 }}
@@ -137,7 +146,7 @@ export function ProductCard({
               strokeWidth={1.5}
             />
           </motion.button>
-          <motion.button
+          <motion.button suppressHydrationWarning
             initial={false}
             animate={{ opacity: isHovered ? 1 : 0, y: isHovered ? 0 : -4 }}
             transition={{ duration: 0.2, delay: 0.05 }}
@@ -146,7 +155,7 @@ export function ProductCard({
           >
             <Eye className="w-4 h-4" stroke="#111" strokeWidth={1.5} />
           </motion.button>
-          <motion.button
+          <motion.button suppressHydrationWarning
             initial={false}
             animate={{ opacity: isHovered ? 1 : 0, y: isHovered ? 0 : -4 }}
             transition={{ duration: 0.2, delay: 0.1 }}
@@ -159,7 +168,7 @@ export function ProductCard({
 
         {/* Mobile actions - always visible */}
         <div className="absolute top-3 right-3 md:hidden">
-          <button
+          <button suppressHydrationWarning
             onClick={handleWishlist}
             className="w-8 h-8 bg-[#F8F8F6]/90 backdrop-blur-sm flex items-center justify-center"
           >
@@ -179,7 +188,7 @@ export function ProductCard({
           transition={{ duration: 0.25, delay: 0.05 }}
           className="absolute bottom-0 left-0 right-0 p-3 md:block hidden"
         >
-          <button
+          <button suppressHydrationWarning
             onClick={handleAddToCart}
             className="w-full py-2.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-widest uppercase hover:bg-[#333] transition-colors"
           >
@@ -224,7 +233,7 @@ export function ProductCard({
             <span className="text-[11px] text-[#999]">({reviewCount})</span>
           </div>
           {/* Mobile add to bag button - always visible on small screens */}
-          <button
+          <button suppressHydrationWarning
             onClick={handleAddToCart}
             className="md:hidden px-3 py-1.5 border border-[#E8E8E8] text-[10px] font-medium tracking-widest uppercase text-[#111] hover:bg-[#F0EFED] transition-colors"
           >

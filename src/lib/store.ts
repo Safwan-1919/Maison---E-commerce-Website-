@@ -41,7 +41,8 @@ interface StoreState {
   currentPage: Page;
   previousPage: Page | null;
   selectedProductId: string | null;
-  navigate: (page: Page, productId?: string) => void;
+  selectedOrderNumber: string | null;
+  navigate: (page: Page, productId?: string, orderNumber?: string) => void;
   goBack: () => void;
 
   // Cart
@@ -60,6 +61,7 @@ interface StoreState {
   // Wishlist
   wishlistItems: string[];
   toggleWishlist: (productId: string) => void;
+  syncWishlistFromDB: () => Promise<void>;
   isInWishlist: (productId: string) => boolean;
 
   // Filters
@@ -76,6 +78,11 @@ interface StoreState {
   // UI
   isMobileMenuOpen: boolean;
   setMobileMenuOpen: (open: boolean) => void;
+
+  // Applied coupon
+  appliedCoupon: { code: string; type: string; discount: number; minOrder: number | null } | null;
+  setAppliedCoupon: (coupon: { code: string; type: string; discount: number; minOrder: number | null } | null) => void;
+  clearCoupon: () => void;
 
   // Recently viewed
   recentlyViewed: string[];
@@ -124,17 +131,19 @@ export const useStore = create<StoreState>()(
   persist(
     (set, get) => ({
       // Navigation
-      currentPage: 'home',
-      previousPage: null,
-      selectedProductId: null,
-      navigate: (page, productId) => {
-        set((state) => ({
-          previousPage: state.currentPage,
-          currentPage: page,
-          selectedProductId: productId || null,
-          isMobileMenuOpen: false,
-          isSearchOpen: false,
-        }));
+  currentPage: 'home',
+  previousPage: null,
+  selectedProductId: null,
+  selectedOrderNumber: null,
+  navigate: (page, productId, orderNumber) => {
+    set((state) => ({
+      previousPage: state.currentPage,
+      currentPage: page,
+      selectedProductId: productId || null,
+      selectedOrderNumber: orderNumber || null,
+      isMobileMenuOpen: false,
+      isSearchOpen: false,
+    }));
         if (typeof window !== 'undefined') {
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }
@@ -182,8 +191,10 @@ export const useStore = create<StoreState>()(
           get().removeFromCart(id);
           return;
         }
+        // Enforce max quantity of 10
+        const capped = Math.min(quantity, 10);
         set((state) => ({
-          cartItems: state.cartItems.map((i) => (i.id === id ? { ...i, quantity } : i)),
+          cartItems: state.cartItems.map((i) => (i.id === id ? { ...i, quantity: capped } : i)),
         }));
       },
       clearCart: () => set({ cartItems: [] }),
@@ -195,16 +206,42 @@ export const useStore = create<StoreState>()(
 
       // Wishlist
       wishlistItems: [],
-      toggleWishlist: (productId) => {
-        set((state) => {
-          const isIn = state.wishlistItems.includes(productId);
-          if (isIn) {
-            get().showNotification('Removed from wishlist', 'info');
-            return { wishlistItems: state.wishlistItems.filter((id) => id !== productId) };
+      toggleWishlist: async (productId) => {
+        const isIn = get().wishlistItems.includes(productId);
+        // Optimistic update
+        set((state) => ({
+          wishlistItems: isIn
+            ? state.wishlistItems.filter((id) => id !== productId)
+            : [...state.wishlistItems, productId],
+        }));
+        get().showNotification(isIn ? 'Removed from wishlist' : 'Added to wishlist', isIn ? 'info' : 'success');
+        // Sync with DB
+        try {
+          const method = isIn ? 'DELETE' : 'POST';
+          await fetch('/api/wishlist', {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ productId }),
+          });
+        } catch {
+          // Revert on error
+          set((state) => ({
+            wishlistItems: isIn
+              ? [...state.wishlistItems, productId]
+              : state.wishlistItems.filter((id) => id !== productId),
+          }));
+          get().showNotification('Failed to update wishlist', 'error');
+        }
+      },
+      syncWishlistFromDB: async () => {
+        try {
+          const res = await fetch('/api/wishlist');
+          if (res.ok) {
+            const data = await res.json();
+            const ids = (data.wishlistItems || []).map((item: { productId: string }) => item.productId);
+            set({ wishlistItems: ids });
           }
-          get().showNotification('Added to wishlist', 'success');
-          return { wishlistItems: [...state.wishlistItems, productId] };
-        });
+        } catch {}
       },
       isInWishlist: (productId) => get().wishlistItems.includes(productId),
 
@@ -226,6 +263,11 @@ export const useStore = create<StoreState>()(
       // UI
       isMobileMenuOpen: false,
       setMobileMenuOpen: (open) => set({ isMobileMenuOpen: open }),
+
+      // Applied coupon (persists from cart to checkout)
+      appliedCoupon: null as { code: string; type: string; discount: number; minOrder: number | null } | null,
+      setAppliedCoupon: (coupon) => set({ appliedCoupon: coupon }),
+      clearCoupon: () => set({ appliedCoupon: null }),
 
       // Recently viewed
       recentlyViewed: [],
@@ -289,6 +331,7 @@ export const useStore = create<StoreState>()(
         wishlistItems: state.wishlistItems,
         recentlyViewed: state.recentlyViewed,
         compareItems: state.compareItems,
+        appliedCoupon: state.appliedCoupon,
       }),
     }
   )

@@ -130,7 +130,7 @@ export function SizeGuideModal() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 bg-black/40 z-[100]"
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100]"
             onClick={() => setSizeGuideOpen(false)}
           />
 
@@ -160,7 +160,7 @@ export function SizeGuideModal() {
                   <h2 className="text-[15px] font-medium tracking-wide text-[#111]">Size Guide</h2>
                   <p className="text-[12px] text-[#999] mt-0.5">Find your perfect fit</p>
                 </div>
-                <button
+                <button suppressHydrationWarning
                   onClick={() => setSizeGuideOpen(false)}
                   className="w-9 h-9 flex items-center justify-center hover:opacity-60 transition-opacity"
                   aria-label="Close size guide"
@@ -175,7 +175,7 @@ export function SizeGuideModal() {
                 <div className="px-6 pt-5 pb-4 border-b border-[#E8E8E8]">
                   <div className="inline-flex border border-[#E8E8E8]">
                     {categories.map((cat) => (
-                      <button
+                      <button suppressHydrationWarning
                         key={cat.key}
                         onClick={() => setActiveCategory(cat.key)}
                         className={`px-5 py-2.5 text-[12px] font-medium tracking-wider uppercase transition-all ${

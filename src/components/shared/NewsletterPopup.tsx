@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X, Mail, Check, ArrowRight } from "lucide-react";
+import { BRAND_NAME } from "@/lib/constants";
 
 const STORAGE_KEY = "maison-newsletter-dismissed";
 const SHOW_DELAY = 5000;
@@ -82,10 +83,10 @@ export function NewsletterPopup() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           transition={{ type: "spring", damping: 28, stiffness: 320 }}
-          className="fixed bottom-6 right-6 z-[80] w-[380px] max-w-[calc(100vw-3rem)] bg-white shadow-lg rounded-[4px] border-l-[3px] border-l-[#4D5B47]"
+          className="fixed bottom-20 sm:bottom-6 right-6 z-[80] w-[380px] max-w-[calc(100vw-3rem)] bg-white shadow-lg rounded-[4px] border-l-[3px] border-l-[#4D5B47]"
         >
           {/* Close button */}
-          <button
+          <button suppressHydrationWarning
             onClick={dismiss}
             className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center text-[#999] hover:text-[#111] transition-colors"
             aria-label="Close newsletter popup"
@@ -98,7 +99,7 @@ export function NewsletterPopup() {
               <>
                 {/* Label */}
                 <p className="text-[10px] tracking-widest uppercase text-[#999] mb-2">
-                  Join the Maison Family
+                  Join the {BRAND_NAME} Family
                 </p>
 
                 {/* Heading */}
@@ -119,7 +120,7 @@ export function NewsletterPopup() {
                       className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#999] pointer-events-none"
                       strokeWidth={1.5}
                     />
-                    <input
+                    <input suppressHydrationWarning
                       type="email"
                       value={email}
                       onChange={(e) => {
@@ -131,9 +132,9 @@ export function NewsletterPopup() {
                     />
                   </div>
                   {error && (
-                    <p className="text-[11px] text-red-500">{error}</p>
+                    <p className="text-[11px] text-[#C53030]">{error}</p>
                   )}
-                  <button
+                  <button suppressHydrationWarning
                     type="submit"
                     disabled={loading}
                     className="w-full flex items-center justify-center gap-2 bg-[#4D5B47] text-white text-[12px] font-medium tracking-widest uppercase py-2.5 rounded-[4px] hover:bg-[#3d4a38] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
@@ -161,7 +162,7 @@ export function NewsletterPopup() {
                   <Check className="w-6 h-6 text-[#4D5B47]" strokeWidth={1.5} />
                 </div>
                 <h3 className="text-[18px] font-medium text-[#111] mb-1">
-                  Welcome to MAISON!
+                  Welcome to {BRAND_NAME}!
                 </h3>
                 <p className="text-[13px] text-[#666] leading-relaxed">
                   Check your inbox for your 10% discount code.

@@ -40,6 +40,20 @@ model Product {
   categoryRef  Category?      @relation(fields: [categoryId], references: [id])
   brandId      String?
   brandRef     Brand?         @relation(fields: [brandId], references: [id])
+
+  @@index([category])
+  @@index([brand])
+  @@index([price])
+  @@index([rating])
+  @@index([createdAt])
+  @@index([categoryId])
+  @@index([brandId])
+  @@index([isFeatured])
+  @@index([isNew])
+  @@index([isTrending])
+  @@index([isBestSeller])
+  @@index([isFlashDeal])
+  @@index([discount])
 }
 
 model Category {
@@ -80,6 +94,11 @@ model Order {
   couponCode      String?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([userId, status])
 }
 
 model OrderItem {
@@ -94,6 +113,9 @@ model OrderItem {
   size      String?
   color     String?
   image     String?
+
+  @@index([orderId])
+  @@index([productId])
 }
 
 model Review {
@@ -107,6 +129,10 @@ model Review {
   title     String?
   comment   String?
   createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@index([userId])
+  @@index([productId, userId])
 }
 
 model User {
@@ -147,6 +173,10 @@ model WishlistItem {
   productId String
   product   Product  @relation(fields: [productId], references: [id])
   createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([productId])
+  @@index([userId, productId])
 }
 
 model Notification {
@@ -179,4 +209,11 @@ model Newsletter {
   email     String   @unique
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
+}
+
+model SiteContent {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
 }

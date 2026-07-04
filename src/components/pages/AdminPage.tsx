@@ -7,7 +7,8 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import {
   LayoutDashboard, Package, ShoppingCart, Users, BarChart3,
   TrendingUp, TrendingDown, DollarSign, Eye, ArrowUpRight,
-  ArrowLeft, ChevronRight, Star, AlertCircle, Shield, Loader2, Search, Filter
+  ArrowLeft, ChevronRight, Star, AlertCircle, Shield, Loader2, Search, Filter,
+  Settings, Tag
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -76,6 +77,8 @@ const sidebarItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "products", label: "Products", icon: Package },
   { id: "orders", label: "Orders", icon: ShoppingCart },
+  { id: "coupons", label: "Coupons", icon: Tag },
+  { id: "site-content", label: "Site Content", icon: Settings },
 ];
 
 function StatCard({ title, value, prefix = "" }: {
@@ -108,6 +111,419 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
 };
 
 const ORDER_STATUSES = ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled"];
+
+// ── Coupons Section ─────────────────────────────────────────────────────────
+
+interface CouponItem {
+  id: string;
+  code: string;
+  discount: number;
+  type: string;
+  minOrder: number | null;
+  maxUses: number | null;
+  usedCount: number;
+  expiresAt: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+function CouponSection() {
+  const { showNotification } = useStore();
+  const [coupons, setCoupons] = useState<CouponItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<CouponItem | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({ code: "", type: "percentage", discount: "", minOrder: "", maxUses: "", expiresAt: "", isActive: true });
+
+  const fetchCoupons = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/coupons");
+      const data = await res.json();
+      if (res.ok) setCoupons(data.coupons || []);
+    } catch {}
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchCoupons(); }, [fetchCoupons]);
+
+  const resetForm = () => {
+    setForm({ code: "", type: "percentage", discount: "", minOrder: "", maxUses: "", expiresAt: "", isActive: true });
+    setEditing(null);
+    setShowForm(false);
+  };
+
+  const handleSave = async () => {
+    if (!form.code.trim() || !form.discount) {
+      showNotification("Code and discount are required", "error");
+      return;
+    }
+    setSaving(true);
+    try {
+      const body = editing ? { id: editing.id, ...form } : { ...form };
+      const res = await fetch("/api/coupons", {
+        method: editing ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+      showNotification(editing ? "Coupon updated" : "Coupon created", "success");
+      resetForm();
+      fetchCoupons();
+    } catch (err: any) {
+      showNotification(err.message || "Failed to save coupon", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string, code: string) => {
+    if (!confirm(`Delete coupon "${code}"?`)) return;
+    try {
+      const res = await fetch(`/api/coupons?id=${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed");
+      showNotification("Coupon deleted", "success");
+      fetchCoupons();
+    } catch {
+      showNotification("Failed to delete coupon", "error");
+    }
+  };
+
+  const handleToggleActive = async (coupon: CouponItem) => {
+    try {
+      const res = await fetch("/api/coupons", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: coupon.id, isActive: !coupon.isActive }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      showNotification(`Coupon ${coupon.isActive ? "deactivated" : "activated"}`, "success");
+      fetchCoupons();
+    } catch {
+      showNotification("Failed to update coupon", "error");
+    }
+  };
+
+  const startEdit = (coupon: CouponItem) => {
+    setForm({
+      code: coupon.code,
+      type: coupon.type,
+      discount: String(coupon.discount),
+      minOrder: coupon.minOrder ? String(coupon.minOrder) : "",
+      maxUses: coupon.maxUses ? String(coupon.maxUses) : "",
+      expiresAt: coupon.expiresAt ? new Date(coupon.expiresAt).toISOString().split("T")[0] : "",
+      isActive: coupon.isActive,
+    });
+    setEditing(coupon);
+    setShowForm(true);
+  };
+
+  const isExpired = (c: CouponItem) => c.expiresAt && new Date(c.expiresAt) < new Date();
+  const isMaxedOut = (c: CouponItem) => c.maxUses !== null && c.usedCount >= c.maxUses;
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-[20px] font-medium">Coupons</h2>
+        <button suppressHydrationWarning
+          onClick={() => { resetForm(); setShowForm(true); }}
+          className="px-4 py-2 bg-[#111] text-[#F8F8F6] text-[11px] tracking-widest uppercase hover:bg-[#333] transition-colors"
+        >
+          + Add Coupon
+        </button>
+      </div>
+
+      {showForm && (
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-white border border-[#E8E8E8] p-5 mb-6">
+          <h3 className="text-[14px] font-medium mb-4">{editing ? "Edit Coupon" : "New Coupon"}</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div>
+              <label className="text-[11px] text-[#999] uppercase tracking-wider block mb-1">Code *</label>
+              <input suppressHydrationWarning type="text" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
+                className="w-full px-3 py-2 border border-[#E8E8E8] text-[13px] outline-none focus:border-[#111] rounded-[4px]" placeholder="e.g. SAVE20" />
+            </div>
+            <div>
+              <label className="text-[11px] text-[#999] uppercase tracking-wider block mb-1">Type *</label>
+              <select suppressHydrationWarning value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}
+                className="w-full px-3 py-2 border border-[#E8E8E8] text-[13px] outline-none focus:border-[#111] rounded-[4px]">
+                <option value="percentage">Percentage (%)</option>
+                <option value="flat">Flat (₹)</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-[11px] text-[#999] uppercase tracking-wider block mb-1">Discount *</label>
+              <input suppressHydrationWarning type="number" value={form.discount} onChange={(e) => setForm({ ...form, discount: e.target.value })}
+                className="w-full px-3 py-2 border border-[#E8E8E8] text-[13px] outline-none focus:border-[#111] rounded-[4px]" placeholder={form.type === "percentage" ? "e.g. 20" : "e.g. 500"} />
+            </div>
+            <div>
+              <label className="text-[11px] text-[#999] uppercase tracking-wider block mb-1">Min Order (₹)</label>
+              <input suppressHydrationWarning type="number" value={form.minOrder} onChange={(e) => setForm({ ...form, minOrder: e.target.value })}
+                className="w-full px-3 py-2 border border-[#E8E8E8] text-[13px] outline-none focus:border-[#111] rounded-[4px]" placeholder="e.g. 1500" />
+            </div>
+            <div>
+              <label className="text-[11px] text-[#999] uppercase tracking-wider block mb-1">Max Uses</label>
+              <input suppressHydrationWarning type="number" value={form.maxUses} onChange={(e) => setForm({ ...form, maxUses: e.target.value })}
+                className="w-full px-3 py-2 border border-[#E8E8E8] text-[13px] outline-none focus:border-[#111] rounded-[4px]" placeholder="Unlimited" />
+            </div>
+            <div>
+              <label className="text-[11px] text-[#999] uppercase tracking-wider block mb-1">Expires At</label>
+              <input suppressHydrationWarning type="date" value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })}
+                className="w-full px-3 py-2 border border-[#E8E8E8] text-[13px] outline-none focus:border-[#111] rounded-[4px]" />
+            </div>
+            <div>
+              <label className="text-[11px] text-[#999] uppercase tracking-wider block mb-1">Active</label>
+              <select suppressHydrationWarning value={form.isActive ? "true" : "false"} onChange={(e) => setForm({ ...form, isActive: e.target.value === "true" })}
+                className="w-full px-3 py-2 border border-[#E8E8E8] text-[13px] outline-none focus:border-[#111] rounded-[4px]">
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex gap-3 mt-4">
+            <button suppressHydrationWarning onClick={handleSave} disabled={saving}
+              className="px-5 py-2 bg-[#111] text-[#F8F8F6] text-[11px] tracking-widest uppercase hover:bg-[#333] transition-colors disabled:opacity-50">
+              {saving ? "Saving..." : editing ? "Update" : "Create"}
+            </button>
+            <button suppressHydrationWarning onClick={resetForm}
+              className="px-5 py-2 border border-[#E8E8E8] text-[11px] tracking-widest uppercase hover:bg-[#F0EFED] transition-colors">
+              Cancel
+            </button>
+          </div>
+        </motion.div>
+      )}
+
+      <div className="bg-white border border-[#E8E8E8] overflow-x-auto">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="border-b border-[#E8E8E8]">
+              <th className="py-3 px-5 text-[11px] font-medium tracking-widest uppercase text-[#999]">Code</th>
+              <th className="py-3 px-5 text-[11px] font-medium tracking-widest uppercase text-[#999]">Discount</th>
+              <th className="py-3 px-5 text-[11px] font-medium tracking-widest uppercase text-[#999]">Min Order</th>
+              <th className="py-3 px-5 text-[11px] font-medium tracking-widest uppercase text-[#999]">Usage</th>
+              <th className="py-3 px-5 text-[11px] font-medium tracking-widest uppercase text-[#999]">Expires</th>
+              <th className="py-3 px-5 text-[11px] font-medium tracking-widest uppercase text-[#999]">Status</th>
+              <th className="py-3 px-5 text-[11px] font-medium tracking-widest uppercase text-[#999]">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={7} className="py-12 text-center text-[13px] text-[#999]">Loading...</td></tr>
+            ) : coupons.length === 0 ? (
+              <tr><td colSpan={7} className="py-12 text-center text-[13px] text-[#999]">No coupons yet</td></tr>
+            ) : (
+              coupons.map((c) => (
+                <motion.tr key={c.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="border-b border-[#F0EFED] hover:bg-[#FAFAF8]">
+                  <td className="py-3 px-5">
+                    <span className="text-[13px] font-medium tracking-wider">{c.code}</span>
+                  </td>
+                  <td className="py-3 px-5">
+                    <span className="text-[13px]">{c.type === "percentage" ? `${c.discount}%` : `₹${c.discount.toLocaleString()}`}</span>
+                  </td>
+                  <td className="py-3 px-5 text-[13px] text-[#666]">{c.minOrder ? `₹${c.minOrder.toLocaleString()}` : "—"}</td>
+                  <td className="py-3 px-5">
+                    <span className="text-[13px]">{c.usedCount}{c.maxUses ? ` / ${c.maxUses}` : ""}</span>
+                  </td>
+                  <td className="py-3 px-5 text-[13px] text-[#666]">
+                    {c.expiresAt ? new Date(c.expiresAt).toLocaleDateString() : "Never"}
+                  </td>
+                  <td className="py-3 px-5">
+                    <div className="flex items-center gap-2">
+                      <span suppressHydrationWarning className={`px-2 py-0.5 text-[11px] rounded-[4px] ${
+                        isExpired(c) ? "bg-[#FEE2E2] text-[#C53030]" :
+                        isMaxedOut(c) ? "bg-[#F0EFED] text-[#666]" :
+                        c.isActive ? "bg-[#4D5B47]/10 text-[#4D5B47]" :
+                        "bg-[#F0EFED] text-[#999]"
+                      }`}>
+                        {isExpired(c) ? "Expired" : isMaxedOut(c) ? "Limit Reached" : c.isActive ? "Active" : "Inactive"}
+                      </span>
+                      <button suppressHydrationWarning onClick={() => handleToggleActive(c)}
+                        className={`w-8 h-4 rounded-full transition-colors relative ${c.isActive ? "bg-[#4D5B47]" : "bg-[#E8E8E8]"}`}>
+                        <div className={`w-3.5 h-3.5 bg-white rounded-full absolute top-0.5 transition-transform ${c.isActive ? "translate-x-4" : "translate-x-0.5"}`} />
+                      </button>
+                    </div>
+                  </td>
+                  <td className="py-3 px-5">
+                    <div className="flex gap-2">
+                      <button suppressHydrationWarning onClick={() => startEdit(c)} className="text-[11px] text-[#666] hover:text-[#111] underline">Edit</button>
+                      <button suppressHydrationWarning onClick={() => handleDelete(c.id, c.code)} className="text-[11px] text-[#C53030] hover:text-[#9B1C1C] underline">Delete</button>
+                    </div>
+                  </td>
+                </motion.tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Site Content Section ──────────────────────────────────────────────────────
+function SiteContentSection() {
+  const { showNotification } = useStore();
+  const [content, setContent] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState("hero");
+
+  const tabs = [
+    { id: "hero", label: "Hero" },
+    { id: "marquee", label: "Marquee" },
+    { id: "editorial", label: "Editorial" },
+    { id: "features", label: "Features" },
+    { id: "stats", label: "Stats" },
+    { id: "trust", label: "Trust" },
+    { id: "shopFilters", label: "Shop Filters" },
+    { id: "paymentMethods", label: "Payment Methods" },
+  ];
+
+  useEffect(() => {
+    fetch("/api/site-content")
+      .then((r) => r.json())
+      .then((data) => setContent(data.content || {}))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/site-content", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+      if (res.ok) {
+        showNotification("Site content updated successfully", "success");
+      } else {
+        showNotification("Failed to update site content", "error");
+      }
+    } catch {
+      showNotification("Failed to update site content", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateField = (key: string, value: string) => {
+    setContent((prev) => ({ ...prev, [key]: value }));
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-6 h-6 animate-spin text-[#999]" />
+      </div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white border border-[#E8E8E8] p-6"
+    >
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-[18px] font-medium">Site Content Management</h2>
+        <button suppressHydrationWarning
+          onClick={handleSave}
+          disabled={saving}
+          className="px-4 py-2 bg-[#4D5B47] text-white text-[12px] font-medium tracking-wider uppercase hover:bg-[#3D4B37] transition-colors disabled:opacity-50"
+        >
+          {saving ? "Saving..." : "Save Changes"}
+        </button>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex flex-wrap gap-2 mb-6 border-b border-[#E8E8E8] pb-4">
+        {tabs.map((tab) => (
+          <button suppressHydrationWarning
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-3 py-1.5 text-[12px] tracking-wide transition-colors ${
+              activeTab === tab.id
+                ? "bg-[#111] text-[#F8F8F6]"
+                : "bg-[#F0EFED] text-[#666] hover:bg-[#E8E8E8]"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Content Fields */}
+      <div className="space-y-4">
+        {activeTab === "hero" && (
+          <>
+            <Field label="Badge" value={content.heroBadge || ""} onChange={(v) => updateField("heroBadge", v)} />
+            <Field label="Title" value={content.heroTitle || ""} onChange={(v) => updateField("heroTitle", v)} />
+            <Field label="Subtitle" value={content.heroSubtitle || ""} onChange={(v) => updateField("heroSubtitle", v)} />
+            <Field label="Primary CTA" value={content.heroCtaPrimary || ""} onChange={(v) => updateField("heroCtaPrimary", v)} />
+            <Field label="Secondary CTA" value={content.heroCtaSecondary || ""} onChange={(v) => updateField("heroCtaSecondary", v)} />
+            <Field label="Image URL" value={content.heroImage || ""} onChange={(v) => updateField("heroImage", v)} />
+          </>
+        )}
+        {activeTab === "marquee" && (
+          <Field label="Marquee Items (JSON array)" value={content.marqueeItems || ""} onChange={(v) => updateField("marqueeItems", v)} multiline />
+        )}
+        {activeTab === "editorial" && (
+          <>
+            <Field label="Badge" value={content.editorialBadge || ""} onChange={(v) => updateField("editorialBadge", v)} />
+            <Field label="Title" value={content.editorialTitle || ""} onChange={(v) => updateField("editorialTitle", v)} />
+            <Field label="Title Color" value={content.editorialTitleColor || ""} onChange={(v) => updateField("editorialTitleColor", v)} />
+            <Field label="Text" value={content.editorialText || ""} onChange={(v) => updateField("editorialText", v)} multiline />
+            <Field label="Image URL" value={content.editorialImage || ""} onChange={(v) => updateField("editorialImage", v)} />
+            <Field label="CTA Text" value={content.editorialCta || ""} onChange={(v) => updateField("editorialCta", v)} />
+            <Field label="Label" value={content.editorialLabel || ""} onChange={(v) => updateField("editorialLabel", v)} />
+          </>
+        )}
+        {activeTab === "features" && (
+          <Field label="Features (JSON array)" value={content.features || ""} onChange={(v) => updateField("features", v)} multiline />
+        )}
+        {activeTab === "stats" && (
+          <Field label="Stats (JSON array)" value={content.stats || ""} onChange={(v) => updateField("stats", v)} multiline />
+        )}
+        {activeTab === "trust" && (
+          <Field label="Trust Items (JSON array)" value={content.trustItems || ""} onChange={(v) => updateField("trustItems", v)} multiline />
+        )}
+        {activeTab === "shopFilters" && (
+          <Field label="Shop Filters (JSON object)" value={content.shopFilters || ""} onChange={(v) => updateField("shopFilters", v)} multiline />
+        )}
+        {activeTab === "paymentMethods" && (
+          <Field label="Payment Methods (JSON array)" value={content.paymentMethods || ""} onChange={(v) => updateField("paymentMethods", v)} multiline />
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+function Field({ label, value, onChange, multiline = false }: {
+  label: string; value: string; onChange: (v: string) => void; multiline?: boolean;
+}) {
+  return (
+    <div>
+      <label className="block text-[11px] font-medium tracking-wider uppercase text-[#999] mb-1.5">{label}</label>
+      {multiline ? (
+        <textarea
+          suppressHydrationWarning
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          rows={4}
+          className="w-full px-3 py-2 border border-[#E8E8E8] text-[13px] outline-none focus:border-[#4D5B47] transition-colors resize-y font-mono"
+        />
+      ) : (
+        <input suppressHydrationWarning
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full px-3 py-2 border border-[#E8E8E8] text-[13px] outline-none focus:border-[#4D5B47] transition-colors"
+        />
+      )}
+    </div>
+  );
+}
 
 export default function AdminPage() {
   const { navigate, showNotification, setAuthOpen } = useStore();
@@ -183,11 +599,11 @@ export default function AdminPage() {
     }
   }, [activeSection, productSearch, productCategory, productPage, isAuthenticated, isAdmin, fetchProducts]);
 
-  // Fetch all orders for orders tab
+  // Fetch all orders for orders tab (admin sees ALL orders)
   const fetchOrders = useCallback(async () => {
     setOrdersLoading(true);
     try {
-      const res = await fetch("/api/orders?limit=100");
+      const res = await fetch("/api/admin/orders?limit=100");
       const data = await res.json();
       if (res.ok) {
         setAllOrders(data.orders || []);
@@ -240,7 +656,7 @@ export default function AdminPage() {
   // Auth guard
   if (authLoading) {
     return (
-      <main className="min-h-screen bg-[#F8F8F6] pt-20 flex items-center justify-center">
+      <main className="min-h-screen bg-[#F8F8F6] pt-4 flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-[#999] animate-spin" />
       </main>
     );
@@ -248,7 +664,7 @@ export default function AdminPage() {
 
   if (!isAuthenticated || !isAdmin) {
     return (
-      <main className="min-h-screen bg-[#F8F8F6] pt-20 flex items-center justify-center">
+      <main className="min-h-screen bg-[#F8F8F6] pt-4 flex items-center justify-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -264,14 +680,14 @@ export default function AdminPage() {
               : "You do not have admin privileges to access this page."}
           </p>
           {!isAuthenticated ? (
-            <button
+            <button suppressHydrationWarning
               onClick={() => setAuthOpen(true)}
               className="px-8 py-3.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#333] transition-colors"
             >
               Sign In
             </button>
           ) : (
-            <button
+            <button suppressHydrationWarning
               onClick={() => navigate("home")}
               className="px-8 py-3.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#333] transition-colors"
             >
@@ -284,10 +700,10 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F8F8F6] pt-20">
+    <main className="min-h-screen bg-[#F8F8F6] pt-4">
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back Button */}
-        <button
+        <button suppressHydrationWarning
           onClick={() => navigate("home")}
           className="flex items-center gap-1.5 text-[12px] tracking-widest uppercase text-[#999] hover:text-[#111] transition-colors mb-6"
         >
@@ -299,7 +715,7 @@ export default function AdminPage() {
             <h1 className="text-[28px] sm:text-[36px] font-medium tracking-[-0.02em]">Admin Dashboard</h1>
             <p className="text-[14px] text-[#999] mt-1">Overview of your store performance</p>
           </div>
-          <button
+          <button suppressHydrationWarning
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="lg:hidden w-10 h-10 border border-[#E8E8E8] flex items-center justify-center"
           >
@@ -307,7 +723,7 @@ export default function AdminPage() {
           </button>
         </div>
 
-        <div className="flex gap-8">
+        <div className="flex gap-0 lg:gap-8">
           {/* Sidebar */}
           <div className={`
             fixed lg:static inset-y-0 left-0 z-50 lg:z-auto
@@ -320,7 +736,7 @@ export default function AdminPage() {
           `}>
             <nav className="space-y-1">
               {sidebarItems.map((item) => (
-                <button
+                <button suppressHydrationWarning
                   key={item.id}
                   onClick={() => { setActiveSection(item.id); setSidebarOpen(false); }}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 text-[13px] transition-colors ${
@@ -336,7 +752,7 @@ export default function AdminPage() {
             </nav>
             {sidebarOpen && (
               <div
-                className="fixed inset-0 bg-black/20 z-[-1] lg:hidden"
+                className="fixed inset-0 bg-black/20 z-[49] lg:hidden"
                 onClick={() => setSidebarOpen(false)}
               />
             )}
@@ -427,7 +843,7 @@ export default function AdminPage() {
                     >
                       <div className="p-5 border-b border-[#E8E8E8] flex items-center justify-between">
                         <h3 className="text-[14px] font-medium">Recent Orders</h3>
-                        <button
+                        <button suppressHydrationWarning
                           onClick={() => setActiveSection("orders")}
                           className="text-[11px] text-[#4D5B47] hover:text-[#111] transition-colors tracking-wide uppercase flex items-center gap-1"
                         >
@@ -564,7 +980,7 @@ export default function AdminPage() {
                   <div className="text-center py-12">
                     <AlertCircle className="w-10 h-10 text-[#D1D1D1] mx-auto mb-3" strokeWidth={1} />
                     <p className="text-[14px] text-[#666]">Failed to load dashboard data</p>
-                    <button
+                    <button suppressHydrationWarning
                       onClick={fetchStats}
                       className="mt-3 text-[12px] text-[#4D5B47] uppercase tracking-wider hover:underline"
                     >
@@ -593,7 +1009,7 @@ export default function AdminPage() {
                     >
                       <div className="relative flex-1 sm:max-w-xs">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#999]" strokeWidth={1.5} />
-                        <input
+                        <input suppressHydrationWarning
                           type="text"
                           placeholder="Search products..."
                           value={productSearch}
@@ -603,7 +1019,7 @@ export default function AdminPage() {
                       </div>
                       <div className="relative">
                         <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#999]" strokeWidth={1.5} />
-                        <select
+                        <select suppressHydrationWarning
                           value={productCategory}
                           onChange={(e) => { setProductCategory(e.target.value); setProductPage(1); }}
                           className="appearance-none border border-[#E8E8E8] bg-white pl-10 pr-8 py-2.5 text-[13px] outline-none focus:border-[#111] transition-colors text-[#666] cursor-pointer"
@@ -715,7 +1131,7 @@ export default function AdminPage() {
                       {/* Product Pagination */}
                       {productTotalPages > 1 && (
                         <div className="flex items-center justify-center gap-2 p-4 border-t border-[#E8E8E8]">
-                          <button
+                          <button suppressHydrationWarning
                             disabled={productPage <= 1}
                             onClick={() => setProductPage(productPage - 1)}
                             className="px-3 py-1.5 text-[11px] uppercase tracking-wider text-[#666] border border-[#E8E8E8] hover:border-[#999] disabled:opacity-30 rounded-[4px]"
@@ -723,7 +1139,7 @@ export default function AdminPage() {
                             Prev
                           </button>
                           <span className="text-[11px] text-[#999]">Page {productPage} of {productTotalPages}</span>
-                          <button
+                          <button suppressHydrationWarning
                             disabled={productPage >= productTotalPages}
                             onClick={() => setProductPage(productPage + 1)}
                             className="px-3 py-1.5 text-[11px] uppercase tracking-wider text-[#666] border border-[#E8E8E8] hover:border-[#999] disabled:opacity-30 rounded-[4px]"
@@ -757,7 +1173,7 @@ export default function AdminPage() {
                       {["all", ...ORDER_STATUSES].map((s) => {
                         const count = s === "all" ? allOrders.length : allOrders.filter((o) => o.status === s).length;
                         return (
-                          <button
+                          <button suppressHydrationWarning
                             key={s}
                             onClick={() => setOrderStatusFilter(s)}
                             className={`px-3 py-1.5 text-[11px] tracking-wide uppercase transition-colors border ${
@@ -825,7 +1241,7 @@ export default function AdminPage() {
                                 </td>
                                 <td className="py-3 px-5 text-center">
                                   {order.status !== "delivered" && order.status !== "cancelled" ? (
-                                    <select
+                                    <select suppressHydrationWarning
                                       value={order.status}
                                       onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
                                       disabled={updatingOrderId === order.id}
@@ -856,6 +1272,16 @@ export default function AdminPage() {
                   </>
                 )}
               </>
+            )}
+
+            {/* Site Content Section */}
+            {activeSection === "site-content" && (
+              <SiteContentSection />
+            )}
+
+            {/* Coupons Section */}
+            {activeSection === "coupons" && (
+              <CouponSection />
             )}
           </div>
         </div>

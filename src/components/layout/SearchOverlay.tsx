@@ -5,24 +5,43 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Search, X, TrendingUp, ArrowRight, Star } from "lucide-react";
 import { useStore } from "@/lib/store";
 
-const trendingSearches = ["Cashmere", "Blazer", "Chelsea Boots", "Selvedge Denim", "Linen", "Wool Overcoat"];
-const popularCategories = [
-  { name: "T-Shirts", count: 2 },
-  { name: "Blazers", count: 1 },
-  { name: "Footwear", count: 2 },
-  { name: "Sweaters", count: 2 },
-  { name: "Outerwear", count: 1 },
-  { name: "Accessories", count: 2 },
-];
+const defaultTrending = ["Cashmere", "Blazer", "Chelsea Boots", "Selvedge Denim", "Linen", "Wool Overcoat"];
 
 export function SearchOverlay() {
   const { isSearchOpen, setSearchOpen, setSearchQuery, navigate } = useStore();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Array<{ id: string; name: string; price: number; rating: number; category: string; brand: string; image: string; discount: number }>>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [trendingSearches, setTrendingSearches] = useState(defaultTrending);
+  const [popularCategories, setPopularCategories] = useState<Array<{ name: string; count: number }>>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const prevOpenRef = useRef(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Fetch dynamic trending + categories
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/site-content").then((r) => r.json()).catch(() => null),
+      fetch("/api/categories?withCounts=true").then((r) => r.json()).catch(() => null),
+    ]).then(([siteData, catData]) => {
+      if (siteData?.content?.trending_searches) {
+        const raw = siteData.content.trending_searches;
+        const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+        if (Array.isArray(parsed) && parsed.length > 0) setTrendingSearches(parsed);
+      }
+      if (catData?.categories) {
+        setPopularCategories(
+          catData.categories
+            .filter((c: { productCount: number }) => c.productCount > 0)
+            .map((c: { name: string; productCount: number }) => ({
+              name: c.name,
+              count: c.productCount,
+            }))
+            .slice(0, 6)
+        );
+      }
+    });
+  }, []);
 
   useEffect(() => {
     if (isSearchOpen && !prevOpenRef.current) {
@@ -92,7 +111,7 @@ export function SearchOverlay() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 z-[80]"
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[80]"
             onClick={() => setSearchOpen(false)}
           />
           <motion.div
@@ -105,7 +124,7 @@ export function SearchOverlay() {
             <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex items-center gap-4 py-5 border-b border-[#E8E8E8]">
                 <Search className="w-5 h-5 text-[#999] flex-shrink-0" strokeWidth={1.5} />
-                <input
+                <input suppressHydrationWarning
                   ref={inputRef}
                   type="text"
                   value={query}
@@ -116,14 +135,14 @@ export function SearchOverlay() {
                   autoFocus={false}
                 />
                 {query && (
-                  <button
+                  <button suppressHydrationWarning
                     onClick={() => setQuery("")}
                     className="w-7 h-7 flex items-center justify-center rounded-full bg-[#E8E8E8] hover:bg-[#D1D1D1] transition-colors"
                   >
                     <X className="w-3 h-3 text-[#666]" />
                   </button>
                 )}
-                <button
+                <button suppressHydrationWarning
                   onClick={() => setSearchOpen(false)}
                   className="w-9 h-9 flex items-center justify-center hover:opacity-60 transition-opacity"
                 >
@@ -143,7 +162,7 @@ export function SearchOverlay() {
                     {results.length > 0 ? (
                       <div className="space-y-0">
                         {results.map((item, i) => (
-                          <motion.button
+                          <motion.button suppressHydrationWarning
                             key={item.id}
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -173,7 +192,7 @@ export function SearchOverlay() {
                             <ArrowRight className="w-4 h-4 text-[#D1D1D1] group-hover:text-[#111] group-hover:translate-x-0.5 transition-all flex-shrink-0" strokeWidth={1.5} />
                           </motion.button>
                         ))}
-                        <button
+                        <button suppressHydrationWarning
                           onClick={() => handleSearch(query)}
                           className="w-full py-3 text-center text-[12px] tracking-widest uppercase text-[#4D5B47] hover:text-[#111] transition-colors border-t border-[#E8E8E8] mt-1"
                         >
@@ -200,7 +219,7 @@ export function SearchOverlay() {
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {trendingSearches.map((term) => (
-                          <button
+                          <button suppressHydrationWarning
                             key={term}
                             onClick={() => handleSearch(term)}
                             className="px-4 py-2 text-[13px] text-[#666] bg-[#F0EFED] hover:bg-[#E8E8E8] hover:text-[#111] transition-colors"
@@ -218,7 +237,7 @@ export function SearchOverlay() {
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {popularCategories.map((cat) => (
-                          <button
+                          <button suppressHydrationWarning
                             key={cat.name}
                             onClick={() => handleSearch(cat.name)}
                             className="flex items-center gap-2 px-4 py-2 text-[13px] text-[#666] bg-[#F0EFED] hover:bg-[#E8E8E8] hover:text-[#111] transition-colors"

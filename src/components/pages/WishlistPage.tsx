@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useStore } from "@/lib/store";
+import { BRAND_NAME } from "@/lib/constants";
 import { ProductCard } from "@/components/shared/ProductCard";
 import {
   Heart,
@@ -13,6 +14,7 @@ import {
   Copy,
   MessageCircle,
   Mail,
+  ShoppingBag,
 } from "lucide-react";
 
 interface Product {
@@ -22,6 +24,7 @@ interface Product {
   mrp: number;
   image: string;
   images?: string;
+  sizes?: string;
   category: string;
   brand: string;
   rating: number;
@@ -40,7 +43,7 @@ const sortOptions = [
 ];
 
 export default function WishlistPage() {
-  const { wishlistItems, navigate, toggleWishlist } = useStore();
+  const { wishlistItems, navigate, toggleWishlist, addToCart, syncWishlistFromDB } = useStore();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [shareOpen, setShareOpen] = useState(false);
@@ -48,24 +51,24 @@ export default function WishlistPage() {
   const [sortOpen, setSortOpen] = useState(false);
   const [sortBy, setSortBy] = useState("recent");
 
+  // Sync wishlist from DB on mount
+  useEffect(() => {
+    syncWishlistFromDB();
+  }, [syncWishlistFromDB]);
+
+  // Fetch wishlist products from DB API
   useEffect(() => {
     if (wishlistItems.length === 0) {
-      queueMicrotask(() => setLoading(false));
+      setProducts([]);
+      setLoading(false);
       return;
     }
-    queueMicrotask(() => setLoading(true));
-    fetch("/api/products?limit=50")
+    setLoading(true);
+    fetch("/api/wishlist")
       .then((r) => r.json())
       .then((data) => {
-        const filtered = (data.products || []).filter((p: Product) =>
-          wishlistItems.includes(p.id)
-        );
-        // Preserve the order from wishlistItems (most recently added first)
-        const ordered = filtered.sort(
-          (a: Product, b: Product) =>
-            wishlistItems.indexOf(b.id) - wishlistItems.indexOf(a.id)
-        );
-        setProducts(ordered);
+        const items = (data.wishlistItems || []).map((item: { product: Product }) => item.product);
+        setProducts(items);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -103,13 +106,12 @@ export default function WishlistPage() {
   }, [products]);
 
   const handleCopyLink = async () => {
-    const fakeUrl = "maison.in/wishlist/abc123";
+    const realUrl = typeof window !== "undefined" ? window.location.href : "";
     try {
-      await navigator.clipboard.writeText(fakeUrl);
+      await navigator.clipboard.writeText(realUrl);
     } catch {
-      // Fallback
       const ta = document.createElement("textarea");
-      ta.value = fakeUrl;
+      ta.value = realUrl;
       document.body.appendChild(ta);
       ta.select();
       document.execCommand("copy");
@@ -119,20 +121,25 @@ export default function WishlistPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const shareUrl = encodeURIComponent("maison.in/wishlist/abc123");
+  const shareUrl = encodeURIComponent(typeof window !== "undefined" ? window.location.href : "");
   const shareText = encodeURIComponent(
-    "Check out my MAISON wishlist — curated pieces I love!"
+    `Check out my ${BRAND_NAME} wishlist — curated pieces I love!`
   );
 
   const currentSortLabel =
     sortOptions.find((o) => o.value === sortBy)?.label ?? "Sort";
 
   return (
-    <main className="min-h-screen bg-[#F8F8F6] pt-20 pb-16">
+    <motion.main
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+      className="min-h-screen bg-[#F8F8F6] pt-4 pb-16"
+    >
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 py-4 text-[12px] text-[#999]">
-          <button
+          <button suppressHydrationWarning
             onClick={() => navigate("home")}
             className="hover:text-[#111] transition-colors"
           >
@@ -155,17 +162,19 @@ export default function WishlistPage() {
           </div>
           {wishlistItems.length > 0 && (
             <div className="flex items-center gap-4">
-              <button
+              <button suppressHydrationWarning
                 onClick={() => setShareOpen(true)}
                 className="flex items-center gap-2 text-[12px] text-[#999] hover:text-[#111] transition-colors tracking-wide uppercase"
               >
                 <Share2 className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Share</span>
               </button>
-              <button
-                onClick={() =>
-                  wishlistItems.forEach((id) => toggleWishlist(id))
-                }
+              <button suppressHydrationWarning
+                onClick={() => {
+                  if (window.confirm("Remove all items from your wishlist?")) {
+                    wishlistItems.forEach((id) => toggleWishlist(id));
+                  }
+                }}
                 className="text-[12px] text-[#999] hover:text-[#C53030] transition-colors tracking-wide uppercase"
               >
                 Clear All
@@ -198,7 +207,7 @@ export default function WishlistPage() {
             <p className="text-[14px] text-[#999] mb-8">
               Save items you love for later
             </p>
-            <button
+            <button suppressHydrationWarning
               onClick={() => navigate("shop")}
               className="px-8 py-3.5 bg-[#4D5B47] text-[#F8F8F6] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#3d4a39] transition-colors"
             >
@@ -251,7 +260,7 @@ export default function WishlistPage() {
                 {sortedProducts.length !== 1 ? "s" : ""}
               </p>
               <div className="relative">
-                <button
+                <button suppressHydrationWarning
                   onClick={() => setSortOpen(!sortOpen)}
                   className="flex items-center gap-2 px-3 py-2 border border-[#E8E8E8] text-[12px] tracking-wide uppercase hover:border-[#999] transition-colors"
                 >
@@ -275,7 +284,7 @@ export default function WishlistPage() {
                         className="absolute right-0 top-full mt-1 z-[80] bg-white border border-[#E8E8E8] shadow-lg min-w-[200px] py-1"
                       >
                         {sortOptions.map((opt) => (
-                          <button
+                          <button suppressHydrationWarning
                             key={opt.value}
                             onClick={() => {
                               setSortBy(opt.value);
@@ -301,24 +310,45 @@ export default function WishlistPage() {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
               <AnimatePresence>
                 {sortedProducts.map((p, i) => (
-                  <ProductCard
-                    key={p.id}
-                    id={p.id}
-                    name={p.name}
-                    price={p.price}
-                    mrp={p.mrp}
-                    image={p.image}
-                    images={p.images ? JSON.parse(p.images) : undefined}
-                    category={p.category}
-                    brand={p.brand}
-                    rating={p.rating}
-                    reviewCount={p.reviewCount}
-                    discount={p.discount}
-                    isNew={p.isNew}
-                    isTrending={p.isTrending}
-                    isBestSeller={p.isBestSeller}
-                    index={i}
-                  />
+                  <div key={p.id}>
+                    <ProductCard
+                      id={p.id}
+                      name={p.name}
+                      price={p.price}
+                      mrp={p.mrp}
+                      image={p.image}
+                      images={p.images ? JSON.parse(p.images) : undefined}
+                      category={p.category}
+                      brand={p.brand}
+                      rating={p.rating}
+                      reviewCount={p.reviewCount}
+                      discount={p.discount}
+                      isNew={p.isNew}
+                      isTrending={p.isTrending}
+                      isBestSeller={p.isBestSeller}
+                      index={i}
+                    />
+                    <button suppressHydrationWarning
+                      onClick={() => {
+                        const sizes = p.sizes ? JSON.parse(p.sizes) : ["S", "M", "L", "XL"];
+                        addToCart({
+                          productId: p.id,
+                          name: p.name,
+                          price: p.price,
+                          mrp: p.mrp,
+                          image: p.image,
+                          size: sizes[0] || "M",
+                          color: "",
+                          quantity: 1,
+                        });
+                        toggleWishlist(p.id);
+                      }}
+                      className="w-full mt-2 py-2 flex items-center justify-center gap-2 text-[11px] tracking-widest uppercase text-[#666] border border-[#E8E8E8] hover:bg-[#111] hover:text-[#F8F8F6] hover:border-[#111] transition-colors"
+                    >
+                      <ShoppingBag className="w-3.5 h-3.5" strokeWidth={1.5} />
+                      Move to Cart
+                    </button>
+                  </div>
                 ))}
               </AnimatePresence>
             </div>
@@ -361,7 +391,7 @@ export default function WishlistPage() {
                   <h3 className="text-[16px] font-medium tracking-[-0.01em]">
                     Share Your Wishlist
                   </h3>
-                  <button
+                  <button suppressHydrationWarning
                     onClick={() => setShareOpen(false)}
                     className="w-8 h-8 flex items-center justify-center text-[#999] hover:text-[#111] transition-colors"
                   >
@@ -378,9 +408,9 @@ export default function WishlistPage() {
                     </p>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 px-3 py-2.5 bg-white border border-[#E8E8E8] rounded-[4px] text-[13px] text-[#666] truncate font-mono">
-                        maison.in/wishlist/abc123
+                        {typeof window !== "undefined" ? window.location.host + window.location.pathname : ""}
                       </div>
-                      <motion.button
+                      <motion.button suppressHydrationWarning
                         whileTap={{ scale: 0.95 }}
                         onClick={handleCopyLink}
                         className={`flex items-center gap-1.5 px-4 py-2.5 text-[12px] tracking-wide uppercase font-medium transition-all duration-200 rounded-[4px] ${
@@ -447,7 +477,7 @@ export default function WishlistPage() {
 
                       {/* Email */}
                       <a
-                        href={`mailto:?subject=${encodeURIComponent("My MAISON Wishlist")}&body=${shareText}%0A%0A${shareUrl}`}
+                        href={`mailto:?subject=${encodeURIComponent(`My ${BRAND_NAME} Wishlist`)}&body=${shareText}%0A%0A${shareUrl}`}
                         className="flex flex-col items-center gap-2 px-3 py-3.5 border border-[#E8E8E8] rounded-[4px] hover:border-[#999] transition-colors"
                       >
                         <Mail className="w-5 h-5 text-[#111]" />
@@ -463,6 +493,6 @@ export default function WishlistPage() {
           </>
         )}
       </AnimatePresence>
-    </main>
+    </motion.main>
   );
 }

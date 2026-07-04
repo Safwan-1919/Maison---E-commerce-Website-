@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useStore } from "@/lib/store";
 import { ScrollReveal } from "@/components/shared/ScrollReveal";
@@ -20,64 +20,116 @@ interface TrackingStep {
   current: boolean;
 }
 
-const demoTrackingSteps: TrackingStep[] = [
-  { label: "Order Placed", date: "Jan 15", time: "10:32 AM", description: "Your order has been placed successfully", completed: true, current: false },
-  { label: "Confirmed", date: "Jan 15", time: "10:45 AM", description: "Order confirmed and being prepared", completed: true, current: false },
-  { label: "Shipped", date: "Jan 16", time: "02:15 PM", description: "Package shipped via BlueDart - AWB: BD1234567890", completed: true, current: false },
-  { label: "Out for Delivery", date: "Jan 18", time: "08:00 AM", description: "Your package is out for delivery today", completed: false, current: true },
-  { label: "Delivered", date: "", time: "", description: "Expected delivery by Jan 18", completed: false, current: false },
-];
+interface OrderItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  size: string;
+  color: string;
+  image: string;
+}
 
-const demoOrder = {
-  orderNumber: "MSN-LX9K2P",
-  orderDate: "Jan 15, 2025",
-  items: [
-    { name: "Essential Cotton Crew Tee", size: "M", color: "White", price: 2490, mrp: 2990, quantity: 2, image: "/images/products/product-2.png", productId: "prod-2" },
-    { name: "Premium Raw Selvedge Denim", size: "32", color: "Dark Indigo", price: 6990, mrp: 8490, quantity: 1, image: "/images/products/product-3.png", productId: "prod-3" },
-  ],
-  address: { name: "Arjun Mehta", line1: "42, HSR Layout, Sector 2", city: "Bangalore", state: "Karnataka", pincode: "560102", phone: "+91 98765 43210" },
-  paymentMethod: "Credit Card",
-  total: 11970,
-};
+interface OrderData {
+  id: string;
+  orderNumber: string;
+  status: string;
+  total: number;
+  subtotal: number;
+  discount: number;
+  shipping: number;
+  paymentMethod: string;
+  paymentStatus: string;
+  shippingAddress: {
+    name?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    phone?: string;
+  } | null;
+  createdAt: string;
+  items: OrderItem[];
+}
 
 const stepIcons = [ShoppingBag, ClipboardCheck, Truck, Package, CheckCircle];
-const stepLabels = ["Order Placed", "Confirmed", "Shipped", "Out for Delivery", "Delivered"];
 
-function getEstimatedDelivery(steps: TrackingStep[]): string | null {
-  const shippedIndex = steps.findIndex((s) => s.label === "Shipped" && (s.completed || s.current));
-  const outForDeliveryIndex = steps.findIndex((s) => s.label === "Out for Delivery" && (s.completed || s.current));
-  const deliveredIndex = steps.findIndex((s) => s.label === "Delivered" && s.completed);
-
-  if (deliveredIndex >= 0) return null;
-  if (outForDeliveryIndex >= 0) return "Today, Jan 18";
-  if (shippedIndex >= 0) return "Jan 18 - Jan 20, 2025";
-  return null;
+function getEstimatedDelivery(status: string, createdAt: string): string | null {
+  if (status === "delivered") return null;
+  if (status === "cancelled") return null;
+  const date = new Date(createdAt);
+  date.setDate(date.getDate() + 3);
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 export default function OrderTrackingPage() {
-  const { navigate, addToCart } = useStore();
+  const { navigate, addToCart, selectedOrderNumber } = useStore();
   const [orderInput, setOrderInput] = useState("");
-  const [tracking, setTracking] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [order, setOrder] = useState<OrderData | null>(null);
+  const [trackingSteps, setTrackingSteps] = useState<TrackingStep[]>([]);
   const [reordered, setReordered] = useState(false);
 
-  const handleTrack = () => {
-    if (orderInput.trim()) {
-      setTracking(true);
+  // Auto-fill and track if navigated with an order number
+  useEffect(() => {
+    if (selectedOrderNumber) {
+      setOrderInput(selectedOrderNumber);
+      // Auto-trigger tracking
+      const trackOrder = async () => {
+        setLoading(true);
+        setError("");
+        setOrder(null);
+        try {
+          const res = await fetch(`/api/orders/track?orderNumber=${encodeURIComponent(selectedOrderNumber)}`);
+          if (!res.ok) {
+            const data = await res.json();
+            setError(data.error || "Order not found");
+            return;
+          }
+          const data = await res.json();
+          setOrder(data.order);
+          setTrackingSteps(data.trackingSteps);
+        } catch {
+          setError("Failed to track order. Please try again.");
+        } finally {
+          setLoading(false);
+        }
+      };
+      trackOrder();
+    }
+  }, [selectedOrderNumber]);
+
+  const handleTrack = async () => {
+    if (!orderInput.trim()) return;
+    setLoading(true);
+    setError("");
+    setOrder(null);
+    try {
+      const res = await fetch(`/api/orders/track?orderNumber=${encodeURIComponent(orderInput.trim())}`);
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || "Order not found");
+        return;
+      }
+      const data = await res.json();
+      setOrder(data.order);
+      setTrackingSteps(data.trackingSteps);
+    } catch {
+      setError("Failed to track order. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const showDemo = () => {
-    setOrderInput("MSN-LX9K2P");
-    setTracking(true);
-  };
-
   const handleReorder = () => {
-    demoOrder.items.forEach((item) => {
+    if (!order) return;
+    order.items.forEach((item) => {
       addToCart({
-        productId: item.productId,
+        productId: item.id,
         name: item.name,
         price: item.price,
-        mrp: item.mrp,
+        mrp: item.price,
         image: item.image,
         size: item.size,
         color: item.color,
@@ -88,26 +140,28 @@ export default function OrderTrackingPage() {
     setTimeout(() => setReordered(false), 2000);
   };
 
-  const estimatedDelivery = getEstimatedDelivery(demoTrackingSteps);
-  const completedCount = demoTrackingSteps.filter((s) => s.completed).length;
-  const progressPercent = (completedCount / (demoTrackingSteps.length - 1)) * 100;
-  const currentStepIndex = demoTrackingSteps.findIndex((s) => s.current);
-  const totalItemCount = demoOrder.items.reduce((sum, item) => sum + item.quantity, 0);
+  const estimatedDelivery = order ? getEstimatedDelivery(order.status, order.createdAt) : null;
+  const completedCount = trackingSteps.filter((s) => s.completed).length;
+  const totalItemCount = order ? order.items.reduce((sum, item) => sum + item.quantity, 0) : 0;
 
   return (
-    <main className="min-h-screen bg-[#F8F8F6] pt-20 pb-16">
+    <motion.main
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+      className="min-h-screen bg-[#F8F8F6] pt-4 pb-16"
+    >
       <div className="max-w-[960px] mx-auto px-4 sm:px-6 lg:px-8">
         {/* Back */}
-        <button
+        <button suppressHydrationWarning
           onClick={() => navigate("home")}
           className="flex items-center gap-1.5 text-[12px] tracking-widest uppercase text-[#999] hover:text-[#111] transition-colors mb-6"
         >
           <ArrowLeft className="w-3.5 h-3.5" /> Back
         </button>
 
-        {/* Empty State */}
         <AnimatePresence mode="wait">
-          {!tracking ? (
+          {!order ? (
             <motion.div
               key="empty"
               initial={{ opacity: 0, y: 10 }}
@@ -133,7 +187,7 @@ export default function OrderTrackingPage() {
                 </p>
               </motion.div>
 
-              {/* Search Input with olive focus border */}
+              {/* Search Input */}
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -143,25 +197,26 @@ export default function OrderTrackingPage() {
                 <div className="flex gap-3 mb-3">
                   <div className="relative flex-1">
                     <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#999]" strokeWidth={1.5} />
-                    <input
+                    <input suppressHydrationWarning
                       type="text"
                       value={orderInput}
                       onChange={(e) => setOrderInput(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleTrack()}
-                      placeholder="Enter order number (e.g., MSN-LX9K2P)"
+                      placeholder="Enter order number (e.g., MSN-XXXXXX)"
                       className="w-full pl-10 pr-4 py-3.5 border border-[#E8E8E8] border-l-[3px] border-l-transparent bg-white text-[14px] outline-none focus:border-[#E8E8E8] focus:border-l-[#4D5B47] transition-all placeholder:text-[#D1D1D1]"
                     />
                   </div>
-                  <button
+                  <button suppressHydrationWarning
                     onClick={handleTrack}
-                    className="px-6 py-3.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#333] transition-colors flex items-center gap-2"
+                    disabled={loading}
+                    className="px-6 py-3.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#333] transition-colors flex items-center gap-2 disabled:opacity-50"
                   >
-                    Track
+                    {loading ? "Tracking..." : "Track"}
                   </button>
                 </div>
-                <button onClick={showDemo} className="text-[12px] text-[#4D5B47] hover:text-[#111] transition-colors tracking-wide">
-                  Try demo tracking →
-                </button>
+                {error && (
+                  <p className="text-[13px] text-[#C53030] mt-2">{error}</p>
+                )}
               </motion.div>
             </motion.div>
           ) : (
@@ -177,11 +232,13 @@ export default function OrderTrackingPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-white border border-[#E8E8E8] mb-8">
                   <div>
                     <p className="text-[11px] font-medium tracking-wider uppercase text-[#999] mb-1">Order Number</p>
-                    <p className="text-[18px] font-medium">{demoOrder.orderNumber}</p>
+                    <p className="text-[18px] font-medium">{order.orderNumber}</p>
                   </div>
                   <div className="mt-3 sm:mt-0 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-[#4D5B47] rounded-full animate-pulse" />
-                    <span className="text-[13px] text-[#4D5B47] font-medium">Out for Delivery</span>
+                    <div className={`w-2 h-2 rounded-full ${order.status === "delivered" ? "bg-[#4D5B47]" : order.status === "cancelled" ? "bg-[#C53030]" : "bg-[#4D5B47] animate-pulse"}`} />
+                    <span className={`text-[13px] font-medium ${order.status === "delivered" ? "text-[#4D5B47]" : order.status === "cancelled" ? "text-[#C53030]" : "text-[#4D5B47]"}`}>
+                      {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                    </span>
                   </div>
                 </div>
               </ScrollReveal>
@@ -193,21 +250,18 @@ export default function OrderTrackingPage() {
 
                   {/* Progress Bar */}
                   <div className="relative px-4 sm:px-2">
-                    {/* Background connector line */}
-                    <div className="absolute top-[20px] left-[calc(10%+10px)] right-[calc(10%+10px)] sm:left-[calc(10%+14px)] sm:right-[calc(10%+14px)] h-[2px] bg-[#E8E8E8]" />
-                    {/* Filled progress line */}
+                    <div className="absolute top-[20px] left-[calc(10%+10px)] right-[calc(10%+10px)] sm:left-[calc(10%+14px)] sm:right-[calc(10%+14px)] h-[3px] bg-[#E8E8E8]" />
                     <motion.div
-                      className="absolute top-[20px] left-[calc(10%+10px)] sm:left-[calc(10%+14px)] h-[2px] bg-[#4D5B47]"
+                      className="absolute top-[20px] left-[calc(10%+10px)] sm:left-[calc(10%+14px)] h-[3px] bg-[#4D5B47]"
                       initial={{ width: 0 }}
-                      animate={{ width: `calc(${progressPercent}% * (100% - 20% - 20px) / 100)` }}
+                      animate={{ width: `${(completedCount / (trackingSteps.length - 1)) * 100}%` }}
                       transition={{ duration: 1, delay: 0.3, ease: "easeOut" }}
                       style={{ maxWidth: "calc(80% - 20px)" }}
                     />
 
-                    {/* Steps */}
                     <div className="relative flex justify-between">
-                      {demoTrackingSteps.map((step, i) => {
-                        const Icon = stepIcons[i];
+                      {trackingSteps.map((step, i) => {
+                        const Icon = stepIcons[i] || Package;
                         const isCompleted = step.completed;
                         const isCurrent = step.current;
 
@@ -220,9 +274,7 @@ export default function OrderTrackingPage() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.2 + i * 0.1, duration: 0.3 }}
                           >
-                            {/* Circle with icon */}
                             <div className="relative mb-3">
-                              {/* Pulse ring for current step */}
                               {isCurrent && (
                                 <motion.div
                                   className="absolute inset-[-6px] rounded-full border-2 border-[#4D5B47]/40"
@@ -245,24 +297,20 @@ export default function OrderTrackingPage() {
                               >
                                 {isCompleted ? (
                                   <Check className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-white" strokeWidth={2.5} />
-                                ) : isCurrent ? (
-                                  <Icon className="w-[18px] h-[18px] sm:w-5 sm:h-5 text-[#4D5B47]" strokeWidth={1.5} />
                                 ) : (
-                                  <Icon className="w-[18px] h-[18px] sm:w-5 sm:h-5 text-[#999]" strokeWidth={1.5} />
+                                  <Icon className={`w-[18px] h-[18px] sm:w-5 sm:h-5 ${isCurrent ? "text-[#4D5B47]" : "text-[#999]"}`} strokeWidth={1.5} />
                                 )}
                               </motion.div>
                             </div>
 
-                            {/* Label */}
-                            <p className={`text-[10px] sm:text-[11px] font-medium tracking-wide text-center leading-tight ${
+                            <p className={`text-[11px] sm:text-[12px] font-medium tracking-wide text-center leading-tight ${
                               isCompleted || isCurrent ? "text-[#111]" : "text-[#999]"
                             }`}>
-                              {stepLabels[i]}
+                              {step.label}
                             </p>
 
-                            {/* Date for completed/current steps */}
                             {step.date && (
-                              <p className="text-[9px] sm:text-[10px] text-[#999] mt-0.5 text-center">
+                              <p className="text-[10px] sm:text-[11px] text-[#999] mt-0.5 text-center">
                                 {step.date}
                               </p>
                             )}
@@ -302,11 +350,11 @@ export default function OrderTrackingPage() {
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     <div>
                       <p className="text-[11px] text-[#999] tracking-wide mb-0.5">Order Number</p>
-                      <p className="text-[14px] font-medium">{demoOrder.orderNumber}</p>
+                      <p className="text-[14px] font-medium">{order.orderNumber}</p>
                     </div>
                     <div>
                       <p className="text-[11px] text-[#999] tracking-wide mb-0.5">Order Date</p>
-                      <p className="text-[14px] font-medium">{demoOrder.orderDate}</p>
+                      <p className="text-[14px] font-medium">{new Date(order.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
                     </div>
                     <div>
                       <p className="text-[11px] text-[#999] tracking-wide mb-0.5">Items</p>
@@ -314,7 +362,7 @@ export default function OrderTrackingPage() {
                     </div>
                     <div>
                       <p className="text-[11px] text-[#999] tracking-wide mb-0.5">Total</p>
-                      <p className="text-[14px] font-medium">{"\u20B9"}{demoOrder.total.toLocaleString("en-IN")}</p>
+                      <p className="text-[14px] font-medium">{"\u20B9"}{order.total.toLocaleString("en-IN")}</p>
                     </div>
                   </div>
                 </div>
@@ -325,7 +373,7 @@ export default function OrderTrackingPage() {
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-[13px] font-medium tracking-wider uppercase text-[#999]">Items Ordered</h3>
-                    <motion.button
+                    <motion.button suppressHydrationWarning
                       onClick={handleReorder}
                       className="flex items-center gap-1.5 px-4 py-2 border border-[#E8E8E8] text-[12px] font-medium tracking-wide uppercase hover:border-[#4D5B47] hover:text-[#4D5B47] transition-colors"
                       whileTap={{ scale: 0.97 }}
@@ -335,9 +383,9 @@ export default function OrderTrackingPage() {
                     </motion.button>
                   </div>
                   <div className="space-y-3">
-                    {demoOrder.items.map((item, i) => (
+                    {order.items.map((item, i) => (
                       <motion.div
-                        key={i}
+                        key={item.id}
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3 + i * 0.1, duration: 0.3 }}
@@ -372,10 +420,16 @@ export default function OrderTrackingPage() {
                     <div className="flex items-start gap-3">
                       <MapPin className="w-4 h-4 text-[#999] flex-shrink-0 mt-0.5" strokeWidth={1.5} />
                       <div>
-                        <p className="text-[13px] text-[#111] font-medium">{demoOrder.address.name}</p>
-                        <p className="text-[13px] text-[#666]">{demoOrder.address.line1}</p>
-                        <p className="text-[13px] text-[#666]">{demoOrder.address.city}, {demoOrder.address.state} - {demoOrder.address.pincode}</p>
-                        <p className="text-[13px] text-[#666]">{demoOrder.address.phone}</p>
+                        {order.shippingAddress ? (
+                          <>
+                            <p className="text-[13px] text-[#111] font-medium">{order.shippingAddress.name}</p>
+                            <p className="text-[13px] text-[#666]">{order.shippingAddress.address}</p>
+                            <p className="text-[13px] text-[#666]">{order.shippingAddress.city}, {order.shippingAddress.state} - {order.shippingAddress.zipCode}</p>
+                            <p className="text-[13px] text-[#666]">{order.shippingAddress.phone}</p>
+                          </>
+                        ) : (
+                          <p className="text-[13px] text-[#999]">No shipping address</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -389,8 +443,8 @@ export default function OrderTrackingPage() {
                         <span className="text-[11px] font-medium text-[#666]">{"\u20B9"}</span>
                       </div>
                       <div>
-                        <p className="text-[13px] text-[#111]">{demoOrder.paymentMethod}</p>
-                        <p className="text-[11px] text-[#999]">Payment completed</p>
+                        <p className="text-[13px] text-[#111]">{order.paymentMethod}</p>
+                        <p className="text-[11px] text-[#999]">Payment {order.paymentStatus === "completed" ? "completed" : order.paymentStatus}</p>
                       </div>
                     </div>
                   </div>
@@ -405,11 +459,11 @@ export default function OrderTrackingPage() {
                     <div className="absolute left-[15px] top-2 bottom-2 w-px bg-[#E8E8E8]" />
                     <div
                       className="absolute left-[15px] top-2 w-px bg-[#111] transition-all duration-700"
-                      style={{ height: `${(completedCount / (demoTrackingSteps.length - 1)) * 100}%` }}
+                      style={{ height: `${(completedCount / (trackingSteps.length - 1)) * 100}%` }}
                     />
 
                     <div className="space-y-0">
-                      {demoTrackingSteps.map((step, i) => (
+                      {trackingSteps.map((step, i) => (
                         <motion.div
                           key={step.label}
                           initial={{ opacity: 0, x: -10 }}
@@ -419,7 +473,7 @@ export default function OrderTrackingPage() {
                         >
                           <div className="relative z-10 flex-shrink-0">
                             <div
-                              className={`w-[32px] h-[32px] flex items-center justify-center border-2 transition-colors ${
+                              className={`w-[32px] h-[32px] rounded-full flex items-center justify-center border-2 transition-colors ${
                                 step.current
                                   ? "border-[#4D5B47] bg-[#4D5B47]/10"
                                   : step.completed
@@ -463,6 +517,6 @@ export default function OrderTrackingPage() {
           )}
         </AnimatePresence>
       </div>
-    </main>
+    </motion.main>
   );
 }

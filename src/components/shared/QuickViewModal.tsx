@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Star, Minus, Plus, ShoppingBag, Eye } from "lucide-react";
+import { FREE_SHIPPING_THRESHOLD } from "@/lib/constants";
 import { useStore } from "@/lib/store";
 
 interface ProductData {
@@ -233,7 +234,7 @@ export function QuickViewModal() {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close button */}
-            <button
+            <button suppressHydrationWarning
               onClick={handleClose}
               className="absolute top-4 right-4 z-10 w-9 h-9 bg-[#F8F8F6] flex items-center justify-center hover:bg-white transition-colors shadow-sm"
               aria-label="Close quick view"
@@ -256,7 +257,7 @@ export function QuickViewModal() {
               <div className="flex items-center justify-center min-h-[400px]">
                 <div className="text-center">
                   <p className="text-[14px] text-[#999] mb-4">Failed to load product details.</p>
-                  <button
+                  <button suppressHydrationWarning
                     onClick={handleClose}
                     className="px-6 py-2.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-widest uppercase hover:bg-[#333] transition-colors"
                   >
@@ -299,7 +300,7 @@ export function QuickViewModal() {
                   {parsedImages.length > 1 && (
                     <div className="flex gap-2 p-4 overflow-x-auto">
                       {parsedImages.map((img, idx) => (
-                        <button
+                        <button suppressHydrationWarning
                           key={idx}
                           onClick={() => {
                             setImageIndex(idx);
@@ -369,7 +370,7 @@ export function QuickViewModal() {
                       </div>
                       <div className="flex items-center gap-2">
                         {parsedColors.map((color) => (
-                          <button
+                          <button suppressHydrationWarning
                             key={color}
                             onClick={() => setSelectedColor(color)}
                             className={`w-8 h-8 rounded-[4px] border-2 transition-all ${
@@ -393,7 +394,7 @@ export function QuickViewModal() {
                         <span className="text-[12px] font-medium tracking-wider uppercase text-[#666]">
                           Size
                         </span>
-                        <button
+                        <button suppressHydrationWarning
                           onClick={handleViewFullDetails}
                           className="text-[11px] text-[#4D5B47] underline underline-offset-2 hover:text-[#111] transition-colors"
                         >
@@ -402,7 +403,7 @@ export function QuickViewModal() {
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {parsedSizes.map((size) => (
-                          <button
+                          <button suppressHydrationWarning
                             key={size}
                             onClick={() => setSelectedSize(size)}
                             className={`min-w-[44px] h-[44px] px-3 text-[13px] font-medium border-2 transition-all flex items-center justify-center ${
@@ -425,7 +426,7 @@ export function QuickViewModal() {
                       Quantity
                     </span>
                     <div className="inline-flex items-center border border-[#E8E8E8]">
-                      <button
+                      <button suppressHydrationWarning
                         onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                         className="w-11 h-11 flex items-center justify-center hover:bg-[#F0EFED] transition-colors"
                         aria-label="Decrease quantity"
@@ -436,7 +437,7 @@ export function QuickViewModal() {
                       <span className="w-11 h-11 flex items-center justify-center text-[14px] font-medium text-[#111] border-x border-[#E8E8E8]">
                         {quantity}
                       </span>
-                      <button
+                      <button suppressHydrationWarning
                         onClick={() => setQuantity((q) => Math.min(10, q + 1))}
                         className="w-11 h-11 flex items-center justify-center hover:bg-[#F0EFED] transition-colors"
                         aria-label="Increase quantity"
@@ -452,7 +453,7 @@ export function QuickViewModal() {
 
                   {/* Action buttons */}
                   <div className="flex flex-col gap-3">
-                    <motion.button
+                    <motion.button suppressHydrationWarning
                       whileTap={{ scale: 0.98 }}
                       onClick={handleAddToBag}
                       disabled={product.stock === 0}
@@ -462,7 +463,7 @@ export function QuickViewModal() {
                       {product.stock === 0 ? "Out of Stock" : "Add to Bag"}
                     </motion.button>
 
-                    <motion.button
+                    <motion.button suppressHydrationWarning
                       whileTap={{ scale: 0.98 }}
                       onClick={handleViewFullDetails}
                       className="w-full py-3.5 border border-[#E8E8E8] text-[#111] text-[12px] font-medium tracking-widest uppercase hover:bg-[#F0EFED] transition-colors flex items-center justify-center gap-2.5"
@@ -477,7 +478,7 @@ export function QuickViewModal() {
                     <div className="flex flex-col gap-2">
                       <p className="text-[11px] text-[#999]">
                         <span className="inline-block w-1 h-1 rounded-full bg-[#4D5B47] mr-2" />
-                        Free shipping on orders above ₹999
+                        Free shipping on orders above ₹{FREE_SHIPPING_THRESHOLD.toLocaleString("en-IN")}
                       </p>
                       <p className="text-[11px] text-[#999]">
                         <span className="inline-block w-1 h-1 rounded-full bg-[#4D5B47] mr-2" />

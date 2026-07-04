@@ -3,21 +3,41 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
+import { FREE_SHIPPING_THRESHOLD, BRAND_NAME } from "@/lib/constants";
 
-const announcements = [
-  { text: "Free shipping on all orders over ₹2,000", accent: false },
+const defaultAnnouncements = [
+  { text: `Free shipping on all orders over ₹${FREE_SHIPPING_THRESHOLD.toLocaleString("en-IN")}`, accent: false },
   { text: "New Season Arrivals — Explore the Collection", accent: true },
-  { text: "Use code MAISON20 for 20% off your first order", accent: false },
+  { text: `Use code ${BRAND_NAME}20 for 20% off your first order`, accent: false },
   { text: "Easy 30-day returns — No questions asked", accent: false },
 ];
 
 export function AnnouncementBar() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
+  const [announcements, setAnnouncements] = useState(defaultAnnouncements);
+
+  useEffect(() => {
+    fetch("/api/site-content")
+      .then((r) => r.json())
+      .then((data) => {
+        const raw = data.content?.announcements;
+        if (raw) {
+          const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setAnnouncements(parsed.map((a: { text: string; accent?: boolean }) => ({
+              text: a.text,
+              accent: a.accent ?? false,
+            })));
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const next = useCallback(() => {
     setCurrentIndex((prev) => (prev + 1) % announcements.length);
-  }, []);
+  }, [announcements.length]);
 
   useEffect(() => {
     const interval = setInterval(next, 4000);
@@ -42,20 +62,20 @@ export function AnnouncementBar() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
-              className={`text-[12px] tracking-[0.04em] text-center ${
-                announcements[currentIndex].accent
+              className={`text-[12px] tracking-[0.04em] text-center truncate pr-14 sm:pr-20 ${
+                announcements[currentIndex]?.accent
                   ? "text-[#4D5B47] font-medium"
                   : "text-[#999]"
               }`}
             >
-              {announcements[currentIndex].text}
+              {announcements[currentIndex]?.text}
             </motion.p>
           </AnimatePresence>
 
           {/* Dots indicator */}
-          <div className="absolute right-16 flex items-center gap-1.5">
+          <div className="absolute right-10 sm:right-16 flex items-center gap-1.5">
             {announcements.map((_, i) => (
-              <button
+              <button suppressHydrationWarning
                 key={i}
                 onClick={() => setCurrentIndex(i)}
                 className={`w-1 h-1 rounded-full transition-all duration-300 ${
@@ -66,7 +86,7 @@ export function AnnouncementBar() {
             ))}
           </div>
 
-          <button
+          <button suppressHydrationWarning
             onClick={() => setIsVisible(false)}
             className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-[#666] hover:text-[#F8F8F6] transition-colors"
             aria-label="Dismiss announcement"

@@ -2,17 +2,19 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { Providers } from "@/components/providers";
+import { ExtensionCleanup } from "@/components/ExtensionCleanup";
+import { BRAND_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: "MAISON — Premium Fashion",
+  title: `${BRAND_NAME} — Premium Fashion`,
   description: "Curated luxury fashion and premium essentials. Discover timeless pieces crafted for the modern wardrobe.",
-  keywords: ["luxury fashion", "premium clothing", "designer wear", "essentials", "MAISON"],
-  authors: [{ name: "MAISON" }],
+  keywords: ["luxury fashion", "premium clothing", "designer wear", "essentials", BRAND_NAME],
+  authors: [{ name: BRAND_NAME }],
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: "/favicon.svg",
   },
   openGraph: {
-    title: "MAISON — Premium Fashion",
+    title: `${BRAND_NAME} — Premium Fashion`,
     description: "Curated luxury fashion and premium essentials.",
     type: "website",
   },
@@ -25,15 +27,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: `
-          // Remove attributes injected by browser extensions before React hydrates
-          document.querySelectorAll('[fdprocessedid]').forEach(function(el){el.removeAttribute('fdprocessedid')});
-          // Observer to catch extensions that inject attributes after initial load
-          new MutationObserver(function(mutations){mutations.forEach(function(m){m.addedNodes.forEach(function(n){if(n.nodeType===1&&n.hasAttribute&&n.hasAttribute('fdprocessedid')){n.removeAttribute('fdprocessedid')}if(n.querySelectorAll){n.querySelectorAll('[fdprocessedid]').forEach(function(e){e.removeAttribute('fdprocessedid')})}})})}).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['fdprocessedid']});
-        `}} />
-      </head>
       <body className="antialiased">
+        <ExtensionCleanup />
         <Providers>
           {children}
           <Toaster />

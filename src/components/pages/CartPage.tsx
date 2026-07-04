@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useStore } from "@/lib/store";
+import { FREE_SHIPPING_THRESHOLD, SHIPPING_COST } from "@/lib/constants";
 import {
   Minus, Plus, X, ShoppingBag, ArrowRight, Truck, RotateCcw, Shield,
   ChevronRight, Tag, Heart, Check
@@ -33,8 +34,8 @@ export default function CartPage() {
   const mrpTotal = getCartMrpTotal();
   const savings = mrpTotal - total;
   const itemCount = getCartCount();
-  const freeShipping = total >= 2000;
-  const shippingCost = freeShipping ? 0 : 149;
+  const freeShipping = total >= FREE_SHIPPING_THRESHOLD;
+  const shippingCost = freeShipping ? 0 : SHIPPING_COST;
   const couponDiscount = couponApplied
     ? couponApplied.type === "percent"
       ? Math.min((total * couponApplied.discount) / 100, total)
@@ -97,17 +98,17 @@ export default function CartPage() {
     });
   };
 
-  const shippingProgress = Math.min((total / 2000) * 100, 100);
+  const shippingProgress = Math.min((total / FREE_SHIPPING_THRESHOLD) * 100, 100);
 
   if (cartItems.length === 0) {
     return (
-      <main className="min-h-screen bg-[#F8F8F6] pt-20">
+      <main className="min-h-screen bg-[#F8F8F6] pt-4">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="flex flex-col items-center justify-center text-center py-16">
             <ShoppingBag className="w-16 h-16 text-[#D1D1D1] mb-6" strokeWidth={1} />
             <h1 className="text-[28px] font-medium tracking-[-0.02em] mb-2">Your bag is empty</h1>
             <p className="text-[14px] text-[#999] mb-8">Looks like you haven&apos;t added anything yet</p>
-            <button
+            <button suppressHydrationWarning
               onClick={() => navigate("shop")}
               className="px-8 py-3.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#333] transition-colors"
             >
@@ -144,7 +145,7 @@ export default function CartPage() {
                           <span className="text-[12px] text-[#999] line-through">{"\u20B9"}{product.mrp.toLocaleString("en-IN")}</span>
                         )}
                       </div>
-                      <button
+                      <button suppressHydrationWarning
                         onClick={() => handleAddToBag(product)}
                         className="w-full py-2.5 bg-[#111] text-[#F8F8F6] text-[11px] font-medium tracking-[0.15em] uppercase hover:bg-[#333] transition-colors"
                       >
@@ -162,11 +163,11 @@ export default function CartPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F8F8F6] pt-20 pb-16">
+    <main className="min-h-screen bg-[#F8F8F6] pt-4 pb-16">
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 py-4 text-[12px] text-[#999]">
-          <button onClick={() => navigate("home")} className="hover:text-[#111] transition-colors">Home</button>
+          <button suppressHydrationWarning onClick={() => navigate("home")} className="hover:text-[#111] transition-colors">Home</button>
           <ChevronRight className="w-3 h-3" />
           <span className="text-[#111]">Shopping Bag</span>
         </nav>
@@ -189,7 +190,7 @@ export default function CartPage() {
                   className="flex gap-4 sm:gap-6 py-6 border-b border-[#E8E8E8] border-l-2 border-l-[#4D5B47] pl-4 sm:pl-6 hover:bg-white transition-colors duration-200 -ml-4 sm:-ml-6"
                 >
                   {/* Image */}
-                  <button
+                  <button suppressHydrationWarning
                     onClick={() => navigate("product", item.productId)}
                     className="w-24 h-32 sm:w-28 sm:h-36 bg-[#F0EFED] flex-shrink-0 relative overflow-hidden"
                   >
@@ -221,29 +222,29 @@ export default function CartPage() {
 
                     <div className="flex items-center justify-between mt-3">
                       <div className="flex items-center border border-[#E8E8E8]">
-                        <button
+                        <button suppressHydrationWarning
                           onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
                           className="w-8 h-8 flex items-center justify-center hover:bg-[#F0EFED] transition-colors"
                         >
                           <Minus className="w-3 h-3" strokeWidth={1.5} />
                         </button>
                         <span className="w-10 text-center text-[13px] font-medium">{item.quantity}</span>
-                        <button
+                        <button suppressHydrationWarning
                           onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
                           className="w-8 h-8 flex items-center justify-center hover:bg-[#F0EFED] transition-colors"
                         >
                           <Plus className="w-3 h-3" strokeWidth={1.5} />
                         </button>
                       </div>
-                      <div className="flex items-center gap-4">
+                       <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
                         <span className="text-[14px] font-medium">{"\u20B9"}{(item.price * item.quantity).toLocaleString("en-IN")}</span>
-                        <button
+                        <button suppressHydrationWarning
                           onClick={() => removeFromCart(item.id)}
                           className="text-[11px] text-[#999] hover:text-[#C53030] transition-colors tracking-wide uppercase flex items-center gap-1"
                         >
-                          <X className="w-3 h-3" /> Remove
+                          <X className="w-3 h-3" /> <span className="hidden sm:inline">Remove</span>
                         </button>
-                        <button
+                        <button suppressHydrationWarning
                           onClick={() => toggleWishlist(item.productId)}
                           className={`text-[11px] tracking-wide uppercase flex items-center gap-1 transition-colors ${
                             isInWishlist(item.productId)
@@ -252,7 +253,7 @@ export default function CartPage() {
                           }`}
                         >
                           <Heart className={`w-3 h-3 ${isInWishlist(item.productId) ? "fill-current" : ""}`} />
-                          {isInWishlist(item.productId) ? "Saved" : "Wishlist"}
+                          <span className="hidden sm:inline">{isInWishlist(item.productId) ? "Saved" : "Wishlist"}</span>
                         </button>
                       </div>
                     </div>
@@ -262,7 +263,7 @@ export default function CartPage() {
             </AnimatePresence>
 
             {cartItems.length > 1 && (
-              <button
+              <button suppressHydrationWarning
                 onClick={clearCart}
                 className="mt-6 text-[12px] text-[#999] hover:text-[#C53030] transition-colors tracking-wide uppercase"
               >
@@ -303,20 +304,20 @@ export default function CartPage() {
                         -{"\u20B9"}{Math.round(couponDiscount).toLocaleString("en-IN")}
                       </span>
                     </div>
-                    <button onClick={removeCoupon} className="text-[#999] hover:text-[#111]">
+                    <button suppressHydrationWarning onClick={removeCoupon} className="text-[#999] hover:text-[#111]">
                       <X className="w-3 h-3" />
                     </button>
                   </div>
                 ) : (
                   <div className="flex gap-2">
-                    <input
+                    <input suppressHydrationWarning
                       type="text"
                       value={couponCode}
                       onChange={(e) => { setCouponCode(e.target.value); setCouponError(""); }}
                       placeholder="Coupon code"
                       className="flex-1 px-3 py-2.5 border border-[#E8E8E8] text-[13px] outline-none focus:border-[#4D5B47] transition-colors placeholder:text-[#D1D1D1]"
                     />
-                    <button
+                    <button suppressHydrationWarning
                       onClick={handleApplyCoupon}
                       disabled={applyingCoupon}
                       className="px-4 py-2.5 border border-[#111] text-[11px] font-medium tracking-widest uppercase hover:bg-[#111] hover:text-[#F8F8F6] transition-all disabled:opacity-50"
@@ -347,7 +348,7 @@ export default function CartPage() {
                 <div className="flex justify-between text-[13px]">
                   <span className="text-[#666]">Shipping</span>
                   <span className={freeShipping ? "text-[#4D5B47] font-medium" : "text-[#111]"}>
-                    {freeShipping ? "FREE" : "\u20B9149"}
+                    {freeShipping ? "FREE" : `\u20B9${SHIPPING_COST}`}
                   </span>
                 </div>
               </div>
@@ -356,7 +357,7 @@ export default function CartPage() {
               <div className="py-4 border-b border-[#E8E8E8]">
                 <div className="flex items-center justify-between mb-1.5">
                   {!freeShipping ? (
-                    <span className="text-[11px] text-[#999]">Add {"\u20B9"}{(2000 - total).toLocaleString("en-IN")} more for free shipping</span>
+                    <span className="text-[11px] text-[#999]">Add {"\u20B9"}{(FREE_SHIPPING_THRESHOLD - total).toLocaleString("en-IN")} more for free shipping</span>
                   ) : (
                     <div className="flex items-center gap-1.5">
                       <motion.span
@@ -395,13 +396,13 @@ export default function CartPage() {
                 </motion.span>
               </div>
 
-              <button
+              <button suppressHydrationWarning
                 onClick={() => navigate("checkout")}
                 className="w-full py-3.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#333] transition-colors flex items-center justify-center gap-2 mb-3"
               >
                 Proceed to Checkout <ArrowRight className="w-4 h-4" />
               </button>
-              <button
+              <button suppressHydrationWarning
                 onClick={() => navigate("shop")}
                 className="w-full py-3 text-[12px] tracking-[0.15em] uppercase text-[#666] hover:text-[#111] transition-colors"
               >

@@ -27,6 +27,7 @@ export async function GET() {
             price: true,
             mrp: true,
             images: true,
+            sizes: true,
             category: true,
             brand: true,
             rating: true,

@@ -111,7 +111,7 @@ function CompareContent({ ids }: { ids: string[] }) {
         <GitCompareArrows className="w-12 h-12 text-[#D1D1D1] mb-4" strokeWidth={1} />
         <h3 className="text-[16px] font-medium text-[#111] mb-1">No products to compare</h3>
         <p className="text-[13px] text-[#999] mb-6">Add products to comparison using the compare button</p>
-        <button
+        <button suppressHydrationWarning
           onClick={() => { setCompareOpen(false); navigate("shop"); }}
           className="px-6 py-3 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-widest uppercase hover:bg-[#333] transition-colors"
         >
@@ -141,7 +141,7 @@ function CompareContent({ ids }: { ids: string[] }) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {products.map((product) => (
           <motion.div key={product.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="relative group">
-            <button
+            <button suppressHydrationWarning
               onClick={() => removeFromCompare(product.id)}
               className="absolute top-0 right-0 z-10 w-7 h-7 bg-[#F8F8F6] border border-[#E8E8E8] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
             >
@@ -167,7 +167,7 @@ function CompareContent({ ids }: { ids: string[] }) {
       </div>
 
       {/* Comparison Table */}
-      <div className="border border-[#E8E8E8] bg-white overflow-hidden">
+      <div className="border border-[#E8E8E8] bg-white overflow-x-auto">
         {rows.map((row, i) => (
           <motion.div
             key={row.label}
@@ -175,7 +175,7 @@ function CompareContent({ ids }: { ids: string[] }) {
             animate={{ opacity: 1 }}
             transition={{ delay: i * 0.04 }}
             className="border-b border-[#E8E8E8] last:border-b-0"
-            style={{ display: "grid", gridTemplateColumns: `160px repeat(${products.length}, 1fr)` }}
+            style={{ display: "grid", gridTemplateColumns: `minmax(120px, 160px) repeat(${products.length}, minmax(140px, 1fr))` }}
           >
             <div className="px-4 py-3.5 bg-[#FAFAF8] border-r border-[#E8E8E8]">
               <span className="text-[12px] font-medium tracking-wider uppercase text-[#999]">{row.label}</span>
@@ -204,7 +204,7 @@ export function CompareDrawer() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 bg-black/40 z-[80]"
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[80]"
             onClick={() => setCompareOpen(false)}
           />
           <motion.div
@@ -226,14 +226,14 @@ export function CompareDrawer() {
                 </div>
                 <div className="flex items-center gap-3">
                   {compareItems.length > 0 && (
-                    <button
+                    <button suppressHydrationWarning
                       onClick={clearCompare}
                       className="text-[12px] text-[#999] hover:text-[#C53030] transition-colors tracking-wide uppercase flex items-center gap-1.5"
                     >
                       <Trash2 className="w-3.5 h-3.5" /> Clear All
                     </button>
                   )}
-                  <button onClick={() => setCompareOpen(false)} className="w-10 h-10 flex items-center justify-center hover:bg-[#F0EFED] transition-colors">
+                  <button suppressHydrationWarning onClick={() => setCompareOpen(false)} className="w-10 h-10 flex items-center justify-center hover:bg-[#F0EFED] transition-colors">
                     <X className="w-5 h-5" strokeWidth={1.5} />
                   </button>
                 </div>

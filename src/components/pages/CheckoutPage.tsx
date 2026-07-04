@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useStore } from "@/lib/store";
+import { FREE_SHIPPING_THRESHOLD, SHIPPING_COST } from "@/lib/constants";
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
   ChevronRight, CreditCard, Wallet, Building2, Smartphone, Truck,
@@ -26,7 +27,7 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
             >
               {i < currentStep ? <CheckCircle className="w-4 h-4" /> : i + 1}
             </div>
-            <span className={`text-[12px] tracking-widest uppercase hidden sm:inline ${
+            <span className={`text-[12px] tracking-wider uppercase hidden sm:inline ${
               i <= currentStep ? "text-[#111] font-medium" : "text-[#999]"
             }`}>
               {step}
@@ -60,13 +61,34 @@ interface SavedAddress {
   [key: string]: string | undefined;
 }
 
+function InputField({ label, name, value, onChange, type = "text", placeholder, required = true }: {
+  label: string; name: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string; required?: boolean;
+}) {
+  return (
+    <div>
+      <label className="block text-[11px] font-medium tracking-wider uppercase text-[#999] mb-1.5">
+        {label} {required && <span className="text-[#C53030]">*</span>}
+      </label>
+      <input suppressHydrationWarning
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full px-3 py-2.5 border border-[#E8E8E8] text-[14px] outline-none focus:border-[#111] transition-colors bg-white placeholder:text-[#D1D1D1]"
+      />
+    </div>
+  );
+}
+
 export default function CheckoutPage() {
   const { cartItems, getCartTotal, getCartMrpTotal, getCartCount, navigate, clearCart, showNotification, setAuthOpen } = useStore();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated: authed, user } = useAuth();
+  const [isAuthenticated, setIsAuthenticated] = useState(authed);
   const [step, setStep] = useState(0);
   const [placing, setPlacing] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [orderNumber, setOrderNumber] = useState("");
+  const [orderTotal, setOrderTotal] = useState(0);
   const [orderError, setOrderError] = useState("");
 
   const [shipping, setShipping] = useState({
@@ -78,6 +100,7 @@ export default function CheckoutPage() {
   const [cardDetails, setCardDetails] = useState({ number: "", expiry: "", cvv: "", name: "" });
   const [upiId, setUpiId] = useState("");
   const [agreed, setAgreed] = useState(false);
+  const [showMobileSummary, setShowMobileSummary] = useState(false);
 
   // Coupon
   const [couponCode, setCouponCode] = useState("");
@@ -90,68 +113,87 @@ export default function CheckoutPage() {
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [selectedAddressIdx, setSelectedAddressIdx] = useState<number | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
+  const [dynamicPaymentMethods, setDynamicPaymentMethods] = useState<{ id: string; label: string; icon: string; brand: string }[]>([]);
 
   const total = getCartTotal();
   const mrpTotal = getCartMrpTotal();
-  const shippingCost = total >= 2000 ? 0 : 149;
+  const shippingCost = total >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
   const finalTotal = Math.max(0, total + shippingCost - couponDiscount);
 
   // Fetch user profile for saved addresses
   useEffect(() => {
     if (!isAuthenticated) return;
     setLoadingProfile(true);
-    fetch("/api/user")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.addresses) {
+
+    const fetchProfile = fetch("/api/user").then((r) => r.json());
+    const fetchContent = fetch("/api/site-content").then((r) => r.json());
+
+    Promise.all([fetchProfile, fetchContent])
+      .then(([userData, contentData]) => {
+        if (userData.addresses) {
           try {
-            const parsed: SavedAddress[] = JSON.parse(data.addresses);
+            const parsed: SavedAddress[] = JSON.parse(userData.addresses);
             if (Array.isArray(parsed) && parsed.length > 0) {
               setSavedAddresses(parsed);
-              // Pre-fill from first address
               const addr = parsed[0];
               setShipping((prev) => ({
                 ...prev,
-                fullName: addr.fullName || prev.fullName || data.name || user?.name || "",
-                phone: addr.phone || prev.phone || data.phone || "",
+                fullName: addr.fullName || prev.fullName || userData.name || user?.name || "",
+                phone: addr.phone || prev.phone || userData.phone || "",
                 address1: addr.address1 || addr.street || prev.address1,
                 address2: addr.address2 || prev.address2,
                 city: addr.city || prev.city,
                 state: addr.state || prev.state,
                 pincode: addr.pincode || addr.zip || prev.pincode,
-                email: data.email || user?.email || prev.email,
+                email: userData.email || user?.email || prev.email,
               }));
               setSelectedAddressIdx(0);
             } else {
-              // No saved addresses, pre-fill email/name from user
               setShipping((prev) => ({
                 ...prev,
-                email: data.email || user?.email || prev.email,
-                fullName: prev.fullName || data.name || user?.name || "",
-                phone: prev.phone || data.phone || "",
+                email: userData.email || user?.email || prev.email,
+                fullName: prev.fullName || userData.name || user?.name || "",
+                phone: prev.phone || userData.phone || "",
               }));
             }
           } catch {
             setShipping((prev) => ({
               ...prev,
-              email: data.email || user?.email || prev.email,
-              fullName: prev.fullName || data.name || user?.name || "",
-              phone: prev.phone || data.phone || "",
+              email: userData.email || user?.email || prev.email,
+              fullName: prev.fullName || userData.name || user?.name || "",
+              phone: prev.phone || userData.phone || "",
             }));
           }
         }
+
+        try {
+          if (contentData.content?.paymentMethods) {
+            const parsed = JSON.parse(contentData.content.paymentMethods);
+            if (Array.isArray(parsed)) setDynamicPaymentMethods(parsed);
+          }
+        } catch {}
       })
       .catch(() => {})
       .finally(() => setLoadingProfile(false));
   }, [isAuthenticated, user]);
 
-  const paymentMethods = [
-    { id: "card", label: "Credit / Debit Card", icon: CreditCard, brand: "Visa, Mastercard, RuPay" },
-    { id: "upi", label: "UPI", icon: Smartphone, brand: "GPay, PhonePe, Paytm" },
-    { id: "netbanking", label: "Net Banking", icon: Building2, brand: "All major banks" },
-    { id: "wallet", label: "Wallet", icon: Wallet, brand: "Paytm, Amazon Pay" },
-    { id: "cod", label: "Cash on Delivery", icon: Truck, brand: "Pay on delivery" },
+  const defaultPaymentMethods = [
+    { id: "card", label: "Credit / Debit Card", icon: "CreditCard", brand: "Visa, Mastercard, RuPay" },
+    { id: "upi", label: "UPI", icon: "Smartphone", brand: "GPay, PhonePe, Paytm" },
+    { id: "netbanking", label: "Net Banking", icon: "Building2", brand: "All major banks" },
+    { id: "wallet", label: "Wallet", icon: "Wallet", brand: "Paytm, Amazon Pay" },
+    { id: "cod", label: "Cash on Delivery", icon: "Truck", brand: "Pay on delivery" },
   ];
+
+  const paymentMethodsData = dynamicPaymentMethods.length > 0 ? dynamicPaymentMethods : defaultPaymentMethods;
+
+  // Map icon strings to actual Lucide components
+  const iconMap: Record<string, typeof CreditCard> = { CreditCard, Smartphone, Building2, Wallet, Truck };
+
+  const paymentMethods = paymentMethodsData.map((pm) => ({
+    ...pm,
+    icon: iconMap[pm.icon] || CreditCard,
+  }));
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return;
@@ -228,6 +270,7 @@ export default function CheckoutPage() {
       const data = await res.json();
       if (data.success) {
         setOrderNumber(data.order.orderNumber);
+        setOrderTotal(data.order.total);
         setOrderSuccess(true);
         clearCart();
       } else {
@@ -239,10 +282,15 @@ export default function CheckoutPage() {
     setPlacing(false);
   };
 
-  // Auth guard
+  // Auth guard — allow guest checkout
   if (!isAuthenticated) {
     return (
-      <main className="min-h-screen bg-[#F8F8F6] pt-20 flex items-center justify-center">
+      <motion.main
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+        className="min-h-screen bg-[#F8F8F6] pt-4 flex items-center justify-center"
+      >
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -251,37 +299,50 @@ export default function CheckoutPage() {
           <div className="w-20 h-20 bg-[#F0EFED] rounded-full flex items-center justify-center mx-auto mb-6">
             <User className="w-8 h-8 text-[#999]" strokeWidth={1.5} />
           </div>
-          <h2 className="text-[22px] font-medium tracking-[-0.02em] mb-2">Sign in to Checkout</h2>
+          <h2 className="text-[22px] font-medium tracking-[-0.02em] mb-2">Checkout</h2>
           <p className="text-[14px] text-[#666] mb-8">
-            Please sign in to your account to continue with the checkout process.
+            Sign in for a faster experience, or continue as a guest.
           </p>
-          <button
-            onClick={() => setAuthOpen(true)}
-            className="px-8 py-3.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#333] transition-colors"
-          >
-            Sign In
-          </button>
-          <button
+          <div className="space-y-3">
+            <button suppressHydrationWarning
+              onClick={() => setAuthOpen(true)}
+              className="w-full px-8 py-3.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#333] transition-colors"
+            >
+              Sign In
+            </button>
+            <button suppressHydrationWarning
+              onClick={() => setIsAuthenticated(true)}
+              className="w-full px-8 py-3.5 border border-[#E8E8E8] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#F0EFED] transition-colors"
+            >
+              Continue as Guest
+            </button>
+          </div>
+          <button suppressHydrationWarning
             onClick={() => navigate("shop")}
             className="block mx-auto mt-4 text-[12px] text-[#999] hover:text-[#111] transition-colors tracking-wider uppercase"
           >
             Continue Shopping
           </button>
         </motion.div>
-      </main>
+      </motion.main>
     );
   }
 
   if (cartItems.length === 0 && !orderSuccess) {
     return (
-      <main className="min-h-screen bg-[#F8F8F6] pt-20 flex items-center justify-center">
+      <motion.main
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+        className="min-h-screen bg-[#F8F8F6] pt-4 flex items-center justify-center"
+      >
         <div className="text-center">
           <p className="text-[15px] text-[#666] mb-4">Your bag is empty</p>
-          <button onClick={() => navigate("shop")} className="px-6 py-2.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-widest uppercase">
+          <button suppressHydrationWarning onClick={() => navigate("shop")} className="px-6 py-2.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-widest uppercase">
             Shop Now
           </button>
         </div>
-      </main>
+      </motion.main>
     );
   }
 
@@ -307,7 +368,12 @@ export default function CheckoutPage() {
       d.toLocaleDateString("en-IN", { weekday: "short", month: "short", day: "numeric" });
 
     return (
-      <main className="min-h-screen bg-[#F8F8F6] pt-20 flex items-center justify-center relative overflow-hidden">
+      <motion.main
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+        className="min-h-screen bg-[#F8F8F6] pt-4 flex items-center justify-center relative overflow-hidden"
+      >
         {/* Confetti particles */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           {confettiParticles.map((p) => (
@@ -390,7 +456,7 @@ export default function CheckoutPage() {
               <div className="flex items-center justify-between">
                 <span className="text-[12px] text-[#999]">Order Total</span>
                 <span className="text-[16px] font-medium">
-                  {"\u20B9"}{finalTotal.toLocaleString("en-IN")}
+                  {"\u20B9"}{orderTotal.toLocaleString("en-IN")}
                 </span>
               </div>
             </div>
@@ -416,13 +482,13 @@ export default function CheckoutPage() {
             transition={{ delay: 0.9, duration: 0.4 }}
             className="flex flex-col sm:flex-row gap-3"
           >
-            <button
+            <button suppressHydrationWarning
               onClick={() => navigate("home")}
               className="flex-1 py-3.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#333] transition-colors"
             >
               Continue Shopping
             </button>
-            <button
+            <button suppressHydrationWarning
               onClick={() => navigate("order-tracking")}
               className="flex-1 py-3.5 border border-[#E8E8E8] text-[#111] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#F0EFED] transition-colors flex items-center justify-center gap-2"
             >
@@ -431,29 +497,17 @@ export default function CheckoutPage() {
             </button>
           </motion.div>
         </motion.div>
-      </main>
+      </motion.main>
     );
   }
 
-  const InputField = ({ label, name, value, onChange, type = "text", placeholder, required = true }: {
-    label: string; name: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string; required?: boolean;
-  }) => (
-    <div>
-      <label className="block text-[11px] font-medium tracking-wider uppercase text-[#999] mb-1.5">
-        {label} {required && <span className="text-[#C53030]">*</span>}
-      </label>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full px-3 py-2.5 border border-[#E8E8E8] text-[14px] outline-none focus:border-[#111] transition-colors bg-white placeholder:text-[#D1D1D1]"
-      />
-    </div>
-  );
-
   return (
-    <main className="min-h-screen bg-[#F8F8F6] pt-20 pb-16">
+    <motion.main
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+      className="min-h-screen bg-[#F8F8F6] pt-4 pb-16"
+    >
       <div className="max-w-[960px] mx-auto px-4 sm:px-6 lg:px-8">
         <StepIndicator currentStep={step} />
 
@@ -463,7 +517,38 @@ export default function CheckoutPage() {
             <AnimatePresence mode="wait">
               {step === 0 && (
                 <motion.div key="shipping" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
-                  <h2 className="text-[20px] font-medium mb-6">Shipping Address</h2>
+                  <h2 className="text-[20px] font-medium tracking-[-0.01em] mb-6">Shipping Address</h2>
+
+                  {/* Mobile Order Summary Toggle */}
+                  <div className="lg:hidden mb-6">
+                    <button suppressHydrationWarning
+                      onClick={() => setShowMobileSummary(!showMobileSummary)}
+                      className="w-full flex items-center justify-between py-3 border-b border-[#E8E8E8]"
+                    >
+                      <span className="text-[13px] font-medium">Order Summary ({cartItems.length} items)</span>
+                      <span className="text-[14px] font-medium">₹{finalTotal.toLocaleString("en-IN")}</span>
+                    </button>
+                    <AnimatePresence>
+                      {showMobileSummary && (
+                        <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} className="overflow-hidden">
+                          <div className="py-3 space-y-3">
+                            {cartItems.map((item) => (
+                              <div key={item.id} className="flex items-center gap-3">
+                                <div className="w-10 h-12 bg-[#F0EFED] relative overflow-hidden flex-shrink-0">
+                                  <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-[12px] text-[#111] line-clamp-1">{item.name}</p>
+                                  <p className="text-[11px] text-[#999]">{item.size}{item.color ? ` / ${item.color}` : ""} × {item.quantity}</p>
+                                </div>
+                                <span className="text-[12px] font-medium">{"\u20B9"}{(item.price * item.quantity).toLocaleString("en-IN")}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
 
                   {/* Saved addresses selector */}
                   {savedAddresses.length > 1 && (
@@ -471,7 +556,7 @@ export default function CheckoutPage() {
                       <p className="text-[11px] font-medium tracking-wider uppercase text-[#999] mb-2">Saved Addresses</p>
                       <div className="space-y-2">
                         {savedAddresses.map((addr, idx) => (
-                          <button
+                          <button suppressHydrationWarning
                             key={idx}
                             onClick={() => handleSelectAddress(idx)}
                             className={`w-full text-left p-3 border transition-colors rounded-[4px] ${
@@ -488,7 +573,7 @@ export default function CheckoutPage() {
                             </div>
                           </button>
                         ))}
-                        <button
+                        <button suppressHydrationWarning
                           onClick={() => {
                             setSelectedAddressIdx(null);
                             setShipping({
@@ -513,14 +598,14 @@ export default function CheckoutPage() {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <InputField label="Full Name" name="fullName" value={shipping.fullName} onChange={(v) => setShipping({ ...shipping, fullName: v })} placeholder="John Doe" />
                         <InputField label="Email" name="email" value={shipping.email} onChange={(v) => setShipping({ ...shipping, email: v })} type="email" placeholder="john@example.com" />
                       </div>
                       <InputField label="Phone" name="phone" value={shipping.phone} onChange={(v) => setShipping({ ...shipping, phone: v })} type="tel" placeholder="+91 98765 43210" />
                       <InputField label="Address Line 1" name="address1" value={shipping.address1} onChange={(v) => setShipping({ ...shipping, address1: v })} placeholder="Street address, apartment, suite" />
                       <InputField label="Address Line 2" name="address2" value={shipping.address2} onChange={(v) => setShipping({ ...shipping, address2: v })} placeholder="Optional" required={false} />
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <InputField label="City" name="city" value={shipping.city} onChange={(v) => setShipping({ ...shipping, city: v })} />
                         <InputField label="State" name="state" value={shipping.state} onChange={(v) => setShipping({ ...shipping, state: v })} />
                         <InputField label="Pincode" name="pincode" value={shipping.pincode} onChange={(v) => setShipping({ ...shipping, pincode: v })} />
@@ -532,6 +617,7 @@ export default function CheckoutPage() {
                           Order Notes <span className="text-[#999] font-normal normal-case tracking-normal">(optional)</span>
                         </label>
                         <textarea
+                          suppressHydrationWarning
                           value={shipping.notes}
                           onChange={(e) => setShipping({ ...shipping, notes: e.target.value })}
                           placeholder="Special delivery instructions, e.g. leave at the door, ring the bell twice..."
@@ -541,7 +627,7 @@ export default function CheckoutPage() {
                       </div>
                     </div>
                   )}
-                  <button
+                  <button suppressHydrationWarning
                     onClick={() => setStep(1)}
                     disabled={!shipping.fullName || !shipping.email || !shipping.phone || !shipping.address1 || !shipping.city || !shipping.pincode}
                     className="mt-8 w-full py-3.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#333] transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
@@ -553,7 +639,7 @@ export default function CheckoutPage() {
 
               {step === 1 && (
                 <motion.div key="payment" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
-                  <h2 className="text-[20px] font-medium mb-6">Payment Method</h2>
+                  <h2 className="text-[20px] font-medium tracking-[-0.01em] mb-6">Payment Method</h2>
 
                   {/* Coupon Code */}
                   <div className="mb-6">
@@ -563,13 +649,13 @@ export default function CheckoutPage() {
                         <Tag className="w-4 h-4 text-[#4D5B47]" strokeWidth={1.5} />
                         <span className="text-[13px] text-[#4D5B47] font-medium flex-1">{appliedCoupon}</span>
                         <span className="text-[13px] text-[#4D5B47]">-₹{couponDiscount.toLocaleString("en-IN")}</span>
-                        <button onClick={handleRemoveCoupon} className="text-[#999] hover:text-[#111]">
+                        <button suppressHydrationWarning onClick={handleRemoveCoupon} className="text-[#999] hover:text-[#111]">
                           <X className="w-4 h-4" />
                         </button>
                       </div>
                     ) : (
                       <div className="flex gap-2">
-                        <input
+                        <input suppressHydrationWarning
                           type="text"
                           value={couponCode}
                           onChange={(e) => setCouponCode(e.target.value)}
@@ -577,7 +663,7 @@ export default function CheckoutPage() {
                           className="flex-1 px-3 py-2.5 border border-[#E8E8E8] text-[13px] uppercase outline-none focus:border-[#111] transition-colors bg-white placeholder:text-[#D1D1D1] placeholder:normal-case"
                           onKeyDown={(e) => e.key === "Enter" && handleApplyCoupon()}
                         />
-                        <button
+                        <button suppressHydrationWarning
                           onClick={handleApplyCoupon}
                           disabled={couponLoading || !couponCode.trim()}
                           className="px-5 py-2.5 border border-[#111] text-[12px] font-medium tracking-wider uppercase text-[#111] hover:bg-[#111] hover:text-[#F8F8F6] transition-colors disabled:opacity-40"
@@ -595,7 +681,7 @@ export default function CheckoutPage() {
 
                   <div className="space-y-2 mb-6">
                     {paymentMethods.map((pm) => (
-                      <motion.button
+                      <motion.button suppressHydrationWarning
                         key={pm.id}
                         onClick={() => setPaymentMethod(pm.id)}
                         whileTap={{ scale: 0.99 }}
@@ -619,7 +705,7 @@ export default function CheckoutPage() {
                     {paymentMethod === "card" && (
                       <motion.div key="card-form" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-4 overflow-hidden">
                         <InputField label="Card Number" name="card" value={cardDetails.number} onChange={(v) => setCardDetails({ ...cardDetails, number: v })} placeholder="4242 4242 4242 4242" />
-                        <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <InputField label="Expiry" name="expiry" value={cardDetails.expiry} onChange={(v) => setCardDetails({ ...cardDetails, expiry: v })} placeholder="MM/YY" />
                           <InputField label="CVV" name="cvv" value={cardDetails.cvv} onChange={(v) => setCardDetails({ ...cardDetails, cvv: v })} placeholder="123" />
                         </div>
@@ -639,13 +725,13 @@ export default function CheckoutPage() {
                   </AnimatePresence>
 
                   <div className="flex gap-3 mt-8">
-                    <button
+                    <button suppressHydrationWarning
                       onClick={() => setStep(0)}
                       className="flex-1 py-3.5 border border-[#E8E8E8] text-[12px] tracking-[0.15em] uppercase text-[#666] hover:border-[#999] transition-colors flex items-center justify-center gap-2"
                     >
                       <ArrowLeft className="w-4 h-4" /> Back
                     </button>
-                    <button
+                    <button suppressHydrationWarning
                       onClick={() => setStep(2)}
                       className="flex-[2] py-3.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#333] transition-colors flex items-center justify-center gap-2"
                     >
@@ -657,7 +743,7 @@ export default function CheckoutPage() {
 
               {step === 2 && (
                 <motion.div key="review" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
-                  <h2 className="text-[20px] font-medium mb-6">Review Your Order</h2>
+                  <h2 className="text-[20px] font-medium tracking-[-0.01em] mb-6">Review Your Order</h2>
 
                   {orderError && (
                     <div className="mb-4 p-3 bg-[#C53030]/5 border border-[#C53030]/20 rounded-[4px] text-[13px] text-[#C53030]">
@@ -669,7 +755,7 @@ export default function CheckoutPage() {
                   <div className="p-4 border border-[#E8E8E8] bg-white mb-4">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-[11px] font-medium tracking-wider uppercase text-[#999]">Shipping Address</span>
-                      <button onClick={() => setStep(0)} className="text-[11px] text-[#4D5B47] hover:text-[#111]">Edit</button>
+                      <button suppressHydrationWarning onClick={() => setStep(0)} className="text-[11px] text-[#4D5B47] hover:text-[#111]">Edit</button>
                     </div>
                     <p className="text-[13px] text-[#111]">{shipping.fullName}</p>
                     <p className="text-[13px] text-[#666]">{shipping.address1}{shipping.address2 ? `, ${shipping.address2}` : ""}</p>
@@ -687,7 +773,7 @@ export default function CheckoutPage() {
                   <div className="p-4 border border-[#E8E8E8] bg-white mb-4">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-[11px] font-medium tracking-wider uppercase text-[#999]">Payment Method</span>
-                      <button onClick={() => setStep(1)} className="text-[11px] text-[#4D5B47] hover:text-[#111]">Edit</button>
+                      <button suppressHydrationWarning onClick={() => setStep(1)} className="text-[11px] text-[#4D5B47] hover:text-[#111]">Edit</button>
                     </div>
                     <p className="text-[13px] text-[#111]">{paymentMethods.find((p) => p.id === paymentMethod)?.label}</p>
                   </div>
@@ -724,22 +810,22 @@ export default function CheckoutPage() {
                       {agreed && <CheckCircle className="w-3 h-3 text-[#F8F8F6]" />}
                     </div>
                     <span className="text-[12px] text-[#666] leading-relaxed">
-                      I agree to the <button className="underline text-[#111]">Terms &amp; Conditions</button> and{" "}
-                      <button className="underline text-[#111]">Privacy Policy</button>.
+                      I agree to the <button suppressHydrationWarning className="underline text-[#111]">Terms &amp; Conditions</button> and{" "}
+                      <button suppressHydrationWarning className="underline text-[#111]">Privacy Policy</button>.
                     </span>
                   </label>
 
                   <div className="flex gap-3">
-                    <button
+                    <button suppressHydrationWarning
                       onClick={() => setStep(1)}
                       className="flex-1 py-3.5 border border-[#E8E8E8] text-[12px] tracking-[0.15em] uppercase text-[#666] hover:border-[#999] transition-colors flex items-center justify-center gap-2"
                     >
                       <ArrowLeft className="w-4 h-4" /> Back
                     </button>
-                    <button
+                    <button suppressHydrationWarning
                       onClick={handlePlaceOrder}
                       disabled={!agreed || placing}
-                      className="flex-[2] py-3.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#333] transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
+                      className="flex-[2] py-3.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#333] transition-colors disabled:opacity-40 flex items-center justify-center gap-2 truncate"
                     >
                       <Lock className="w-3.5 h-3.5" />
                       {placing ? "Placing Order..." : `Place Order \u2022 \u20B9${finalTotal.toLocaleString("en-IN")}`}
@@ -752,7 +838,7 @@ export default function CheckoutPage() {
 
           {/* Sidebar Summary */}
           <div className="lg:w-[320px] flex-shrink-0">
-            <div className="sticky top-[88px] bg-white border border-[#E8E8E8] p-5">
+            <div className="sticky top-[88px] bg-white border border-[#E8E8E8] p-5 rounded-[4px]">
               <h3 className="text-[13px] font-medium tracking-wider uppercase text-[#999] mb-4">Order Summary</h3>
               <div className="space-y-3 pb-4 border-b border-[#E8E8E8]">
                 <div className="flex justify-between text-[13px]">
@@ -771,7 +857,7 @@ export default function CheckoutPage() {
                 )}
                 <div className="flex justify-between text-[13px]">
                   <span className="text-[#666]">Shipping</span>
-                  <span>{shippingCost === 0 ? <span className="text-[#4D5B47]">FREE</span> : "\u20B9149"}</span>
+                  <span>{shippingCost === 0 ? <span className="text-[#4D5B47]">FREE</span> : `\u20B9${SHIPPING_COST}`}</span>
                 </div>
               </div>
               <div className="flex justify-between py-4">
@@ -786,6 +872,6 @@ export default function CheckoutPage() {
           </div>
         </div>
       </div>
-    </main>
+    </motion.main>
   );
 }

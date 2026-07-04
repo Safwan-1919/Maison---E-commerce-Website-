@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useStore } from "@/lib/store";
+import { BRAND_NAME } from "@/lib/constants";
 import { ProductCard } from "@/components/shared/ProductCard";
 import { ScrollReveal } from "@/components/shared/ScrollReveal";
 import {
@@ -17,6 +18,7 @@ interface Product {
   mrp: number;
   image: string;
   images?: string;
+  parsedImages?: string[];
   category: string;
   brand: string;
   rating: number;
@@ -44,8 +46,8 @@ interface Brand {
   productCount: number;
 }
 
-const allSizes = ["XS", "S", "M", "L", "XL", "XXL", "28", "30", "32", "34", "36", "ONE SIZE"];
-const colorSwatches = [
+const defaultAllSizes = ["XS", "S", "M", "L", "XL", "XXL", "28", "30", "32", "34", "36", "ONE SIZE"];
+const defaultColorSwatches = [
   { name: "White", hex: "#FFFFFF" },
   { name: "Black", hex: "#111111" },
   { name: "Olive", hex: "#4D5B47" },
@@ -60,15 +62,15 @@ const colorSwatches = [
   { name: "Ivory", hex: "#F5F0E8" },
 ];
 
-const priceRanges = [
-  { label: "Under ₹2,000", min: 0, max: 2000 },
-  { label: "₹2,000 - ₹5,000", min: 2000, max: 5000 },
-  { label: "₹5,000 - ₹10,000", min: 5000, max: 10000 },
-  { label: "₹10,000 - ₹20,000", min: 10000, max: 20000 },
-  { label: "Over ₹20,000", min: 20000, max: 99999 },
+const defaultPriceRanges = [
+  { label: "Under \u20B92,000", min: 0, max: 2000 },
+  { label: "\u20B92,000 - \u20B95,000", min: 2000, max: 5000 },
+  { label: "\u20B95,000 - \u20B910,000", min: 5000, max: 10000 },
+  { label: "\u20B910,000 - \u20B920,000", min: 10000, max: 20000 },
+  { label: "Over \u20B920,000", min: 20000, max: 99999 },
 ];
 
-const discountOptions = [
+const defaultDiscountOptions = [
   { label: "10% or more", value: 10 },
   { label: "20% or more", value: 20 },
   { label: "30% or more", value: 30 },
@@ -85,7 +87,7 @@ function FilterSection({ title, children, defaultOpen = true }: { title: string;
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="border-b border-[#E8E8E8]">
-      <button
+      <button suppressHydrationWarning
         onClick={() => setOpen(!open)}
         className="flex items-center justify-between w-full py-3 text-[13px] font-medium tracking-wide text-[#111] hover:text-[#666] transition-colors"
       >
@@ -134,10 +136,16 @@ function FilterSidebar({
   onClose,
   categories,
   brands,
+  shopFilters,
+  selectedDiscount,
+  setSelectedDiscount,
 }: {
   onClose?: () => void;
   categories?: Category[];
   brands?: Brand[];
+  shopFilters?: { sizes?: string[]; colors?: { name: string; hex: string }[]; priceRanges?: { label: string; min: number; max: number }[]; discountOptions?: { label: string; value: number }[] };
+  selectedDiscount: number | null;
+  setSelectedDiscount: (value: number | null) => void;
 }) {
   const { filters, setFilter, resetFilters } = useStore();
   const activeCount = useMemo(() => {
@@ -175,12 +183,19 @@ function FilterSidebar({
         </h2>
         <div className="flex items-center gap-3">
           {activeCount > 0 && (
-            <button onClick={resetFilters} className="text-[12px] text-[#4D5B47] hover:text-[#111] transition-colors tracking-wide uppercase">
+            <button suppressHydrationWarning
+              onClick={resetFilters}
+              className="text-[12px] text-[#4D5B47] hover:text-[#111] transition-colors tracking-wide uppercase"
+            >
               Clear All
             </button>
           )}
           {onClose && (
-            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center">
+            <button
+              suppressHydrationWarning
+              onClick={onClose}
+              className="w-8 h-8 flex items-center justify-center"
+            >
               <X className="w-4 h-4" />
             </button>
           )}
@@ -204,11 +219,12 @@ function FilterSidebar({
 
         <FilterSection title="Price Range">
           <div className="space-y-1.5">
-            {priceRanges.map((range) => {
+            {(shopFilters?.priceRanges || defaultPriceRanges).map((range) => {
               const active = filters.priceRange[0] === range.min && filters.priceRange[1] === range.max;
               return (
-                <button
+                <button suppressHydrationWarning
                   key={range.label}
+                  suppressHydrationWarning
                   onClick={() => setFilter("priceRange", [range.min, range.max])}
                   className={`block w-full text-left text-[13px] py-1 transition-colors ${
                     active ? "text-[#111] font-medium" : "text-[#666] hover:text-[#111]"
@@ -226,7 +242,7 @@ function FilterSidebar({
             {(brands || []).map((brand) => (
               <CheckboxItem
                 key={brand.id}
-                label={brand.name.replace("MAISON ", "")}
+                label={brand.name.replace(`${BRAND_NAME} `, "")}
                 checked={filters.brands.includes(brand.name)}
                 onChange={() => toggleArrayFilter("brands", brand.name)}
               />
@@ -236,9 +252,10 @@ function FilterSidebar({
 
         <FilterSection title="Size">
           <div className="flex flex-wrap gap-1.5">
-            {allSizes.map((size) => (
-              <button
+            {(shopFilters?.sizes || defaultAllSizes).map((size) => (
+              <button suppressHydrationWarning
                 key={size}
+                suppressHydrationWarning
                 onClick={() => toggleArrayFilter("sizes", size)}
                 className={`px-3 py-1.5 text-[12px] border transition-colors ${
                   filters.sizes.includes(size)
@@ -254,9 +271,10 @@ function FilterSidebar({
 
         <FilterSection title="Color">
           <div className="flex flex-wrap gap-2">
-            {colorSwatches.map((color) => (
-              <button
+            {(shopFilters?.colors || defaultColorSwatches).map((color) => (
+              <button suppressHydrationWarning
                 key={color.hex}
+                suppressHydrationWarning
                 onClick={() => toggleArrayFilter("colors", color.name)}
                 className={`w-7 h-7 border-2 transition-all ${
                   filters.colors.includes(color.name) ? "border-[#111] scale-110" : "border-transparent hover:border-[#D1D1D1]"
@@ -271,8 +289,9 @@ function FilterSidebar({
         <FilterSection title="Rating">
           <div className="space-y-1.5">
             {[4, 3, 2].map((r) => (
-              <button
+              <button suppressHydrationWarning
                 key={r}
+                suppressHydrationWarning
                 onClick={() => setFilter("ratings", filters.ratings === r ? 0 : r)}
                 className={`flex items-center gap-1.5 text-[13px] transition-colors ${
                   filters.ratings === r ? "text-[#111] font-medium" : "text-[#666] hover:text-[#111]"
@@ -286,12 +305,12 @@ function FilterSidebar({
 
         <FilterSection title="Discount">
           <div className="space-y-1.5">
-            {discountOptions.map((opt) => (
+            {(shopFilters?.discountOptions || defaultDiscountOptions).map((opt) => (
               <CheckboxItem
                 key={opt.value}
                 label={opt.label}
-                checked={filters.ratings === 0 ? false : false}
-                onChange={() => {}}
+                checked={selectedDiscount === opt.value}
+                onChange={() => setSelectedDiscount(selectedDiscount === opt.value ? null : opt.value)}
               />
             ))}
           </div>
@@ -312,7 +331,7 @@ function FilterSidebar({
 // List view product card (horizontal layout)
 function ProductListItem({ product, index }: { product: Product; index: number }) {
   const { navigate } = useStore();
-  const images = product.images ? JSON.parse(product.images) : [product.image];
+  const images = product.parsedImages || [product.image];
   const [imgLoaded, setImgLoaded] = useState(false);
 
   return (
@@ -394,20 +413,25 @@ export default function ShopPage() {
   const [mobileSortOpen, setMobileSortOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
+  const [shopFilters, setShopFilters] = useState<{ sizes?: string[]; colors?: { name: string; hex: string }[]; priceRanges?: { label: string; min: number; max: number }[]; discountOptions?: { label: string; value: number }[] }>({});
+  const [selectedDiscount, setSelectedDiscount] = useState<number | null>(null);
   const productGridRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<NodeJS.Timeout>();
   const limit = 12;
 
-  // Fetch categories and brands on mount
+  // Fetch categories, brands, and shop filters on mount
   useEffect(() => {
-    fetch("/api/categories?withCounts=true")
-      .then((r) => r.json())
-      .then((data) => setCategories(data.categories || []))
-      .catch(() => {});
-
-    fetch("/api/brands")
-      .then((r) => r.json())
-      .then((data) => setBrands(data.brands || []))
-      .catch(() => {});
+    Promise.all([
+      fetch("/api/categories?withCounts=true").then((r) => r.json()),
+      fetch("/api/brands").then((r) => r.json()),
+      fetch("/api/site-content").then((r) => r.json()),
+    ]).then(([catData, brandData, contentData]) => {
+      setCategories(catData.categories || []);
+      setBrands(brandData.brands || []);
+      try {
+        if (contentData.content?.shopFilters) setShopFilters(JSON.parse(contentData.content.shopFilters));
+      } catch {}
+    }).catch(() => {});
   }, []);
 
   // Reset page when filters change
@@ -428,6 +452,7 @@ export default function ShopPage() {
     params.set("maxPrice", filters.priceRange[1].toString());
     if (filters.ratings > 0) params.set("minRating", filters.ratings.toString());
     if (filters.availability) params.set("inStock", "true");
+    if (selectedDiscount) params.set("minDiscount", String(selectedDiscount));
     if (filters.search) params.set("search", filters.search);
     if (searchQuery) params.set("search", searchQuery);
 
@@ -445,19 +470,28 @@ export default function ShopPage() {
     try {
       const res = await fetch(`/api/products?${params}`);
       const data = await res.json();
-      setProducts(data.products || []);
+      const parsed = (data.products || []).map((p: any) => ({
+        ...p,
+        parsedImages: p.images ? JSON.parse(p.images) : [p.image],
+      }));
+      setProducts(parsed);
       setTotal(data.total || 0);
       setTotalPages(data.totalPages || 1);
     } catch (e) {
       console.error(e);
     }
     setLoading(false);
-  }, [filters, searchQuery, page]);
+  }, [filters, searchQuery, page, selectedDiscount]);
 
   useEffect(() => {
-    const id = setTimeout(fetchProducts, 0);
-    return () => clearTimeout(id);
-  }, [fetchProducts]);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      fetchProducts();
+    }, 300);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [filters, searchQuery, page, fetchProducts]);
 
   // Scroll to top of product grid when page changes
   useEffect(() => {
@@ -483,6 +517,19 @@ export default function ShopPage() {
     if (searchQuery) tags.push({ label: `"${searchQuery}"`, onRemove: () => setFilter("search", "") });
     return tags;
   }, [filters, searchQuery, setFilter]);
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filters.category.length) count += filters.category.length;
+    if (filters.brands.length) count += filters.brands.length;
+    if (filters.sizes.length) count += filters.sizes.length;
+    if (filters.colors.length) count += filters.colors.length;
+    if (filters.ratings > 0) count++;
+    if (filters.availability) count++;
+    if (filters.priceRange[0] > 0 || filters.priceRange[1] < 99999) count++;
+    if (selectedDiscount) count++;
+    return count;
+  }, [filters, selectedDiscount]);
 
   const handleBrowseCategory = (cat: string) => {
     resetFilters();
@@ -527,7 +574,7 @@ export default function ShopPage() {
     .map((c) => c.name);
 
   return (
-    <main className="min-h-screen bg-[#F8F8F6] pt-20 pb-20 lg:pb-0">
+    <main className="min-h-screen bg-[#F8F8F6] pt-4 pb-20 lg:pb-16">
       {/* Mobile Filter Drawer */}
       <AnimatePresence>
         {mobileFilters && (
@@ -548,17 +595,20 @@ export default function ShopPage() {
             >
               <div className="p-4 border-b border-[#E8E8E8] flex items-center justify-between">
                 <h3 className="text-[15px] font-medium">Filters</h3>
-                <button onClick={() => setMobileFilters(false)} className="w-8 h-8 flex items-center justify-center">
+                <button suppressHydrationWarning
+                  onClick={() => setMobileFilters(false)}
+                  className="w-8 h-8 flex items-center justify-center"
+                >
                   <X className="w-4 h-4" />
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto p-4">
-                <FilterSidebar onClose={() => setMobileFilters(false)} categories={categories} brands={brands} />
+                <FilterSidebar onClose={() => setMobileFilters(false)} categories={categories} brands={brands} shopFilters={shopFilters} selectedDiscount={selectedDiscount} setSelectedDiscount={setSelectedDiscount} />
               </div>
               <div className="p-4 border-t border-[#E8E8E8]">
-                <button
+                <button suppressHydrationWarning
                   onClick={() => setMobileFilters(false)}
-                  className="w-full py-3 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-widest uppercase"
+                  className="w-full py-3 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-widest uppercase rounded-[4px]"
                 >
                   Apply Filters
                 </button>
@@ -585,7 +635,7 @@ export default function ShopPage() {
               className="absolute right-4 sm:right-8 top-[68px] z-[80] bg-white border border-[#E8E8E8] shadow-lg min-w-[200px] py-1"
             >
               {sortOptions.map((opt) => (
-                <button
+                <button suppressHydrationWarning
                   key={opt.value}
                   onClick={() => { setFilter("sortBy", opt.value); setSortOpen(false); }}
                   className={`block w-full text-left px-4 py-2.5 text-[13px] transition-colors ${
@@ -620,13 +670,16 @@ export default function ShopPage() {
             >
               <div className="p-4 border-b border-[#E8E8E8] flex items-center justify-between">
                 <h3 className="text-[15px] font-medium">Sort By</h3>
-                <button onClick={() => setMobileSortOpen(false)} className="w-8 h-8 flex items-center justify-center">
+                <button suppressHydrationWarning
+                  onClick={() => setMobileSortOpen(false)}
+                  className="w-8 h-8 flex items-center justify-center"
+                >
                   <X className="w-4 h-4" />
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto py-2">
                 {sortOptions.map((opt) => (
-                  <button
+                  <button suppressHydrationWarning
                     key={opt.value}
                     onClick={() => { setFilter("sortBy", opt.value); setMobileSortOpen(false); }}
                     className={`block w-full text-left px-6 py-3 text-[13px] transition-colors ${
@@ -643,10 +696,17 @@ export default function ShopPage() {
         )}
       </AnimatePresence>
 
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8"
+      >
         {/* Header */}
-        <div className="py-6 border-b border-[#E8E8E8]">
-          <button onClick={goBack} className="flex items-center gap-1.5 text-[12px] tracking-widest uppercase text-[#999] hover:text-[#111] transition-colors mb-4">
+        <div className="py-8 border-b border-[#E8E8E8]">
+          <button suppressHydrationWarning
+            onClick={goBack}
+            className="flex items-center gap-1.5 text-[12px] tracking-widest uppercase text-[#999] hover:text-[#111] transition-colors mb-4">
             <ArrowUp className="w-3 h-3 rotate-[-90deg]" /> Back
           </button>
           <div className="flex items-center justify-between">
@@ -658,8 +718,8 @@ export default function ShopPage() {
             </div>
             <div className="flex items-center gap-2">
               {/* View Mode Toggle (Desktop) */}
-              <div className="hidden sm:flex items-center border border-[#E8E8E8]">
-                <button
+              <div className="hidden sm:flex items-center border border-[#E8E8E8] rounded-[4px] overflow-hidden">
+                <button suppressHydrationWarning
                   onClick={() => setViewMode("grid")}
                   className={`w-9 h-9 flex items-center justify-center transition-colors ${
                     viewMode === "grid" ? "bg-[#111] text-[#F8F8F6]" : "text-[#666] hover:text-[#111]"
@@ -668,7 +728,7 @@ export default function ShopPage() {
                 >
                   <Grid3X3 className="w-3.5 h-3.5" />
                 </button>
-                <button
+                <button suppressHydrationWarning
                   onClick={() => setViewMode("list")}
                   className={`w-9 h-9 flex items-center justify-center transition-colors ${
                     viewMode === "list" ? "bg-[#111] text-[#F8F8F6]" : "text-[#666] hover:text-[#111]"
@@ -678,14 +738,19 @@ export default function ShopPage() {
                   <List className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <button
+              <button suppressHydrationWarning
                 onClick={() => setMobileFilters(true)}
-                className="lg:hidden flex items-center gap-2 px-3 py-2 border border-[#E8E8E8] text-[12px] tracking-wide uppercase"
+                className="lg:hidden flex items-center gap-2 px-3 py-2 border border-[#E8E8E8] text-[12px] tracking-wide uppercase relative"
               >
                 <SlidersHorizontal className="w-3.5 h-3.5" />
                 Filters
+                {activeFilterCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-[#4D5B47] text-[#F8F8F6] text-[9px] font-medium rounded-full flex items-center justify-center">
+                    {activeFilterCount}
+                  </span>
+                )}
               </button>
-              <button
+              <button suppressHydrationWarning
                 onClick={() => setSortOpen(!sortOpen)}
                 className="hidden lg:flex items-center gap-2 px-3 py-2 border border-[#E8E8E8] text-[12px] tracking-wide uppercase hover:border-[#999] transition-colors relative"
               >
@@ -701,8 +766,8 @@ export default function ShopPage() {
           <div className="flex items-center justify-between py-3">
             <p className="text-[12px] text-[#999] tracking-wide">{showingText}</p>
             {/* Mobile view mode toggle */}
-            <div className="flex sm:hidden items-center border border-[#E8E8E8]">
-              <button
+            <div className="flex sm:hidden items-center border border-[#E8E8E8] rounded-[4px]">
+              <button suppressHydrationWarning
                 onClick={() => setViewMode("grid")}
                 className={`w-8 h-8 flex items-center justify-center transition-colors ${
                   viewMode === "grid" ? "bg-[#111] text-[#F8F8F6]" : "text-[#666] hover:text-[#111]"
@@ -710,7 +775,7 @@ export default function ShopPage() {
               >
                 <Grid3X3 className="w-3 h-3" />
               </button>
-              <button
+              <button suppressHydrationWarning
                 onClick={() => setViewMode("list")}
                 className={`w-8 h-8 flex items-center justify-center transition-colors ${
                   viewMode === "list" ? "bg-[#111] text-[#F8F8F6]" : "text-[#666] hover:text-[#111]"
@@ -735,7 +800,7 @@ export default function ShopPage() {
                 className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1.5 bg-[#F0EFED] text-[12px] text-[#111] border-l-2 border-l-[#4D5B47] rounded-[4px]"
               >
                 {tag.label}
-                <button
+                <button suppressHydrationWarning
                   onClick={tag.onRemove}
                   className="w-5 h-5 flex items-center justify-center rounded-[2px] hover:bg-[#E8E8E8] hover:text-[#C53030] transition-all hover:scale-110"
                 >
@@ -743,7 +808,9 @@ export default function ShopPage() {
                 </button>
               </motion.span>
             ))}
-            <button onClick={resetFilters} className="text-[12px] text-[#4D5B47] hover:text-[#111] transition-colors tracking-wide uppercase ml-2">
+            <button suppressHydrationWarning
+              onClick={resetFilters}
+              className="text-[12px] text-[#4D5B47] hover:text-[#111] transition-colors tracking-wide uppercase ml-2">
               Clear All
             </button>
           </div>
@@ -752,17 +819,17 @@ export default function ShopPage() {
         {/* Main Content */}
         <div className="flex gap-8 py-6">
           {/* Desktop Sidebar */}
-          <div className="hidden lg:block w-[240px] flex-shrink-0">
+          <div className="hidden lg:block w-[260px] flex-shrink-0">
             <div className="sticky top-[88px]">
-              <FilterSidebar categories={categories} brands={brands} />
+              <FilterSidebar categories={categories} brands={brands} shopFilters={shopFilters} selectedDiscount={selectedDiscount} setSelectedDiscount={setSelectedDiscount} />
             </div>
           </div>
 
           {/* Product Grid / List */}
-          <div className="flex-1 min-w-0" ref={productGridRef}>
+          <div className="flex-1 min-w-0 pb-20 lg:pb-0" ref={productGridRef}>
             {loading ? (
               viewMode === "grid" ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 lg:gap-5">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
                   {Array.from({ length: 12 }).map((_, i) => (
                     <div key={i} className="space-y-3">
                       <div
@@ -803,13 +870,13 @@ export default function ShopPage() {
                 <p className="text-[16px] text-[#111] mb-1">No products found</p>
                 <p className="text-[13px] text-[#999] mb-6">Try adjusting your filters or search query</p>
                 <div className="flex items-center gap-3 flex-wrap justify-center">
-                  <button
+                  <button suppressHydrationWarning
                     onClick={resetFilters}
-                    className="px-6 py-2.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-widest uppercase hover:bg-[#333] transition-colors"
+                    className="px-6 py-2.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-widest uppercase hover:bg-[#333] transition-colors rounded-[4px]"
                   >
                     Clear Filters
                   </button>
-                  <button
+                  <button suppressHydrationWarning
                     onClick={() => { resetFilters(); }}
                     className="px-6 py-2.5 border border-[#E8E8E8] text-[#111] text-[12px] font-medium tracking-widest uppercase hover:border-[#999] transition-colors"
                   >
@@ -821,7 +888,7 @@ export default function ShopPage() {
                   <div className="flex items-center gap-2 mt-6 flex-wrap justify-center">
                     <span className="text-[11px] text-[#999] tracking-wide uppercase mr-1">Try:</span>
                     {suggestedCategories.map((cat) => (
-                      <button
+                      <button suppressHydrationWarning
                         key={cat}
                         onClick={() => handleBrowseCategory(cat)}
                         className="px-3.5 py-1.5 border border-[#E8E8E8] text-[11px] text-[#666] tracking-wide hover:border-[#4D5B47] hover:text-[#4D5B47] transition-colors rounded-[4px]"
@@ -835,7 +902,7 @@ export default function ShopPage() {
             ) : (
               <>
                 {viewMode === "grid" ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-5">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-5 lg:gap-6">
                     <AnimatePresence mode="popLayout">
                       {products.map((p, i) => (
                         <ProductCard
@@ -845,7 +912,7 @@ export default function ShopPage() {
                           price={p.price}
                           mrp={p.mrp}
                           image={p.image}
-                          images={p.images ? JSON.parse(p.images) : undefined}
+                          images={p.parsedImages}
                           category={p.category}
                           brand={p.brand}
                           rating={p.rating}
@@ -872,7 +939,7 @@ export default function ShopPage() {
                 {/* Pagination */}
                 {totalPages > 1 && (
                   <div className="flex items-center justify-center gap-1 mt-12">
-                    <button
+                    <button suppressHydrationWarning
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                       disabled={page === 1}
                       className="w-9 h-9 flex items-center justify-center text-[13px] disabled:opacity-30 text-[#666] hover:text-[#111] transition-colors"
@@ -885,7 +952,7 @@ export default function ShopPage() {
                           ...
                         </span>
                       ) : (
-                        <button
+                        <button suppressHydrationWarning
                           key={p}
                           onClick={() => setPage(p)}
                           className={`w-9 h-9 flex items-center justify-center text-[13px] transition-colors ${
@@ -898,7 +965,7 @@ export default function ShopPage() {
                         </button>
                       )
                     )}
-                    <button
+                    <button suppressHydrationWarning
                       onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                       disabled={page === totalPages}
                       className="w-9 h-9 flex items-center justify-center text-[13px] disabled:opacity-30 text-[#666] hover:text-[#111] transition-colors"
@@ -918,7 +985,7 @@ export default function ShopPage() {
             )}
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Sticky Mobile Filter Bar */}
       <AnimatePresence>
@@ -928,17 +995,17 @@ export default function ShopPage() {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 80, opacity: 0 }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-[#E8E8E8] z-[50] lg:hidden"
+            className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-[#E8E8E8] z-[55] lg:hidden"
           >
             <div className="flex items-center justify-between px-4 py-3 gap-3">
-              <button
+              <button suppressHydrationWarning
                 onClick={() => setMobileFilters(true)}
                 className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-[#E8E8E8] text-[12px] tracking-wide uppercase hover:border-[#999] transition-colors"
               >
                 <SlidersHorizontal className="w-3.5 h-3.5" />
                 Filters
               </button>
-              <button
+              <button suppressHydrationWarning
                 onClick={() => setMobileSortOpen(true)}
                 className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#111] text-[#F8F8F6] text-[12px] tracking-wide uppercase hover:bg-[#333] transition-colors"
               >

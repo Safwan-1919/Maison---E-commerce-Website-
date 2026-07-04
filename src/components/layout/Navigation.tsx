@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, ShoppingBag, Heart, User, Menu, X, ChevronDown, GitCompareArrows, LogOut } from "lucide-react";
+import { BRAND_NAME, FREE_SHIPPING_THRESHOLD } from "@/lib/constants";
 import { useStore } from "@/lib/store";
 import { useAuth } from "@/components/auth/AuthProvider";
 
@@ -74,6 +75,7 @@ export function Navigation() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const dropdownTimeout = useRef<NodeJS.Timeout | null>(null);
   const prevCartCount = useRef(0);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -104,6 +106,8 @@ export function Navigation() {
     }
     fetchData();
   }, []);
+
+  useEffect(() => { setMounted(true); }, []);
 
   // Close user menu on outside click
   useEffect(() => {
@@ -179,17 +183,17 @@ export function Navigation() {
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1] }}
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        className={`sticky top-0 left-0 right-0 z-50 transition-all duration-300 ${
           scrolled
             ? "bg-[#F8F8F6]/95 backdrop-blur-md border-b border-[#E8E8E8] shadow-sm"
-            : "bg-transparent"
+            : "bg-[#F8F8F6]"
         }`}
       >
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 lg:h-[72px]">
             {/* Left - Mobile Menu + Links */}
             <div className="flex items-center gap-8">
-              <button
+              <button suppressHydrationWarning
                 onClick={() => setMobileMenuOpen(true)}
                 className="lg:hidden w-10 h-10 flex items-center justify-center"
                 aria-label="Open menu"
@@ -217,10 +221,10 @@ export function Navigation() {
                           setActiveDropdown(link.label);
                         }}
                         onMouseLeave={() => {
-                          dropdownTimeout.current = setTimeout(() => setActiveDropdown(null), 200);
+                          dropdownTimeout.current = setTimeout(() => setActiveDropdown(null), 250);
                         }}
                       >
-                        <button
+                        <button suppressHydrationWarning
                           onClick={() => handleNavClick(link.page, link.filter)}
                           className="group relative px-3 py-2 text-[13px] font-normal tracking-wide text-[#111] hover:text-[#666] transition-colors flex items-center gap-1"
                         >
@@ -242,12 +246,12 @@ export function Navigation() {
                                 if (dropdownTimeout.current) clearTimeout(dropdownTimeout.current);
                               }}
                               onMouseLeave={() => {
-                                dropdownTimeout.current = setTimeout(() => setActiveDropdown(null), 200);
+                                dropdownTimeout.current = setTimeout(() => setActiveDropdown(null), 250);
                               }}
                             >
                               <div className="bg-white border border-[#E8E8E8] shadow-[0_8px_24px_rgba(0,0,0,0.08)] max-w-[400px] overflow-hidden">
                                 {dropdown.featured && (
-                                  <button
+                                  <button suppressHydrationWarning
                                     onClick={() => handleDropdownClick(dropdown.featured!)}
                                     className="block w-full text-left px-5 py-2.5 text-[13px] font-medium text-[#4D5B47] border-b border-[#E8E8E8] hover:bg-[#F8F8F6] transition-colors"
                                   >
@@ -256,7 +260,7 @@ export function Navigation() {
                                 )}
                                 <div className="grid grid-cols-2">
                                   {dropdown.items.map((item) => (
-                                    <button
+                                    <button suppressHydrationWarning
                                       key={item.label}
                                       onClick={() => handleDropdownClick(item)}
                                       className="block w-full text-left px-5 py-2.5 text-[13px] text-[#111] border-b border-r border-[#E8E8E8] last:border-b-0 hover:bg-[#F8F8F6] hover:text-[#4D5B47] transition-colors truncate"
@@ -277,12 +281,21 @@ export function Navigation() {
             </div>
 
             {/* Center - Logo */}
-            <button
+            <button suppressHydrationWarning
               onClick={() => navigate("home")}
-              className="absolute left-1/2 -translate-x-1/2"
+              className="absolute left-1/2 -translate-x-1/2 max-w-[calc(100%-180px)] truncate hidden lg:block"
             >
-              <h1 className="text-[20px] sm:text-[22px] font-medium tracking-[0.15em] text-[#111]">
-                MAISON
+              <h1 className="text-[22px] font-medium tracking-[0.15em] text-[#111]">
+                {BRAND_NAME}
+              </h1>
+            </button>
+            {/* Mobile Logo — flex child, no overlap */}
+            <button suppressHydrationWarning
+              onClick={() => navigate("home")}
+              className="lg:hidden flex-shrink min-w-0 truncate"
+            >
+              <h1 className="text-[18px] font-medium tracking-[0.15em] text-[#111]">
+                {BRAND_NAME}
               </h1>
             </button>
 
@@ -294,7 +307,7 @@ export function Navigation() {
                 onMouseEnter={() => setShowSearchTooltip(true)}
                 onMouseLeave={() => setShowSearchTooltip(false)}
               >
-                <button
+                <button suppressHydrationWarning
                   onClick={() => setSearchOpen(true)}
                   className="w-10 h-10 flex items-center justify-center hover:opacity-60 transition-opacity"
                   aria-label="Search"
@@ -316,27 +329,27 @@ export function Navigation() {
                 </AnimatePresence>
               </div>
 
-              <button
+              <button suppressHydrationWarning
                 onClick={() => navigate("wishlist")}
                 className="w-10 h-10 flex items-center justify-center hover:opacity-60 transition-opacity relative"
                 aria-label="Wishlist"
               >
                 <Heart className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                {wishlistItems.length > 0 && (
-                  <span className="absolute top-1 right-1 w-[18px] h-[18px] bg-[#111] text-[#F8F8F6] text-[10px] font-bold flex items-center justify-center">
+                {mounted && wishlistItems.length > 0 && (
+                  <span suppressHydrationWarning className="absolute top-1 right-1 w-[18px] h-[18px] bg-[#111] text-[#F8F8F6] text-[10px] font-bold flex items-center justify-center">
                     {wishlistItems.length}
                   </span>
                 )}
               </button>
 
-              <button
+              <button suppressHydrationWarning
                 onClick={toggleCart}
                 className="w-10 h-10 flex items-center justify-center hover:opacity-60 transition-opacity relative"
                 aria-label="Cart"
               >
                 <ShoppingBag className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                {cartCount > 0 && (
-                  <span
+                {mounted && cartCount > 0 && (
+                  <span suppressHydrationWarning
                     key={cartBadgeKey}
                     className="absolute top-1 right-1 w-[18px] h-[18px] bg-[#111] text-[#F8F8F6] text-[10px] font-bold flex items-center justify-center badge-pop"
                   >
@@ -347,18 +360,18 @@ export function Navigation() {
 
               {/* Auth-aware user icon */}
               <div className="relative" ref={userMenuRef}>
-                {isAuthenticated && user ? (
-                  <button
+                {mounted && isAuthenticated && user ? (
+                  <button suppressHydrationWarning
                     onClick={() => setUserMenuOpen(!userMenuOpen)}
                     className="flex items-center gap-2 hover:opacity-60 transition-opacity"
                     aria-label="Account menu"
                   >
-                    <div className="w-[30px] h-[30px] bg-[#111] text-[#F8F8F6] text-[12px] font-medium flex items-center justify-center">
+                    <div suppressHydrationWarning className="w-[30px] h-[30px] bg-[#111] text-[#F8F8F6] text-[12px] font-medium flex items-center justify-center">
                       {user.name?.charAt(0)?.toUpperCase() || "U"}
                     </div>
                   </button>
                 ) : (
-                  <button
+                  <button suppressHydrationWarning
                     onClick={() => setAuthOpen(true)}
                     className="hidden sm:flex items-center text-[12px] tracking-wide text-[#111] hover:text-[#666] transition-colors"
                     aria-label="Sign in"
@@ -380,14 +393,14 @@ export function Navigation() {
                         <p className="text-[13px] font-medium text-[#111] truncate">{user?.name || "User"}</p>
                         <p className="text-[11px] text-[#999] truncate">{user?.email || ""}</p>
                       </div>
-                      <button
+                      <button suppressHydrationWarning
                         onClick={() => { navigate("account"); setUserMenuOpen(false); }}
                         className="w-full text-left px-4 py-2.5 text-[13px] text-[#111] hover:bg-[#F8F8F6] hover:text-[#4D5B47] transition-colors flex items-center gap-2"
                       >
                         <User className="w-4 h-4" strokeWidth={1.5} />
                         My Account
                       </button>
-                      <button
+                      <button suppressHydrationWarning
                         onClick={handleLogout}
                         className="w-full text-left px-4 py-2.5 text-[13px] text-[#111] hover:bg-[#F8F8F6] hover:text-[#C53030] transition-colors flex items-center gap-2 border-t border-[#E8E8E8]"
                       >
@@ -399,14 +412,14 @@ export function Navigation() {
                 </AnimatePresence>
               </div>
 
-              {compareItems.length > 0 && (
-                <button
+                {mounted && compareItems.length > 0 && (
+                <button suppressHydrationWarning
                   onClick={() => setCompareOpen(true)}
                   className="hidden sm:flex w-10 h-10 items-center justify-center hover:opacity-60 transition-opacity relative"
                   aria-label="Compare"
                 >
                   <GitCompareArrows className="w-[18px] h-[18px]" strokeWidth={1.5} />
-                  <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-[#4D5B47] text-[#F8F8F6] text-[9px] font-medium flex items-center justify-center">
+                  <span suppressHydrationWarning className="absolute top-1.5 right-1.5 w-4 h-4 bg-[#4D5B47] text-[#F8F8F6] text-[9px] font-medium flex items-center justify-center">
                     {compareItems.length}
                   </span>
                 </button>
@@ -484,7 +497,7 @@ function MobileMenuOverlay({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.3 }}
-        className="fixed inset-0 bg-black/40 z-[60] lg:hidden"
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] lg:hidden"
         onClick={() => setMobileMenuOpen(false)}
       />
 
@@ -498,8 +511,8 @@ function MobileMenuOverlay({
       >
         {/* Top section: Logo + Close */}
         <div className="flex items-center justify-between px-6 h-16 shrink-0">
-          <h2 className="text-[18px] font-medium tracking-[0.15em] text-[#111]">MAISON</h2>
-          <button
+          <h2 className="text-[18px] font-medium tracking-[0.15em] text-[#111]">{BRAND_NAME}</h2>
+          <button suppressHydrationWarning
             onClick={() => setMobileMenuOpen(false)}
             className="w-10 h-10 flex items-center justify-center"
             aria-label="Close menu"
@@ -514,7 +527,7 @@ function MobileMenuOverlay({
         {/* Navigation links */}
         <nav className="flex-1 px-6 py-2">
           {navLinks.map((link, i) => (
-            <motion.button
+            <motion.button suppressHydrationWarning
               key={link.label}
               initial={{ opacity: 0, x: 16 }}
               animate={{ opacity: 1, x: 0 }}
@@ -535,7 +548,7 @@ function MobileMenuOverlay({
             <>
               <p className="text-[11px] font-medium tracking-[0.2em] uppercase text-[#999] mb-2">Categories</p>
               {categories.slice(0, 6).map((cat, i) => (
-                <motion.button
+                <motion.button suppressHydrationWarning
                   key={cat.id}
                   initial={{ opacity: 0, x: 16 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -548,7 +561,7 @@ function MobileMenuOverlay({
                 </motion.button>
               ))}
               {categories.length > 6 && (
-                <motion.button
+                <motion.button suppressHydrationWarning
                   initial={{ opacity: 0, x: 16 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.45 }}
@@ -580,7 +593,7 @@ function MobileMenuOverlay({
             { label: "Cart", page: "shop" as const, icon: <ShoppingBag className="w-4 h-4" strokeWidth={1.5} />, count: cartCount, action: "cart" as const },
             { label: "Help & Support", page: "home" as const, icon: null },
           ].map((item, i) => (
-            <motion.button
+            <motion.button suppressHydrationWarning
               key={item.label}
               initial={{ opacity: 0, x: 16 }}
               animate={{ opacity: 1, x: 0 }}
@@ -602,7 +615,7 @@ function MobileMenuOverlay({
                 {item.label}
               </span>
               {item.count !== undefined && item.count > 0 && (
-                <span className="text-[11px] text-[#999] bg-[#E8E8E8] px-2 py-0.5 font-medium">
+                <span suppressHydrationWarning className="text-[11px] text-[#999] bg-[#E8E8E8] px-2 py-0.5 font-medium">
                   {item.count}
                 </span>
               )}
@@ -611,7 +624,7 @@ function MobileMenuOverlay({
 
           {/* Mobile auth action */}
           {!isAuthenticated && (
-            <motion.button
+            <motion.button suppressHydrationWarning
               initial={{ opacity: 0, x: 16 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.55 }}
@@ -623,7 +636,7 @@ function MobileMenuOverlay({
           )}
 
           {isAuthenticated && (
-            <motion.button
+            <motion.button suppressHydrationWarning
               initial={{ opacity: 0, x: 16 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.55 }}
@@ -679,7 +692,7 @@ function MobileMenuOverlay({
           </div>
 
           <p className="mt-4 text-[11px] text-[#999] tracking-wide">
-            © 2025 MAISON. All rights reserved.
+            © {new Date().getFullYear()} {BRAND_NAME}. All rights reserved.
           </p>
         </div>
       </motion.div>

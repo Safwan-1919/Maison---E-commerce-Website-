@@ -39,7 +39,7 @@ export const authOptions = {
     },
   },
   pages: { signIn: undefined },
-  secret: process.env.NEXTAUTH_SECRET || 'maison-super-secret-key-change-in-production-2025',
+  secret: process.env.NEXTAUTH_SECRET,
 };
 
 const handler = NextAuth(authOptions);

@@ -177,13 +177,13 @@ export default function Home() {
                 <span className="text-[11px] text-[#999]">+{compareItems.length - 3}</span>
               )}
             </div>
-            <button
+            <button suppressHydrationWarning
               onClick={() => setCompareOpen(true)}
               className="ml-2 px-4 py-1.5 bg-[#F8F8F6] text-[#111] text-[11px] font-medium tracking-widest uppercase hover:bg-white transition-colors"
             >
               Compare
             </button>
-            <button
+            <button suppressHydrationWarning
               onClick={clearCompare}
               className="w-6 h-6 flex items-center justify-center hover:bg-[#333] transition-colors rounded-full"
             >

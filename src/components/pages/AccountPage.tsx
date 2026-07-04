@@ -220,7 +220,7 @@ function LoyaltySection({ points }: { points: number }) {
         </div>
       )}
 
-      <div className="mt-4 pt-4 border-t border-[#E8E8E8] flex items-center gap-4">
+      <div className="mt-4 pt-4 border-t border-[#E8E8E8] flex flex-wrap items-center gap-3 sm:gap-4">
         <div className="flex items-center gap-2">
           <Gift className="w-3.5 h-3.5 text-[#B79B7B]" strokeWidth={1.5} />
           <span className="text-xs text-[#666]">Earn 2x points on weekends</span>
@@ -358,7 +358,7 @@ function ProfileTab({ profile }: { profile: UserProfile | null }) {
           <Label htmlFor="name" className="text-[13px] uppercase tracking-wider text-[#666]">
             Full Name
           </Label>
-          <Input
+          <Input suppressHydrationWarning
             id="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -369,7 +369,7 @@ function ProfileTab({ profile }: { profile: UserProfile | null }) {
           <Label htmlFor="email" className="text-[13px] uppercase tracking-wider text-[#666]">
             Email
           </Label>
-          <Input
+          <Input suppressHydrationWarning
             id="email"
             type="email"
             value={email}
@@ -381,7 +381,7 @@ function ProfileTab({ profile }: { profile: UserProfile | null }) {
           <Label htmlFor="phone" className="text-[13px] uppercase tracking-wider text-[#666]">
             Phone
           </Label>
-          <Input
+          <Input suppressHydrationWarning
             id="phone"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
@@ -394,7 +394,7 @@ function ProfileTab({ profile }: { profile: UserProfile | null }) {
         <p className="text-[13px] text-[#C53030]">{saveError}</p>
       )}
 
-      <Button
+      <Button suppressHydrationWarning
         onClick={handleSave}
         disabled={saving}
         className="rounded-[4px] bg-[#111] hover:bg-[#333] text-white h-11 px-8"
@@ -461,8 +461,7 @@ function OrdersTab() {
   ];
 
   const handleTrackOrder = (orderNumber: string) => {
-    navigate("order-tracking");
-    showNotification(`Tracking ${orderNumber}`, "info");
+    navigate("order-tracking", undefined, orderNumber);
   };
 
   const handleReorder = (order: Order) => {
@@ -518,7 +517,7 @@ function OrdersTab() {
           const count = opt.key === "all" ? total : statusCounts[opt.key] || 0;
           if (opt.key !== "all" && count === 0) return null;
           return (
-            <button
+            <button suppressHydrationWarning
               key={opt.key}
               onClick={() => { setActiveFilter(opt.key); setPage(1); }}
               className={`inline-flex items-center gap-1.5 px-3 h-9 rounded-[4px] text-xs uppercase tracking-wider font-medium border transition-all duration-200 ${
@@ -554,7 +553,7 @@ function OrdersTab() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.05, duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
             >
-              <button
+              <button suppressHydrationWarning
                 onClick={() => setExpandedId(isExpanded ? null : order.id)}
                 className="w-full text-left bg-white rounded-[4px] border border-[#E8E8E8] p-4 hover:border-[#999] transition-colors"
               >
@@ -649,7 +648,7 @@ function OrdersTab() {
                       {/* Action Buttons */}
                       <div className="flex items-center gap-2 mt-4 pt-4 border-t border-[#E8E8E8]">
                         {(order.status === "confirmed" || order.status === "shipped" || order.status === "processing") && (
-                          <Button
+                          <Button suppressHydrationWarning
                             variant="outline"
                             onClick={() => handleTrackOrder(order.orderNumber)}
                             className="rounded-[4px] border-[#4D5B47] text-[#4D5B47] hover:bg-[#4D5B47]/5 h-9 text-xs uppercase tracking-wider"
@@ -659,13 +658,39 @@ function OrdersTab() {
                           </Button>
                         )}
                         {order.status !== "cancelled" && (
-                          <Button
+                          <Button suppressHydrationWarning
                             variant="outline"
                             onClick={() => handleReorder(order)}
                             className="rounded-[4px] border-[#E8E8E8] h-9 text-xs uppercase tracking-wider hover:border-[#999]"
                           >
                             <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
                             Reorder
+                          </Button>
+                        )}
+                        {(order.status === "confirmed" || order.status === "processing") && (
+                          <Button suppressHydrationWarning
+                            variant="outline"
+                            onClick={async () => {
+                              if (!confirm("Are you sure you want to cancel this order?")) return;
+                              try {
+                                const res = await fetch(`/api/orders/${order.orderNumber}`, {
+                                  method: "PATCH",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ status: "cancelled" }),
+                                });
+                                if (res.ok) {
+                                  showNotification("Order cancelled", "success");
+                                  fetchOrders(activeFilter, page);
+                                } else {
+                                  showNotification("Failed to cancel order", "error");
+                                }
+                              } catch {
+                                showNotification("Failed to cancel order", "error");
+                              }
+                            }}
+                            className="rounded-[4px] border-[#C53030]/30 text-[#C53030] hover:bg-[#C53030]/5 h-9 text-xs uppercase tracking-wider"
+                          >
+                            Cancel Order
                           </Button>
                         )}
                       </div>
@@ -681,7 +706,7 @@ function OrdersTab() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 pt-4">
-          <button
+          <button suppressHydrationWarning
             disabled={page <= 1}
             onClick={() => setPage(page - 1)}
             className="px-3 py-2 border border-[#E8E8E8] rounded-[4px] text-xs uppercase tracking-wider text-[#666] hover:border-[#999] disabled:opacity-30 disabled:cursor-not-allowed"
@@ -691,7 +716,7 @@ function OrdersTab() {
           <span className="text-xs text-[#999] px-2">
             Page {page} of {totalPages}
           </span>
-          <button
+          <button suppressHydrationWarning
             disabled={page >= totalPages}
             onClick={() => setPage(page + 1)}
             className="px-3 py-2 border border-[#E8E8E8] rounded-[4px] text-xs uppercase tracking-wider text-[#666] hover:border-[#999] disabled:opacity-30 disabled:cursor-not-allowed"
@@ -705,7 +730,7 @@ function OrdersTab() {
         <motion.div {...fadeUp} className="flex flex-col items-center justify-center py-12 text-center">
           <Package className="w-8 h-8 text-[#ccc] mb-3" strokeWidth={1.5} />
           <p className="text-sm text-[#666]">No {activeFilter} orders found</p>
-          <button
+          <button suppressHydrationWarning
             onClick={() => { setActiveFilter("all"); setPage(1); }}
             className="text-xs text-[#4D5B47] font-medium uppercase tracking-wider mt-2 hover:underline"
           >
@@ -756,7 +781,7 @@ function AddressesTab({ profile, onAddressesChange }: { profile: UserProfile | n
       });
       const data = await res.json();
       if (res.ok) {
-        setAddresses(data.addresses ? JSON.parse(data.addresses) : [...addresses, newAddr]);
+        setAddresses(data.addresses || [...addresses, newAddr]);
         showNotification("Address added", "success");
         setDialogOpen(false);
         onAddressesChange();
@@ -778,7 +803,7 @@ function AddressesTab({ profile, onAddressesChange }: { profile: UserProfile | n
       });
       const data = await res.json();
       if (res.ok) {
-        setAddresses(data.addresses ? JSON.parse(data.addresses) : addresses.filter((_, i) => i !== index));
+        setAddresses(data.addresses || addresses.filter((_, i) => i !== index));
         showNotification("Address removed", "info");
         onAddressesChange();
       } else {
@@ -805,7 +830,7 @@ function AddressesTab({ profile, onAddressesChange }: { profile: UserProfile | n
         <h3 className="text-base font-medium text-[#111]">Saved Addresses</h3>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button
+            <Button suppressHydrationWarning
               onClick={openNew}
               variant="outline"
               className="rounded-[4px] border-[#E8E8E8] h-9 text-xs uppercase tracking-wider"
@@ -821,7 +846,7 @@ function AddressesTab({ profile, onAddressesChange }: { profile: UserProfile | n
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
                 <Label className="text-[13px] uppercase tracking-wider text-[#666]">Full Name</Label>
-                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="rounded-[4px] border-[#E8E8E8] h-10" />
+                <Input suppressHydrationWarning value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="rounded-[4px] border-[#E8E8E8] h-10" />
               </div>
               <div className="space-y-2">
                 <Label className="text-[13px] uppercase tracking-wider text-[#666]">Street Address</Label>
@@ -830,24 +855,24 @@ function AddressesTab({ profile, onAddressesChange }: { profile: UserProfile | n
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-[13px] uppercase tracking-wider text-[#666]">City</Label>
-                  <Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className="rounded-[4px] border-[#E8E8E8] h-10" />
+                  <Input suppressHydrationWarning value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className="rounded-[4px] border-[#E8E8E8] h-10" />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[13px] uppercase tracking-wider text-[#666]">State</Label>
-                  <Input value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} className="rounded-[4px] border-[#E8E8E8] h-10" />
+                  <Input suppressHydrationWarning value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} className="rounded-[4px] border-[#E8E8E8] h-10" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-[13px] uppercase tracking-wider text-[#666]">PIN Code</Label>
-                  <Input value={form.zip} onChange={(e) => setForm({ ...form, zip: e.target.value })} className="rounded-[4px] border-[#E8E8E8] h-10" />
+                  <Input suppressHydrationWarning value={form.zip} onChange={(e) => setForm({ ...form, zip: e.target.value })} className="rounded-[4px] border-[#E8E8E8] h-10" />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[13px] uppercase tracking-wider text-[#666]">Phone</Label>
-                  <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="rounded-[4px] border-[#E8E8E8] h-10" />
+                  <Input suppressHydrationWarning value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="rounded-[4px] border-[#E8E8E8] h-10" />
                 </div>
               </div>
-              <Button onClick={handleSave} disabled={saving} className="rounded-[4px] bg-[#111] hover:bg-[#333] text-white h-10 w-full">
+              <Button suppressHydrationWarning onClick={handleSave} disabled={saving} className="rounded-[4px] bg-[#111] hover:bg-[#333] text-white h-10 w-full">
                 {saving ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : "Save Address"}
@@ -900,7 +925,7 @@ function AddressesTab({ profile, onAddressesChange }: { profile: UserProfile | n
                   </p>
                   <p className="text-xs text-[#999] mt-1 pl-6">{addr.phone}</p>
                 </div>
-                <Button
+                <Button suppressHydrationWarning
                   variant="ghost"
                   size="icon"
                   onClick={() => handleDelete(idx)}
@@ -918,43 +943,89 @@ function AddressesTab({ profile, onAddressesChange }: { profile: UserProfile | n
   );
 }
 
-// ── Notifications Tab (Placeholder) ─────────────────────────────────────────
+// ── Notifications Tab ────────────────────────────────────────────────────────
 function NotificationsTab() {
-  const demoNotifications = [
-    { id: "n1", title: "Order Confirmed", message: "Your order MSN-XXXX has been confirmed and is being prepared.", time: "2 hours ago", read: false, icon: Package },
-    { id: "n2", title: "Welcome to MAISON", message: "Thank you for creating your account. Explore our latest collection.", time: "1 day ago", read: true, icon: Star },
-    { id: "n3", title: "New Arrival", message: "Check out our fresh Spring/Summer 2025 collection.", time: "3 days ago", read: true, icon: Sparkles },
-  ];
+  const [notifications, setNotifications] = useState<Array<{
+    id: string;
+    title: string;
+    message: string;
+    type: string;
+    time: string;
+    read: boolean;
+    orderNumber: string | null;
+  }>>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/notifications")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.notifications) setNotifications(data.notifications);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const getIcon = (type: string) => {
+    switch (type) {
+      case "order": return Package;
+      case "system": return Star;
+      default: return Sparkles;
+    }
+  };
+
+  const getRelativeTime = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  };
+
+  if (loading) {
+    return (
+      <motion.div {...fadeUp} className="space-y-3">
+        <h3 className="text-base font-medium text-[#111] mb-4">Notifications</h3>
+        <p className="text-[13px] text-[#999]">Loading notifications...</p>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div {...fadeUp} className="space-y-3">
       <h3 className="text-base font-medium text-[#111] mb-4">Notifications</h3>
-      {demoNotifications.map((notif, idx) => {
-        const Icon = notif.icon;
-        return (
-          <motion.div
-            key={notif.id}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.05, duration: 0.25 }}
-            className={`bg-white rounded-[4px] border p-4 ${notif.read ? "border-[#E8E8E8]" : "border-[#4D5B47]/30 bg-[#4D5B47]/[0.02]"}`}
-          >
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-[4px] bg-[#F0EFED] flex items-center justify-center shrink-0 mt-0.5">
-                <Icon className="w-4 h-4 text-[#666]" strokeWidth={1.5} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-[#111]">{notif.title}</p>
-                  {!notif.read && <div className="w-2 h-2 rounded-full bg-[#4D5B47]" />}
+      {notifications.length === 0 ? (
+        <p className="text-[13px] text-[#999]">No notifications yet.</p>
+      ) : (
+        notifications.map((notif, idx) => {
+          const Icon = getIcon(notif.type);
+          return (
+            <motion.div
+              key={notif.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.05, duration: 0.25 }}
+              className={`bg-white rounded-[4px] border p-4 ${notif.read ? "border-[#E8E8E8]" : "border-[#4D5B47]/30 bg-[#4D5B47]/[0.02]"}`}
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-[4px] bg-[#F0EFED] flex items-center justify-center shrink-0 mt-0.5">
+                  <Icon className="w-4 h-4 text-[#666]" strokeWidth={1.5} />
                 </div>
-                <p className="text-xs text-[#666] mt-0.5">{notif.message}</p>
-                <p className="text-[11px] text-[#999] mt-1">{notif.time}</p>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-[#111]">{notif.title}</p>
+                    {!notif.read && <div className="w-2 h-2 rounded-full bg-[#4D5B47]" />}
+                  </div>
+                  <p className="text-xs text-[#666] mt-0.5">{notif.message}</p>
+                  <p className="text-[11px] text-[#999] mt-1">{getRelativeTime(notif.time)}</p>
+                </div>
               </div>
-            </div>
-          </motion.div>
-        );
-      })}
+            </motion.div>
+          );
+        })
+      )}
     </motion.div>
   );
 }
@@ -1054,7 +1125,7 @@ function SettingsTab() {
                 <p className="text-xs text-[#666]">Current: {theme === "light" ? "Light Mode" : "Dark Mode"}</p>
               </div>
             </div>
-            <Button variant="outline" onClick={toggleTheme} className="rounded-[4px] border-[#E8E8E8] h-9 text-xs uppercase tracking-wider">
+            <Button suppressHydrationWarning variant="outline" onClick={toggleTheme} className="rounded-[4px] border-[#E8E8E8] h-9 text-xs uppercase tracking-wider">
               {theme === "light" ? "Switch to Dark" : "Switch to Light"}
             </Button>
           </div>
@@ -1088,7 +1159,7 @@ function SettingsTab() {
                   <p className="text-xs text-[#666]">{connectedAccounts[account.provider] ? "Connected" : "Not connected"}</p>
                 </div>
               </div>
-              <Button
+              <Button suppressHydrationWarning
                 variant={connectedAccounts[account.provider] ? "outline" : "default"}
                 onClick={() => toggleAccount(account.provider)}
                 className={`rounded-[4px] h-8 text-xs uppercase tracking-wider px-3 ${
@@ -1116,7 +1187,7 @@ function SettingsTab() {
           <div className="flex items-center gap-2 flex-wrap">
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button
+                <Button suppressHydrationWarning
                   variant="outline"
                   className="rounded-[4px] border-[#C53030] text-[#C53030] hover:bg-[#C53030] hover:text-white h-10 text-xs uppercase tracking-wider transition-colors"
                 >
@@ -1140,7 +1211,7 @@ function SettingsTab() {
               </AlertDialogContent>
             </AlertDialog>
 
-            <Button
+            <Button suppressHydrationWarning
               variant="outline"
               className="rounded-[4px] border-[#E8E8E8] h-10 text-xs uppercase tracking-wider"
               onClick={async () => { await logout(); showNotification("Logged out", "info"); }}
@@ -1167,7 +1238,7 @@ export default function AccountPage() {
     try {
       const res = await fetch("/api/user");
       const data = await res.json();
-      if (res.ok) setProfile(data);
+      if (res.ok) setProfile(data.user || data);
     } catch {}
     setProfileLoading(false);
   }, []);
@@ -1179,7 +1250,12 @@ export default function AccountPage() {
   // Auth guard
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#F8F8F6] flex items-center justify-center">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+        className="min-h-screen bg-[#F8F8F6] pt-4 flex items-center justify-center"
+      >
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1192,19 +1268,24 @@ export default function AccountPage() {
           <p className="text-[14px] text-[#666] mb-8">
             Sign in to view your account, orders, and manage your profile.
           </p>
-          <button
+          <button suppressHydrationWarning
             onClick={() => setAuthOpen(true)}
             className="px-8 py-3.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#333] transition-colors"
           >
             Sign In
           </button>
         </motion.div>
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F8F6]">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+      className="min-h-screen bg-[#F8F8F6]"
+    >
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
         {/* Header */}
         <motion.div
@@ -1288,6 +1369,6 @@ export default function AccountPage() {
           </TabsContent>
         </Tabs>
       </div>
-    </div>
+    </motion.div>
   );
 }

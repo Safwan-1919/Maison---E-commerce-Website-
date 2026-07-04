@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useStore } from "@/lib/store";
+import { FREE_SHIPPING_THRESHOLD, EXPRESS_DELIVERY_COST } from "@/lib/constants";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { ProductCard } from "@/components/shared/ProductCard";
 import { ScrollReveal } from "@/components/shared/ScrollReveal";
 import {
   ArrowLeft, Heart, ShoppingBag, Truck, RotateCcw, Shield,
-  ChevronDown, ChevronRight, ChevronLeft, Minus, Plus, Ruler, X, Lock
+  ChevronDown, ChevronRight, ChevronLeft, Minus, Plus, Ruler, X, Lock, Share2, Check
 } from "lucide-react";
 
 interface Product {
@@ -209,7 +210,7 @@ function ImageGallery({
       {images.length > 1 && (
         <div className="flex gap-2 overflow-x-auto scrollbar-none">
           {images.map((img, i) => (
-            <button
+            <button suppressHydrationWarning
               key={i}
               onClick={() => setActiveIndex(i)}
               className={`flex-shrink-0 w-16 h-20 border-2 overflow-hidden transition-all ${
@@ -262,9 +263,9 @@ function CollapsibleSection({
 
   return (
     <div className="border-b border-[#E8E8E8]">
-      <button
+      <button suppressHydrationWarning
         onClick={toggle}
-        className="flex items-center justify-between w-full py-4 text-[13px] font-medium tracking-wide text-[#111] hover:text-[#666] transition-colors"
+        className="flex items-center justify-between w-full py-4 text-[14px] font-medium tracking-wide text-[#111] hover:text-[#666] transition-colors"
       >
         {title}
         {open ? (
@@ -324,7 +325,7 @@ function ReviewForm({
         <p className="text-[12px] text-[#999] mb-2">Your Rating</p>
         <div className="flex items-center gap-1">
           {[1, 2, 3, 4, 5].map((star) => (
-            <button
+            <button suppressHydrationWarning
               key={star}
               type="button"
               onClick={() => setSelectedRating(star)}
@@ -350,7 +351,7 @@ function ReviewForm({
 
       {/* Title */}
       <div>
-        <input
+        <input suppressHydrationWarning
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -362,6 +363,7 @@ function ReviewForm({
       {/* Comment */}
       <div>
         <textarea
+          suppressHydrationWarning
           value={comment}
           onChange={(e) => setComment(e.target.value)}
           placeholder="Share your experience with this product (optional)"
@@ -370,7 +372,7 @@ function ReviewForm({
         />
       </div>
 
-      <button
+      <button suppressHydrationWarning
         type="submit"
         disabled={selectedRating === 0 || submitting}
         className="px-6 py-2.5 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-widest uppercase hover:bg-[#333] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
@@ -407,6 +409,7 @@ export default function ProductPage() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [openDetail, setOpenDetail] = useState<string | null>("description");
+  const [showStickyBar, setShowStickyBar] = useState(false);
 
   // Review state
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -416,18 +419,22 @@ export default function ProductPage() {
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [submittingReview, setSubmittingReview] = useState(false);
 
-  const fetchProduct = useCallback(async () => {
+  const parsedImages = useMemo(() => product?.images ? JSON.parse(product.images) : [], [product?.images]);
+  const parsedSizes = useMemo(() => product?.sizes ? JSON.parse(product.sizes) : [], [product?.sizes]);
+  const parsedColors = useMemo(() => product?.colors ? JSON.parse(product.colors) : [], [product?.colors]);
+
+  const fetchProduct = useCallback(async (signal?: AbortSignal) => {
     if (!selectedProductId) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/products/${selectedProductId}`);
+      const res = await fetch(`/api/products/${selectedProductId}`, { signal });
       const data = await res.json();
       setProduct(data.product);
       setSimilar(data.similarProducts || []);
-      // Set initial reviews from the product response
       setReviews(data.product?.reviews || []);
       setReviewTotal(data.product?.reviewCount || 0);
     } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
       console.error(e);
     }
     setLoading(false);
@@ -454,16 +461,10 @@ export default function ProductPage() {
   }, [selectedProductId]);
 
   useEffect(() => {
-    fetchProduct();
+    const controller = new AbortController();
+    fetchProduct(controller.signal);
+    return () => controller.abort();
   }, [fetchProduct]);
-
-  // Fetch reviews when product loads (use API pagination)
-  useEffect(() => {
-    if (product) {
-      setReviewPage(1);
-      fetchReviews(1, false);
-    }
-  }, [product]);
 
   // Escape key to close lightbox
   useEffect(() => {
@@ -503,6 +504,20 @@ export default function ProductPage() {
     }
   }, [product]);
 
+  // IntersectionObserver for sticky add-to-cart bar
+  useEffect(() => {
+    const btn = document.getElementById("add-to-cart-main");
+    if (!btn) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setShowStickyBar(!entry.isIntersecting);
+      },
+      { threshold: 0 }
+    );
+    observer.observe(btn);
+    return () => observer.disconnect();
+  }, [loading]);
+
   // Handle review submission
   const handleReviewSubmit = async (data: { rating: number; title: string; comment: string }) => {
     if (!selectedProductId || !isAuthenticated) return;
@@ -536,22 +551,32 @@ export default function ProductPage() {
 
   if (loading)
     return (
-      <main className="min-h-screen bg-[#F8F8F6] pt-20">
+      <motion.main
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+        className="min-h-screen bg-[#F8F8F6] pt-4"
+      >
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <ProductSkeleton />
         </div>
-      </main>
+      </motion.main>
     );
   if (!product)
     return (
-      <main className="min-h-screen bg-[#F8F8F6] pt-20 flex items-center justify-center">
+      <motion.main
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+        className="min-h-screen bg-[#F8F8F6] pt-4 flex items-center justify-center"
+      >
         <p className="text-[15px] text-[#666]">Product not found</p>
-      </main>
+      </motion.main>
     );
 
-  const images: string[] = JSON.parse(product.images || "[]");
-  const sizes: string[] = JSON.parse(product.sizes || "[]");
-  const colors: string[] = JSON.parse(product.colors || "[]");
+  const images = parsedImages;
+  const sizes = parsedSizes;
+  const colors = parsedColors;
   const inWishlist = isInWishlist(product.id);
 
   // Delivery dates: 5-7 business days (approx 7-9 calendar days)
@@ -614,33 +639,38 @@ export default function ProductPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#F8F8F6] pt-20 pb-16">
+    <motion.main
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+      className="min-h-screen bg-[#F8F8F6] pt-4 pb-24 lg:pb-16"
+    >
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
         {/* Breadcrumb */}
         <ScrollReveal>
           <nav className="flex items-center gap-2 py-4 text-[12px] text-[#999]">
-            <button
+            <button suppressHydrationWarning
               onClick={() => navigate("home")}
               className="hover:text-[#111] transition-colors"
             >
               Home
             </button>
             <ChevronRight className="w-3 h-3" />
-            <button
+            <button suppressHydrationWarning
               onClick={() => navigate("shop")}
               className="hover:text-[#111] transition-colors"
             >
               {product.category}
             </button>
             <ChevronRight className="w-3 h-3" />
-            <span className="text-[#111] truncate max-w-[200px]">
+            <span className="text-[#111] truncate min-w-0 max-w-[calc(100%-120px)]">
               {product.name}
             </span>
           </nav>
         </ScrollReveal>
 
         {/* Back Button */}
-        <button
+        <button suppressHydrationWarning
           onClick={goBack}
           className="flex items-center gap-1.5 text-[12px] tracking-widest uppercase text-[#999] hover:text-[#111] transition-colors mb-6"
         >
@@ -665,12 +695,12 @@ export default function ProductPage() {
           <ScrollReveal direction="right">
             <div className="space-y-6">
               {/* Brand */}
-              <p className="text-[11px] font-medium tracking-[0.2em] uppercase text-[#999]">
+              <p className="text-[12px] font-medium tracking-[0.2em] uppercase text-[#999]">
                 {product.brand}
               </p>
 
               {/* Name */}
-              <h1 className="text-[24px] sm:text-[28px] lg:text-[32px] font-medium tracking-[-0.02em] text-[#111] leading-tight">
+              <h1 className="text-[26px] sm:text-[28px] lg:text-[32px] font-medium tracking-[-0.02em] text-[#111] leading-tight">
                 {product.name}
               </h1>
 
@@ -706,7 +736,7 @@ export default function ProductPage() {
 
               {/* Short Description */}
               {product.description && (
-                <p className="text-[14px] text-[#666] leading-relaxed">
+                <p className="text-[15px] text-[#666] leading-relaxed">
                   {product.description.length > 200
                     ? product.description.slice(0, 200) + "..."
                     : product.description}
@@ -726,7 +756,7 @@ export default function ProductPage() {
                   </p>
                   <div className="flex items-center gap-2">
                     {colors.map((color) => (
-                      <button
+                      <button suppressHydrationWarning
                         key={color}
                         onClick={() => setSelectedColor(color)}
                         className={`w-8 h-8 border-2 transition-all ${
@@ -753,7 +783,7 @@ export default function ProductPage() {
                       </span>
                     </p>
                     {sizes[0] !== "ONE SIZE" && (
-                      <button
+                      <button suppressHydrationWarning
                         onClick={() => setSizeGuideOpen(true)}
                         className="flex items-center gap-1 text-[11px] text-[#4D5B47] hover:text-[#111] transition-colors"
                       >
@@ -764,7 +794,7 @@ export default function ProductPage() {
 
                   <div className="flex flex-wrap gap-2">
                     {sizes.map((size) => (
-                      <button
+                      <button suppressHydrationWarning
                         key={size}
                         onClick={() => setSelectedSize(size)}
                         className={`min-w-[44px] h-11 px-3 text-[13px] border transition-all flex items-center justify-center ${
@@ -786,7 +816,7 @@ export default function ProductPage() {
                   Quantity
                 </p>
                 <div className="inline-flex items-center border border-[#E8E8E8]">
-                  <button
+                  <button suppressHydrationWarning
                     onClick={() =>
                       setQuantity(Math.max(1, quantity - 1))
                     }
@@ -800,7 +830,7 @@ export default function ProductPage() {
                   <span className="w-12 text-center text-[14px] font-medium">
                     {quantity}
                   </span>
-                  <button
+                  <button suppressHydrationWarning
                     onClick={() =>
                       setQuantity(Math.min(product.stock, quantity + 1))
                     }
@@ -821,7 +851,8 @@ export default function ProductPage() {
 
               {/* Action Buttons */}
               <div className="space-y-3 pt-2">
-                <button
+                <button suppressHydrationWarning
+                  id="add-to-cart-main"
                   onClick={handleAddToCart}
                   className="w-full py-4 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#333] transition-colors flex items-center justify-center gap-2"
                 >
@@ -829,13 +860,13 @@ export default function ProductPage() {
                   Add to Bag
                 </button>
                 <div className="flex gap-3">
-                  <button
+                  <button suppressHydrationWarning
                     onClick={handleBuyNow}
                     className="flex-1 py-3.5 border border-[#111] text-[#111] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#111] hover:text-[#F8F8F6] transition-all"
                   >
                     Buy Now
                   </button>
-                  <button
+                  <button suppressHydrationWarning
                     onClick={() => toggleWishlist(product.id)}
                     className={`w-12 h-12 border flex items-center justify-center transition-all ${
                       inWishlist
@@ -851,6 +882,20 @@ export default function ProductPage() {
                       strokeWidth={1.5}
                     />
                   </button>
+                  <button suppressHydrationWarning
+                    onClick={() => {
+                      const url = typeof window !== "undefined" ? window.location.href : "";
+                      if (navigator.share) {
+                        navigator.share({ title: product.name, url });
+                      } else {
+                        navigator.clipboard.writeText(url);
+                        showNotification("Link copied to clipboard", "success");
+                      }
+                    }}
+                    className="w-12 h-12 border border-[#E8E8E8] hover:border-[#999] flex items-center justify-center transition-all"
+                  >
+                    <Share2 className="w-4 h-4 text-[#111]" strokeWidth={1.5} />
+                  </button>
                 </div>
               </div>
 
@@ -864,15 +909,15 @@ export default function ProductPage() {
                     />
                   </div>
                   <div>
-                    <p className="text-[13px] text-[#111]">
+                    <p className="text-[14px] text-[#111]">
                       Estimated delivery:{" "}
                       <span className="font-medium">
                         {deliveryMinStr} – {deliveryMaxStr}
                       </span>
                     </p>
-                    <p className="text-[11px] text-[#999] mt-0.5">
+                    <p className="text-[12px] text-[#999] mt-0.5">
                       5–7 business days &middot; Free on orders over{" "}
-                      {"\u20B9"}2,000
+                      {"\u20B9"}{FREE_SHIPPING_THRESHOLD.toLocaleString("en-IN")}
                     </p>
                   </div>
                 </div>
@@ -916,7 +961,7 @@ export default function ProductPage() {
                 {/* Tab navigation bar */}
                 <div className="flex border-b border-[#E8E8E8]">
                   {detailTabs.map((tab) => (
-                    <button
+                    <button suppressHydrationWarning
                       key={tab.id}
                       onClick={() =>
                         setOpenDetail(
@@ -942,7 +987,7 @@ export default function ProductPage() {
                     setOpenDetail(open ? "description" : null)
                   }
                 >
-                  <p className="text-[14px] text-[#666] leading-relaxed">
+                   <p className="text-[15px] text-[#666] leading-relaxed">
                     {product.description}
                   </p>
                 </CollapsibleSection>
@@ -955,7 +1000,7 @@ export default function ProductPage() {
                   }
                 >
                   {product.material && (
-                    <p className="text-[13px] text-[#666] mb-2">
+                    <p className="text-[14px] text-[#666] mb-2">
                       <span className="text-[#111] font-medium">
                         Material:
                       </span>{" "}
@@ -963,7 +1008,7 @@ export default function ProductPage() {
                     </p>
                   )}
                   {product.care && (
-                    <p className="text-[13px] text-[#666]">
+                    <p className="text-[14px] text-[#666]">
                       <span className="text-[#111] font-medium">
                         Care:
                       </span>{" "}
@@ -979,14 +1024,14 @@ export default function ProductPage() {
                     setOpenDetail(open ? "shipping" : null)
                   }
                 >
-                  <div className="space-y-2 text-[13px] text-[#666]">
+                   <div className="space-y-2 text-[14px] text-[#666]">
                     <p>
-                      Free shipping on orders over {"\u20B9"}2,000
+                       Free shipping on orders over {"\u20B9"}{FREE_SHIPPING_THRESHOLD.toLocaleString("en-IN")}
                     </p>
                     <p>Standard delivery: 5–7 business days</p>
                     <p>
                       Express delivery: 1–2 business days (
-                      {"\u20B9"}299)
+                      {"\u20B9"}{EXPRESS_DELIVERY_COST})
                     </p>
                     <p>Free returns within 30 days</p>
                     <p>
@@ -1016,7 +1061,7 @@ export default function ProductPage() {
                 {/* Average rating summary */}
                 {reviews.length > 0 && (
                   <div className="flex items-center gap-2.5">
-                    <span className="text-[32px] font-medium text-[#111] leading-none">
+                    <span className="text-[24px] sm:text-[32px] font-medium text-[#111] leading-none">
                       {product.rating.toFixed(1)}
                     </span>
                     <div>
@@ -1033,7 +1078,7 @@ export default function ProductPage() {
 
                 {/* Write a Review — Auth-aware */}
                 {isAuthenticated ? null : (
-                  <button
+                  <button suppressHydrationWarning
                     onClick={() => setAuthOpen(true)}
                     className="inline-flex items-center gap-2 text-[#666] text-[12px] tracking-wide px-5 py-2.5 border border-[#E8E8E8] hover:border-[#999] hover:text-[#111] transition-colors rounded-[4px]"
                   >
@@ -1114,7 +1159,7 @@ export default function ProductPage() {
                             <p className="text-[13px] font-medium text-[#111]">
                               {review.userName}
                             </p>
-                            <p className="text-[11px] text-[#999]">
+                            <p className="text-[12px] text-[#999]">
                               {getRelativeTime(review.createdAt)}
                             </p>
                           </div>
@@ -1157,7 +1202,7 @@ export default function ProductPage() {
                         </p>
                       )}
                       {review.comment && (
-                        <p className="text-[13px] text-[#666] leading-relaxed">
+                        <p className="text-[14px] text-[#666] leading-relaxed">
                           {review.comment}
                         </p>
                       )}
@@ -1168,7 +1213,7 @@ export default function ProductPage() {
                 {/* Load More Reviews */}
                 {reviewPage < reviewTotalPages && (
                   <div className="pt-6">
-                    <button
+                    <button suppressHydrationWarning
                       onClick={() => fetchReviews(reviewPage + 1, true)}
                       disabled={reviewsLoading}
                       className="w-full py-3 border border-[#E8E8E8] text-[12px] tracking-widest uppercase text-[#111] hover:border-[#999] hover:bg-[#F0EFED] transition-colors disabled:opacity-50"
@@ -1242,7 +1287,7 @@ export default function ProductPage() {
             onClick={() => setLightboxOpen(false)}
           >
             {/* Close button */}
-            <button
+            <button suppressHydrationWarning
               onClick={() => setLightboxOpen(false)}
               className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors rounded"
               aria-label="Close lightbox"
@@ -1257,7 +1302,7 @@ export default function ProductPage() {
 
             {/* Left arrow */}
             {lightboxIndex > 0 && (
-              <button
+              <button suppressHydrationWarning
                 onClick={(e) => {
                   e.stopPropagation();
                   setLightboxIndex(lightboxIndex - 1);
@@ -1271,7 +1316,7 @@ export default function ProductPage() {
 
             {/* Right arrow */}
             {lightboxIndex < images.length - 1 && (
-              <button
+              <button suppressHydrationWarning
                 onClick={(e) => {
                   e.stopPropagation();
                   setLightboxIndex(lightboxIndex + 1);
@@ -1294,6 +1339,26 @@ export default function ProductPage() {
           </motion.div>
         )}
       </AnimatePresence>
-    </main>
+      {/* Mobile Sticky Add-to-Cart Bar */}
+      {showStickyBar && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E8E8E8] p-4 z-[55] lg:hidden">
+          <div className="flex gap-3">
+            <button suppressHydrationWarning
+              onClick={handleAddToCart}
+              className="flex-1 py-3 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#333] transition-colors flex items-center justify-center gap-2"
+            >
+              <ShoppingBag className="w-4 h-4" />
+              Add to Bag
+            </button>
+            <button suppressHydrationWarning
+              onClick={handleBuyNow}
+              className="flex-1 py-3 border border-[#111] text-[#111] text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#111] hover:text-[#F8F8F6] transition-all"
+            >
+              Buy Now
+            </button>
+          </div>
+        </div>
+      )}
+    </motion.main>
   );
 }

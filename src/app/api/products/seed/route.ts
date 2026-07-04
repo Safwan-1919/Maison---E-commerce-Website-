@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
 const products = [
@@ -436,6 +437,17 @@ const coupons = [
 
 export async function POST() {
   try {
+    try {
+      await requireAdmin();
+    } catch (e: any) {
+      if (e.message === 'Unauthorized') {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      if (e.message === 'Forbidden') {
+        return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+      }
+      throw e;
+    }
     // Clear existing data
     await db.orderItem.deleteMany();
     await db.order.deleteMany();

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Mail, Lock, User, Phone, Eye, EyeOff, Loader2, ArrowRight } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import { useStore } from "@/lib/store";
+import { BRAND_NAME } from "@/lib/constants";
 
 export function AuthModal() {
   const { isAuthOpen, setAuthOpen } = useStore();
@@ -95,7 +96,7 @@ export function AuthModal() {
           >
             <div className="bg-[#F8F8F6] w-full max-w-[420px] relative overflow-hidden">
               {/* Close button */}
-              <button
+              <button suppressHydrationWarning
                 onClick={handleClose}
                 className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center text-[#999] hover:text-[#111] transition-colors z-10"
               >
@@ -103,21 +104,21 @@ export function AuthModal() {
               </button>
 
               {/* Header */}
-              <div className="px-8 pt-8 pb-6">
+              <div className="px-5 sm:px-8 pt-6 sm:pt-8 pb-5 sm:pb-6">
                 <h2 className="text-[24px] font-medium tracking-[-0.02em] text-[#111] mb-1">
                   {mode === "login" ? "Welcome Back" : "Create Account"}
                 </h2>
                 <p className="text-[13px] text-[#999]">
                   {mode === "login"
                     ? "Sign in to access your account"
-                    : "Join MAISON for an elevated shopping experience"}
+                    : `Join ${BRAND_NAME} for an elevated shopping experience`}
                 </p>
               </div>
 
               {/* Tabs */}
-              <div className="px-8 mb-6">
+              <div className="px-5 sm:px-8 mb-6">
                 <div className="flex border-b border-[#E8E8E8]">
-                  <button
+                  <button suppressHydrationWarning
                     onClick={() => { setMode("login"); setError(""); }}
                     className={`flex-1 pb-3 text-[12px] font-medium tracking-[0.1em] uppercase transition-colors relative ${
                       mode === "login" ? "text-[#111]" : "text-[#999] hover:text-[#666]"
@@ -128,7 +129,7 @@ export function AuthModal() {
                       <motion.div layoutId="auth-tab" className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#111]" />
                     )}
                   </button>
-                  <button
+                  <button suppressHydrationWarning
                     onClick={() => { setMode("register"); setError(""); }}
                     className={`flex-1 pb-3 text-[12px] font-medium tracking-[0.1em] uppercase transition-colors relative ${
                       mode === "register" ? "text-[#111]" : "text-[#999] hover:text-[#666]"
@@ -149,15 +150,15 @@ export function AuthModal() {
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="mx-8 mb-4"
+                    className="mx-5 sm:mx-8 mb-4"
                   >
-                    <div className="bg-red-50 border border-red-200 text-red-700 text-[13px] px-4 py-2.5">{error}</div>
+                    <div className="bg-[#C53030]/5 border border-[#C53030]/20 text-[#C53030] text-[13px] px-4 py-2.5">{error}</div>
                   </motion.div>
                 )}
               </AnimatePresence>
 
               {/* Form */}
-              <div className="px-8 pb-8">
+              <div className="px-5 sm:px-8 pb-5 sm:pb-8">
                 <AnimatePresence mode="wait">
                   {mode === "login" ? (
                     <motion.form
@@ -170,7 +171,7 @@ export function AuthModal() {
                     >
                       <div className="relative">
                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#999]" />
-                        <input
+                        <input suppressHydrationWarning
                           type="email"
                           placeholder="Email address"
                           value={loginForm.email}
@@ -181,7 +182,7 @@ export function AuthModal() {
                       </div>
                       <div className="relative">
                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#999]" />
-                        <input
+                        <input suppressHydrationWarning
                           type={showPassword ? "text" : "password"}
                           placeholder="Password"
                           value={loginForm.password}
@@ -189,7 +190,7 @@ export function AuthModal() {
                           className={inputClass + " pl-11 pr-11"}
                           autoComplete="current-password"
                         />
-                        <button
+                        <button suppressHydrationWarning
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
                           className="absolute right-4 top-1/2 -translate-y-1/2 text-[#999] hover:text-[#666] transition-colors"
@@ -197,7 +198,7 @@ export function AuthModal() {
                           {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                       </div>
-                      <button
+                      <button suppressHydrationWarning
                         type="submit"
                         disabled={loading}
                         className="w-full bg-[#111] text-[#F8F8F6] py-3.5 text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#333] transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
@@ -222,7 +223,7 @@ export function AuthModal() {
                     >
                       <div className="relative">
                         <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#999]" />
-                        <input
+                        <input suppressHydrationWarning
                           type="text"
                           placeholder="Full name"
                           value={registerForm.name}
@@ -233,7 +234,7 @@ export function AuthModal() {
                       </div>
                       <div className="relative">
                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#999]" />
-                        <input
+                        <input suppressHydrationWarning
                           type="email"
                           placeholder="Email address"
                           value={registerForm.email}
@@ -244,7 +245,7 @@ export function AuthModal() {
                       </div>
                       <div className="relative">
                         <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#999]" />
-                        <input
+                        <input suppressHydrationWarning
                           type="tel"
                           placeholder="Phone number (optional)"
                           value={registerForm.phone}
@@ -255,7 +256,7 @@ export function AuthModal() {
                       </div>
                       <div className="relative">
                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#999]" />
-                        <input
+                        <input suppressHydrationWarning
                           type={showPassword ? "text" : "password"}
                           placeholder="Password (min 6 characters)"
                           value={registerForm.password}
@@ -263,7 +264,7 @@ export function AuthModal() {
                           className={inputClass + " pl-11 pr-11"}
                           autoComplete="new-password"
                         />
-                        <button
+                        <button suppressHydrationWarning
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
                           className="absolute right-4 top-1/2 -translate-y-1/2 text-[#999] hover:text-[#666] transition-colors"
@@ -273,7 +274,7 @@ export function AuthModal() {
                       </div>
                       <div className="relative">
                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#999]" />
-                        <input
+                        <input suppressHydrationWarning
                           type="password"
                           placeholder="Confirm password"
                           value={registerForm.confirmPassword}
@@ -282,7 +283,7 @@ export function AuthModal() {
                           autoComplete="new-password"
                         />
                       </div>
-                      <button
+                      <button suppressHydrationWarning
                         type="submit"
                         disabled={loading}
                         className="w-full bg-[#111] text-[#F8F8F6] py-3.5 text-[12px] font-medium tracking-[0.15em] uppercase hover:bg-[#333] transition-colors flex items-center justify-center gap-2 disabled:opacity-50 mt-1"
@@ -303,7 +304,7 @@ export function AuthModal() {
                 <div className="mt-6 pt-4 border-t border-[#E8E8E8] text-center">
                   <p className="text-[12px] text-[#999]">
                     {mode === "login" ? "Don't have an account? " : "Already have an account? "}
-                    <button
+                    <button suppressHydrationWarning
                       onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); }}
                       className="text-[#111] font-medium hover:underline"
                     >
