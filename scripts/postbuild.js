@@ -33,4 +33,20 @@ if (fs.existsSync(publicSrc)) {
   console.log('Copied public -> standalone');
 }
 
+// Copy db -> .next/standalone/db
+const dbSrc = path.join(__dirname, 'db');
+const dbDest = path.join(standaloneDir, 'db');
+if (fs.existsSync(dbSrc)) {
+  copyDirSync(dbSrc, dbDest);
+  console.log('Copied db -> standalone');
+}
+
+// Copy prisma schema -> .next/standalone/prisma
+const prismaSrc = path.join(__dirname, 'prisma');
+const prismaDest = path.join(standaloneDir, 'prisma');
+if (fs.existsSync(prismaSrc)) {
+  copyDirSync(prismaSrc, prismaDest);
+  console.log('Copied prisma -> standalone');
+}
+
 console.log('Build artifacts copied successfully');
