@@ -113,6 +113,53 @@ function useSiteContent() {
   return content;
 }
 
+// ─── Hero Title Word ──────────────────────────────────────────────────
+function HeroWord({
+  word,
+  index,
+  total,
+  scrollYProgress,
+  isItalic,
+}: {
+  word: string;
+  index: number;
+  total: number;
+  scrollYProgress: ReturnType<typeof useScroll>["scrollYProgress"];
+  isItalic: boolean;
+}) {
+  const y = useTransform(
+    scrollYProgress,
+    [0 + index * 0.02, 0.3 + index * 0.02],
+    [0, -40 - index * 15]
+  );
+  const opacity = useTransform(
+    scrollYProgress,
+    [0.05 + index * 0.03, 0.25 + index * 0.03],
+    [1, 0]
+  );
+
+  return (
+    <motion.span
+      className={isItalic ? "italic font-normal text-white/80" : ""}
+      style={{
+        display: "inline-block",
+        y,
+        opacity,
+        marginRight: index < total - 1 ? "0.3em" : 0,
+      }}
+      initial={{ opacity: 0, y: 40 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{
+        duration: 0.8,
+        delay: 0.3 + index * 0.1,
+        ease: [0.16, 1, 0.3, 1],
+      }}
+    >
+      {word}
+    </motion.span>
+  );
+}
+
 // ─── Hero Section ─────────────────────────────────────────────────────
 function HeroSection({ content }: { content: SiteContent }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -206,40 +253,16 @@ function HeroSection({ content }: { content: SiteContent }) {
 
           {/* Title — each word animates independently */}
           <h1 className="text-[40px] sm:text-[56px] md:text-[72px] lg:text-[88px] xl:text-[110px] font-medium tracking-[-0.03em] text-white leading-[0.92] mb-5 sm:mb-7">
-            {titleWords.map((word, i) => {
-              const wordProgress = useTransform(
-                scrollYProgress,
-                [0 + i * 0.02, 0.3 + i * 0.02],
-                [0, -40 - i * 15]
-              );
-              const wordOpacity = useTransform(
-                scrollYProgress,
-                [0.05 + i * 0.03, 0.25 + i * 0.03],
-                [1, 0]
-              );
-              const isLast = i >= Math.ceil(titleWords.length / 2) - 1;
-              return (
-                <motion.span
-                  key={i}
-                  className={isLast ? "italic font-normal text-white/80" : ""}
-                  style={{
-                    display: "inline-block",
-                    y: wordProgress,
-                    opacity: wordOpacity,
-                    marginRight: i < titleWords.length - 1 ? "0.3em" : 0,
-                  }}
-                  initial={{ opacity: 0, y: 40 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{
-                    duration: 0.8,
-                    delay: 0.3 + i * 0.1,
-                    ease: [0.16, 1, 0.3, 1],
-                  }}
-                >
-                  {word}
-                </motion.span>
-              );
-            })}
+            {titleWords.map((word, i) => (
+              <HeroWord
+                key={i}
+                word={word}
+                index={i}
+                total={titleWords.length}
+                scrollYProgress={scrollYProgress}
+                isItalic={i >= Math.ceil(titleWords.length / 2) - 1}
+              />
+            ))}
           </h1>
 
           {/* Subtitle */}
