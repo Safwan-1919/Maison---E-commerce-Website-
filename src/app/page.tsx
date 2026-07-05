@@ -146,6 +146,12 @@ export default function Home() {
   }, [currentPage]);
 
   useEffect(() => {
+    setLoading(true);
+    const t = setTimeout(() => setLoading(false), 3500);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
     const path = window.location.pathname;
     const segments = path.split("/").filter(Boolean);
     const pageName = segments[0] || "home";
@@ -161,9 +167,6 @@ export default function Home() {
       }
       window.history.replaceState({ page: pageName, productId: id, orderNumber: orderNum }, '', window.location.pathname);
     }
-    setLoading(true);
-    const t = setTimeout(() => setLoading(false), 1200);
-    return () => clearTimeout(t);
   }, []);
 
   useEffect(() => {
