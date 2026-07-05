@@ -118,17 +118,16 @@ function HeroSection({ content }: { content: SiteContent }) {
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
   const bgY = useTransform(scrollYProgress, [0, 1], ["0%", "20%"]);
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.7], [1, 0]);
 
-  // Scroll-driven text scaling — text shrinks as you scroll
-  const textScale = useTransform(scrollYProgress, [0, 0.5], [1, 0.35]);
-  const textY = useTransform(scrollYProgress, [0, 0.5], ["0%", "30%"]);
-  const textOpacity = useTransform(scrollYProgress, [0, 0.4], [1, 0]);
+  // Scroll-driven text scaling — shrinks to 10% centered
+  const textScale = useTransform(scrollYProgress, [0, 0.7], [1, 0.1]);
+  const textOpacity = useTransform(scrollYProgress, [0, 0.65], [1, 0]);
 
   // Badge and subtitle fade faster
-  const badgeOpacity = useTransform(scrollYProgress, [0, 0.15], [1, 0]);
-  const subtitleOpacity = useTransform(scrollYProgress, [0, 0.25], [1, 0]);
-  const buttonsOpacity = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
+  const badgeOpacity = useTransform(scrollYProgress, [0, 0.1], [1, 0]);
+  const subtitleOpacity = useTransform(scrollYProgress, [0, 0.15], [1, 0]);
+  const buttonsOpacity = useTransform(scrollYProgress, [0, 0.12], [1, 0]);
 
   const badge = content.heroBadge || `New Season ${new Date().getFullYear()}`;
   const title = content.heroTitle || "Redefine Your Style";
@@ -138,7 +137,7 @@ function HeroSection({ content }: { content: SiteContent }) {
   const heroImage = content.heroImage || "/images/hero-bg.png";
 
   return (
-    <section ref={ref} className="relative h-[150vh]">
+    <section ref={ref} className="relative h-[250vh]">
       {/* Sticky viewport */}
       <div className="sticky top-0 h-screen overflow-hidden">
         <motion.div className="absolute inset-0" style={{ y: bgY, opacity: heroOpacity }}>
@@ -157,13 +156,13 @@ function HeroSection({ content }: { content: SiteContent }) {
           />
         </motion.div>
 
-        {/* Scrolling text container — scales down with scroll */}
+        {/* Scrolling text container — scales down centered */}
         <motion.div
           className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 sm:px-6"
           style={{
             scale: textScale,
-            y: textY,
             opacity: textOpacity,
+            transformOrigin: "center center",
           }}
         >
           <motion.div
