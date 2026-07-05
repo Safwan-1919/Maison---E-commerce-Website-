@@ -337,6 +337,8 @@ async function main() {
   // 4. SEED PRODUCTS (add ~44 more to reach 60+)
   // ============================================================
   console.log("🛍️  Seeding products...");
+  await prisma.product.deleteMany();
+  console.log("  Cleared existing products");
 
   const newProducts = [
     // T-Shirts (add ~6 more)

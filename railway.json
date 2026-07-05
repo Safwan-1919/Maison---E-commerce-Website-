@@ -5,7 +5,7 @@
     "buildCommand": "npx prisma generate && next build"
   },
   "deploy": {
-    "startCommand": "rm -f db/custom.db && npx prisma db push --skip-generate && npx tsx prisma/seed.ts && HOSTNAME=0.0.0.0 npx next start",
+    "startCommand": "rm -f /app/db/custom.db && npx prisma db push --skip-generate && npx tsx prisma/seed.ts && HOSTNAME=0.0.0.0 npx next start",
     "healthcheckPath": "/api/site-content",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
