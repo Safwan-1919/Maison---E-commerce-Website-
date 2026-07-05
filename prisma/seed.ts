@@ -975,7 +975,7 @@ async function main() {
     ];
 
     const addr = addresses[i % addresses.length];
-    const orderNum = `MSN-2025-${String(10001 + i).padStart(5, "0")}`;
+    const orderNum = `MSN-2026-${String(10001 + i).padStart(5, "0")}`;
 
     ordersData.push({
       orderNumber: orderNum,
@@ -1215,7 +1215,7 @@ async function main() {
       type: "percentage",
       minOrder: 2000,
       maxUses: 1000,
-      expiresAt: new Date("2025-12-31"),
+      expiresAt: new Date("2026-12-31"),
     },
     {
       code: "SAVE10",
@@ -1223,7 +1223,7 @@ async function main() {
       type: "percentage",
       minOrder: 1000,
       maxUses: 5000,
-      expiresAt: new Date("2025-12-31"),
+      expiresAt: new Date("2026-12-31"),
     },
     {
       code: "FLAT500",
@@ -1231,7 +1231,7 @@ async function main() {
       type: "fixed",
       minOrder: 3000,
       maxUses: 2000,
-      expiresAt: new Date("2025-12-31"),
+      expiresAt: new Date("2026-12-31"),
     },
     {
       code: "TRENDING20",
@@ -1239,7 +1239,7 @@ async function main() {
       type: "percentage",
       minOrder: 5000,
       maxUses: 500,
-      expiresAt: new Date("2025-11-30"),
+      expiresAt: new Date("2026-11-30"),
     },
     {
       code: "VIP25",
@@ -1247,7 +1247,7 @@ async function main() {
       type: "percentage",
       minOrder: 8000,
       maxUses: 200,
-      expiresAt: new Date("2025-12-31"),
+      expiresAt: new Date("2026-12-31"),
     },
     {
       code: "SUMMER30",
@@ -1284,7 +1284,7 @@ async function main() {
     {
       userId: users["admin@maison.com"],
       title: "New Order Received",
-      message: "Order #MSN-2025-10001 has been placed by Arjun Mehta. Total: ₹3,498.",
+      message: "Order #MSN-2026-10001 has been placed by Arjun Mehta. Total: ₹3,498.",
       type: "order",
       isRead: true,
     },
@@ -1305,7 +1305,7 @@ async function main() {
     {
       userId: users["arjun.mehta@email.com"],
       title: "Order Shipped!",
-      message: "Your order #MSN-2025-10002 has been shipped via BlueDart. Track your package now.",
+      message: "Your order #MSN-2026-10002 has been shipped via BlueDart. Track your package now.",
       type: "order",
       isRead: true,
     },
@@ -1367,7 +1367,7 @@ async function main() {
   console.log("🌐 Seeding site content...");
 
   const siteContent: Record<string, string> = {
-    heroBadge: "New Season 2025",
+    heroBadge: "New Season 2026",
     heroTitle: "Redefine Your Style",
     heroSubtitle: "Considered essentials crafted from the world's finest materials. Less noise, more substance.",
     heroCtaPrimary: "Shop Collection",
