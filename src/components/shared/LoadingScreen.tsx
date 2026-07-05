@@ -1,158 +1,138 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
-/*
- * MAISON Preloader
- *
- * A cinematic, luxury-grade loading experience.
- * Total duration: ~2.2s
- *
- * Scene 1: Overlay covers viewport (instant)
- * Scene 2: Text enters — opacity, translateY, blur, scale (800ms)
- * Scene 3: Text breathes / micro hold (400ms)
- * Scene 4: Text scales + fades, clip-path reveals page (1000ms)
- * Scene 5: Component unmounts
- */
-
-type Phase = "enter" | "breathe" | "reveal" | "done";
+const WORDS = ["We", "Make", "Good", "Shit"];
 
 export function LoadingScreen() {
-  const [phase, setPhase] = useState<Phase>("enter");
+  const [progress, setProgress] = useState(0);
+  const [phase, setPhase] = useState<"count" | "text" | "split" | "done">("count");
+  const [visibleWords, setVisibleWords] = useState(0);
+  const startRef = useRef(performance.now());
+  const rafRef = useRef<number>(0);
 
   useEffect(() => {
-    const t1 = setTimeout(() => setPhase("breathe"), 800);
-    const t2 = setTimeout(() => setPhase("reveal"), 1200);
-    const t3 = setTimeout(() => setPhase("done"), 2200);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
+    const duration = 2000;
+
+    const tick = () => {
+      const elapsed = performance.now() - startRef.current;
+      const raw = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - raw, 3);
+      setProgress(Math.floor(eased * 100));
+
+      if (raw < 1) {
+        rafRef.current = requestAnimationFrame(tick);
+      } else {
+        setProgress(100);
+        setPhase("text");
+      }
     };
+
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
   }, []);
+
+  useEffect(() => {
+    if (phase !== "text") return;
+    let i = 0;
+    const interval = setInterval(() => {
+      i++;
+      setVisibleWords(i);
+      if (i >= WORDS.length) {
+        clearInterval(interval);
+        setTimeout(() => setPhase("split"), 600);
+      }
+    }, 200);
+    return () => clearInterval(interval);
+  }, [phase]);
+
+  useEffect(() => {
+    if (phase !== "split") return;
+    const t = setTimeout(() => setPhase("done"), 1400);
+    return () => clearTimeout(t);
+  }, [phase]);
 
   if (phase === "done") return null;
 
-  const isEnter = phase === "enter";
-  const isBreathe = phase === "breathe";
-  const isReveal = phase === "reveal";
-
   return (
-    <div
-      className="fixed inset-0 z-[200]"
-      role="status"
-      aria-label="Loading"
-      aria-live="polite"
-    >
-      {/* ── Film Grain Layer ────────────────────────────── */}
+    <div className="fixed inset-0 z-[200] overflow-hidden">
+      {/* Top half */}
       <div
-        className="absolute inset-0 pointer-events-none opacity-[0.035]"
+        className="absolute inset-0 bg-[#111] origin-top"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
-          backgroundRepeat: "repeat",
-          animation: "grainShift 0.4s steps(3) infinite",
+          transform: phase === "split" ? "scaleY(0)" : "scaleY(1)",
+          transition: "transform 1s cubic-bezier(0.76, 0, 0.24, 1)",
         }}
       />
 
-      {/* ── Vignette Layer ─────────────────────────────── */}
+      {/* Bottom half */}
       <div
-        className="absolute inset-0 pointer-events-none"
+        className="absolute inset-0 bg-[#1a1a1a] origin-bottom"
         style={{
-          background:
-            "radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.4) 100%)",
+          transform: phase === "split" ? "scaleY(0)" : "scaleY(1)",
+          transition: "transform 1s cubic-bezier(0.76, 0, 0.24, 1) 0.08s",
         }}
       />
 
-      {/* ── Subtle Light Variation ─────────────────────── */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-[0.02]"
-        style={{
-          background:
-            "radial-gradient(ellipse at 30% 50%, rgba(255,255,255,0.08) 0%, transparent 60%)",
-          animation: "lightShift 4s ease-in-out infinite alternate",
-        }}
-      />
-
-      {/* ── Main Overlay + Text ────────────────────────── */}
-      <div
-        className="absolute inset-0 flex items-center justify-center"
-        style={{
-          backgroundColor: "#0E0E0E",
-          clipPath: isReveal
-            ? "polygon(0 0, 100% 0, 100% 0, 0 0)"
-            : "polygon(0 0, 100% 0, 100% 100%, 0 100%)",
-          transition:
-            "clip-path 1s cubic-bezier(0.77, 0, 0.175, 1) 0.05s",
-        }}
-      >
-        {/* MAISON Typography */}
-        <span
-          className="select-none"
-          style={{
-            fontFamily:
-              "'Helvetica Neue', 'Arial', 'Inter', -apple-system, sans-serif",
-            fontSize: "clamp(40px, 10vw, 96px)",
-            fontWeight: 500,
-            letterSpacing: "clamp(0.14em, 2vw, 0.22em)",
-            color: "#F8F8F8",
-            textTransform: "uppercase",
-            lineHeight: 1,
-
-            /* Scene 2: Enter */
-            opacity: isEnter ? 0 : isReveal ? 0 : 1,
-            transform: isEnter
-              ? "translateY(28px) scale(0.97)"
-              : isReveal
-                ? "translateY(0) scale(1.06)"
-                : "translateY(0) scale(1)",
-            filter: isEnter ? "blur(6px)" : "blur(0px)",
-
-            /* Scene 3: Breathe — subtle pulse */
-            animation: isBreathe ? "textBreathe 2.5s ease-in-out infinite" : "none",
-
-            transition: isReveal
-              ? "opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)"
-              : "opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1), filter 0.8s cubic-bezier(0.16, 1, 0.3, 1)",
-          }}
-        >
-          Maison
-        </span>
-
-        {/* Thin accent line below text */}
+      {/* Content */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        {/* Counter */}
         <div
-          className="absolute"
+          className="transition-opacity duration-300"
+          style={{ opacity: phase === "count" ? 1 : 0 }}
+        >
+          <span className="text-[80px] sm:text-[100px] md:text-[120px] font-light text-[#F8F8F6] tracking-[-0.04em] tabular-nums leading-none select-none">
+            {String(progress).padStart(3, "\u2007")}
+          </span>
+          <span className="text-[20px] sm:text-[24px] md:text-[28px] font-light text-[#F8F8F6]/30 ml-1">%</span>
+        </div>
+
+        {/* Words reveal */}
+        {phase === "text" && (
+          <div className="flex items-center gap-3 sm:gap-4">
+            {WORDS.map((word, i) => (
+              <span
+                key={i}
+                className="text-[28px] sm:text-[36px] md:text-[48px] font-medium text-[#F8F8F6] tracking-[-0.02em] uppercase"
+                style={{
+                  opacity: i < visibleWords ? 1 : 0,
+                  transform: i < visibleWords ? "translateY(0)" : "translateY(20px)",
+                  transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+                }}
+              >
+                {word}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Thin line */}
+        <div
+          className="mt-6 sm:mt-8 h-[1px] bg-[#F8F8F6]/10 transition-opacity duration-300"
           style={{
-            bottom: "calc(50% - clamp(28px, 6vw, 54px))",
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: "clamp(40px, 6vw, 72px)",
-            height: "1px",
-            backgroundColor: "rgba(248, 248, 248, 0.12)",
-            opacity: isEnter ? 0 : isReveal ? 0 : 1,
-            transition:
-              "opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.3s",
+            width: "80px",
+            opacity: phase === "split" ? 0 : 1,
+            transform: `scaleX(${progress / 100})`,
+            transformOrigin: "left",
           }}
         />
       </div>
 
-      {/* ── Keyframes ──────────────────────────────────── */}
-      <style>{`
-        @keyframes grainShift {
-          0% { transform: translate(0, 0); }
-          33% { transform: translate(-2px, 1px); }
-          66% { transform: translate(1px, -1px); }
-          100% { transform: translate(0, 0); }
-        }
-        @keyframes lightShift {
-          0% { transform: translate(0, 0) scale(1); }
-          100% { transform: translate(3%, -2%) scale(1.05); }
-        }
-        @keyframes textBreathe {
-          0% { transform: translateY(0) scale(1); }
-          50% { transform: translateY(-2px) scale(1.008); }
-          100% { transform: translateY(0) scale(1); }
-        }
-      `}</style>
+      {/* Corner marks */}
+      <div
+        className="absolute top-6 left-6 sm:top-8 sm:left-8 transition-opacity duration-300"
+        style={{ opacity: phase === "split" ? 0 : 0.15 }}
+      >
+        <div className="w-[24px] h-[1px] bg-[#F8F8F6] mb-[4px]" />
+        <div className="w-[1px] h-[24px] bg-[#F8F8F6]" />
+      </div>
+      <div
+        className="absolute bottom-6 right-6 sm:bottom-8 sm:right-8 transition-opacity duration-300"
+        style={{ opacity: phase === "split" ? 0 : 0.15 }}
+      >
+        <div className="w-[1px] h-[24px] bg-[#F8F8F6] ml-auto mb-[4px]" />
+        <div className="w-[24px] h-[1px] bg-[#F8F8F6] ml-auto" />
+      </div>
     </div>
   );
 }
