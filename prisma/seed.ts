@@ -61,12 +61,13 @@ async function main() {
   };
 
   for (const [name, data] of Object.entries(categoryUpdates)) {
+    const slug = slugify(name);
     await prisma.category.upsert({
-      where: { name },
+      where: { slug },
       update: data,
       create: {
         name,
-        slug: slugify(name),
+        slug,
         icon: data.icon,
         description: data.description,
       },
