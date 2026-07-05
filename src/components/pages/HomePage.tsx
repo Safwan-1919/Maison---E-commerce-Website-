@@ -117,17 +117,17 @@ function useSiteContent() {
 function HeroSection({ content }: { content: SiteContent }) {
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
-  const bgY = useTransform(scrollYProgress, [0, 1], ["0%", "20%"]);
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.7], [1, 0]);
+  const bgY = useTransform(scrollYProgress, [0, 1], ["0%", "15%"]);
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
 
-  // Scroll-driven text scaling — shrinks to 10% centered
-  const textScale = useTransform(scrollYProgress, [0, 0.7], [1, 0.1]);
-  const textOpacity = useTransform(scrollYProgress, [0, 0.65], [1, 0]);
+  // Smooth text scaling — completes in 70% scroll
+  const textScale = useTransform(scrollYProgress, [0, 0.7], [1, 0.1], { ease: (t: number) => 1 - Math.pow(1 - t, 3) });
+  const textOpacity = useTransform(scrollYProgress, [0.5, 0.68], [1, 0]);
 
-  // Badge and subtitle fade faster
-  const badgeOpacity = useTransform(scrollYProgress, [0, 0.1], [1, 0]);
-  const subtitleOpacity = useTransform(scrollYProgress, [0, 0.15], [1, 0]);
-  const buttonsOpacity = useTransform(scrollYProgress, [0, 0.12], [1, 0]);
+  // Badge, subtitle, buttons fade early
+  const badgeOpacity = useTransform(scrollYProgress, [0, 0.08], [1, 0]);
+  const subtitleOpacity = useTransform(scrollYProgress, [0, 0.12], [1, 0]);
+  const buttonsOpacity = useTransform(scrollYProgress, [0, 0.1], [1, 0]);
 
   const badge = content.heroBadge || `New Season ${new Date().getFullYear()}`;
   const title = content.heroTitle || "Redefine Your Style";
@@ -137,7 +137,7 @@ function HeroSection({ content }: { content: SiteContent }) {
   const heroImage = content.heroImage || "/images/hero-bg.png";
 
   return (
-    <section ref={ref} className="relative h-[250vh]">
+    <section ref={ref} className="relative h-[300vh]">
       {/* Sticky viewport */}
       <div className="sticky top-0 h-screen overflow-hidden">
         <motion.div className="absolute inset-0" style={{ y: bgY, opacity: heroOpacity }}>
