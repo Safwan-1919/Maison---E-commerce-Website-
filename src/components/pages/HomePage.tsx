@@ -888,9 +888,10 @@ function TrustSection({ content }: { content: SiteContent }) {
                 className="flex flex-col items-center text-center px-2 sm:px-4"
               >
                  <motion.div
-                   whileInView={{ scale: [1, 1.1, 1] }}
+                   initial={{ scale: 0.8, opacity: 0 }}
+                   whileInView={{ scale: 1, opacity: 1 }}
                    viewport={{ once: true, margin: "-50px" }}
-                   transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: i * 0.3 }}
+                   transition={{ duration: 0.4, delay: i * 0.06 }}
                    className="w-11 h-11 bg-[#F0EFED] flex items-center justify-center mb-3 shrink-0"
                  >
                   <Icon className="w-5 h-5 text-[#4D5B47]" strokeWidth={1.5} />
