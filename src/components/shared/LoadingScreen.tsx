@@ -17,19 +17,16 @@ export function LoadingScreen() {
 
   return (
     <div className="fixed inset-0 z-[200]" aria-hidden="true">
-      {/* Overlay */}
+      {/* Overlay with text inside so clip-path clips both */}
       <div
-        className="absolute inset-0 bg-[#111]"
+        className="absolute inset-0 bg-[#111] flex items-center justify-center"
         style={{
           clipPath: phase === "reveal"
             ? "polygon(0 0, 100% 0, 100% 0, 0 0)"
             : "polygon(0 0, 100% 0, 100% 100%, 0 100%)",
           transition: "clip-path 1.1s cubic-bezier(0.76, 0, 0.24, 1)",
         }}
-      />
-
-      {/* Text */}
-      <div className="absolute inset-0 flex items-center justify-center">
+      >
         <span
           className="text-[36px] sm:text-[48px] md:text-[60px] lg:text-[72px] font-medium text-[#F8F8F6] tracking-[0.18em] uppercase select-none"
           style={{
