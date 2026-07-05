@@ -10,20 +10,20 @@ export function LoadingScreen() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d")!;
-    let w = (canvas.width = window.innerWidth);
-    let h = (canvas.height = window.innerHeight);
     const dpr = window.devicePixelRatio || 1;
+    let w = window.innerWidth;
+    let h = window.innerHeight;
     canvas.width = w * dpr;
     canvas.height = h * dpr;
     canvas.style.width = w + "px";
     canvas.style.height = h + "px";
     ctx.scale(dpr, dpr);
 
-    const GRAVITY = 0.65;
-    const BOUNCE = -0.78;
-    const FRICTION = 0.99;
-    const BALL_R = Math.max(14, Math.min(22, w * 0.018));
-    const GROUND = h - 80;
+    const GRAVITY = 0.45;
+    const BALL_R = Math.max(16, Math.min(24, w * 0.02));
+    const GROUND = h * 0.72;
+    const startX = w * 0.3;
+    const endX = w * 0.7;
 
     interface Particle {
       x: number;
@@ -34,211 +34,286 @@ export function LoadingScreen() {
       maxLife: number;
       r: number;
       color: string;
+      glow: number;
     }
 
-    interface Ball {
+    interface Spark {
       x: number;
       y: number;
-      vy: number;
       vx: number;
-      r: number;
-      squash: number;
-      squashV: number;
-      hue: number;
-      particles: Particle[];
-      trail: { x: number; y: number; life: number }[];
-      bounced: boolean;
+      vy: number;
+      life: number;
+      len: number;
+      angle: number;
+      color: string;
     }
 
-    const colors = ["#4D5B47", "#6B7F5E", "#3A4A35", "#8FA880", "#2C3A28"];
-    const balls: Ball[] = [];
-    const count = Math.min(5, Math.max(3, Math.floor(w / 250)));
+    const particles: Particle[] = [];
+    const sparks: Spark[] = [];
+    const trail: { x: number; y: number; life: number; r: number }[] = [];
 
-    for (let i = 0; i < count; i++) {
-      balls.push({
-        x: w * (0.2 + 0.6 * (i / (count - 1 || 1))),
-        y: -60 - i * 120,
-        vy: 0,
-        vx: (Math.random() - 0.5) * 2.5,
-        r: BALL_R - i * 1.5,
-        squash: 1,
-        squashV: 0,
-        hue: 0,
-        particles: [],
-        trail: [],
-        bounced: false,
-      });
-    }
+    const COLORS = ["#4D5B47", "#6B7F5E", "#8FA880", "#A8C49A", "#3A4A35", "#2C3A28"];
 
-    let opacity = 1;
-    let fadeOut = false;
+    let ball = {
+      x: startX,
+      y: -BALL_R,
+      vy: 0,
+      vx: 0,
+      r: BALL_R,
+      squash: 1,
+      squashV: 0,
+      phase: "drop" as "drop" | "roll" | "blast" | "fade",
+      bounceCount: 0,
+      rollProgress: 0,
+      blastTimer: 0,
+      rotation: 0,
+      opacity: 1,
+    };
+
     let startTime = performance.now();
+    let fadeOut = false;
 
-    const spawnParticles = (ball: Ball, count: number) => {
-      for (let i = 0; i < count; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const speed = Math.random() * 3.5 + 0.5;
-        ball.particles.push({
-          x: ball.x,
-          y: GROUND,
+    const spawnBlastParticles = (x: number, y: number) => {
+      for (let i = 0; i < 60; i++) {
+        const angle = (Math.PI * 2 * i) / 60 + (Math.random() - 0.5) * 0.3;
+        const speed = 2 + Math.random() * 8;
+        particles.push({
+          x,
+          y,
           vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed - Math.random() * 2,
+          vy: Math.sin(angle) * speed - Math.random() * 3,
           life: 1,
-          maxLife: 0.4 + Math.random() * 0.4,
-          r: 1.5 + Math.random() * 2.5,
-          color: colors[Math.floor(Math.random() * colors.length)],
+          maxLife: 0.6 + Math.random() * 0.8,
+          r: 2 + Math.random() * 4,
+          color: COLORS[Math.floor(Math.random() * COLORS.length)],
+          glow: Math.random() > 0.5 ? 1 : 0,
+        });
+      }
+      for (let i = 0; i < 30; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 4 + Math.random() * 10;
+        sparks.push({
+          x,
+          y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 1,
+          len: 8 + Math.random() * 20,
+          angle,
+          color: COLORS[Math.floor(Math.random() * 3)],
         });
       }
     };
 
-    const drawBall = (ball: Ball) => {
+    const drawBall = (b: typeof ball) => {
       ctx.save();
-      ctx.translate(ball.x, ball.y);
+      ctx.translate(b.x, b.y);
+      ctx.rotate(b.rotation);
 
-      const sx = 1 + (1 - ball.squash) * 0.4;
-      const sy = ball.squash;
+      const sx = 1 + (1 - b.squash) * 0.5;
+      const sy = b.squash;
       ctx.scale(sx, sy);
+      ctx.globalAlpha = b.opacity;
 
-      const gradient = ctx.createRadialGradient(
-        -ball.r * 0.25,
-        -ball.r * 0.3,
-        ball.r * 0.1,
-        0,
-        0,
-        ball.r
-      );
-      gradient.addColorStop(0, "#8FA880");
-      gradient.addColorStop(0.5, "#4D5B47");
-      gradient.addColorStop(1, "#2C3A28");
+      const grad = ctx.createRadialGradient(-b.r * 0.3, -b.r * 0.3, b.r * 0.05, 0, 0, b.r);
+      grad.addColorStop(0, "#A8C49A");
+      grad.addColorStop(0.4, "#6B7F5E");
+      grad.addColorStop(0.8, "#4D5B47");
+      grad.addColorStop(1, "#2C3A28");
 
-      ctx.globalAlpha = opacity;
+      ctx.shadowColor = "rgba(77,91,71,0.35)";
+      ctx.shadowBlur = 20;
+      ctx.shadowOffsetY = 6;
+
       ctx.beginPath();
-      ctx.arc(0, 0, ball.r, 0, Math.PI * 2);
-      ctx.fillStyle = gradient;
+      ctx.arc(0, 0, b.r, 0, Math.PI * 2);
+      ctx.fillStyle = grad;
       ctx.fill();
 
-      ctx.globalAlpha = opacity * 0.4;
+      ctx.shadowColor = "transparent";
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
+
+      ctx.globalAlpha = b.opacity * 0.55;
       ctx.beginPath();
-      ctx.ellipse(
-        -ball.r * 0.2,
-        -ball.r * 0.25,
-        ball.r * 0.35,
-        ball.r * 0.2,
-        -0.5,
-        0,
-        Math.PI * 2
-      );
-      ctx.fillStyle = "rgba(255,255,255,0.5)";
+      ctx.ellipse(-b.r * 0.25, -b.r * 0.3, b.r * 0.3, b.r * 0.18, -0.6, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(255,255,255,0.6)";
       ctx.fill();
+
+      ctx.globalAlpha = b.opacity * 0.2;
+      ctx.beginPath();
+      ctx.arc(0, 0, b.r + 3, 0, Math.PI * 2);
+      ctx.strokeStyle = "#4D5B47";
+      ctx.lineWidth = 1;
+      ctx.stroke();
 
       ctx.restore();
     };
 
-    const drawShadow = (ball: Ball) => {
-      const dist = Math.max(0, (GROUND - ball.y) / (GROUND + 100));
-      const scaleX = 1 - dist * 0.5;
-      const alpha = (1 - dist) * 0.15 * opacity;
+    const drawShadow = (b: typeof ball) => {
+      const dist = Math.max(0, (GROUND - b.y) / (GROUND + 100));
+      const scaleX = (1 - dist * 0.6) * (1 + (1 - b.squash) * 0.3);
+      const alpha = (1 - dist) * 0.18 * b.opacity;
 
       ctx.save();
-      ctx.translate(ball.x, GROUND + 4);
-      ctx.scale(scaleX, 0.2);
+      ctx.translate(b.x, GROUND + 3);
+      ctx.scale(scaleX, 0.15);
       ctx.beginPath();
-      ctx.arc(0, 0, ball.r, 0, Math.PI * 2);
+      ctx.arc(0, 0, b.r, 0, Math.PI * 2);
       ctx.fillStyle = `rgba(0,0,0,${alpha})`;
       ctx.fill();
       ctx.restore();
     };
 
-    const drawTrails = (ball: Ball) => {
-      for (let i = 0; i < ball.trail.length; i++) {
-        const t = ball.trail[i];
-        const alpha = t.life * 0.2 * opacity;
-        const size = ball.r * t.life * 0.6;
-        ctx.beginPath();
-        ctx.arc(t.x, t.y, size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(77,91,71,${alpha})`;
-        ctx.fill();
-      }
-    };
-
     const animate = () => {
       const now = performance.now();
-      const elapsed = (now - startTime) / 1000;
-
-      if (elapsed > 2.8 && !fadeOut) fadeOut = true;
+      const dt = Math.min((now - startTime) / 1000, 0.05);
+      startTime = now;
 
       ctx.clearRect(0, 0, w, h);
 
       if (fadeOut) {
-        opacity = Math.max(0, opacity - 0.035);
+        ball.opacity = Math.max(0, ball.opacity - 0.04);
       }
 
-      for (const ball of balls) {
+      if (ball.phase === "drop") {
         ball.vy += GRAVITY;
         ball.y += ball.vy;
-        ball.x += ball.vx;
-        ball.vx *= FRICTION;
-
-        ball.squashV += (1 - ball.squash) * 0.25;
-        ball.squashV *= 0.7;
-        ball.squash += ball.squashV;
-
-        if (ball.x < -50) ball.x = w + 50;
-        if (ball.x > w + 50) ball.x = -50;
+        ball.rotation += ball.vy * 0.003;
 
         if (ball.y + ball.r > GROUND) {
           ball.y = GROUND - ball.r;
           const impact = Math.abs(ball.vy);
-          ball.vy *= BOUNCE;
-          ball.squash = 0.6 + Math.min(impact * 0.02, 0.3);
+          ball.vy *= -0.72;
+          ball.squash = 0.65 + Math.min(impact * 0.015, 0.25);
           ball.squashV = 0;
+          ball.bounceCount++;
 
-          if (impact > 2) {
-            spawnParticles(ball, Math.min(12, Math.floor(impact * 1.2)));
+          if (ball.bounceCount >= 2) {
+            ball.phase = "roll";
+            ball.vx = 0;
+            ball.vy = 0;
           }
-          ball.bounced = true;
         }
 
-        if (!ball.bounced || Math.abs(ball.vy) > 0.5) {
-          ball.trail.push({ x: ball.x, y: ball.y, life: 1 });
+        ball.squashV += (1 - ball.squash) * 0.22;
+        ball.squashV *= 0.72;
+        ball.squash += ball.squashV;
+
+        if (Math.abs(ball.vy) > 0.3) {
+          trail.push({ x: ball.x, y: ball.y, life: 1, r: ball.r * 0.4 });
         }
-        for (let i = ball.trail.length - 1; i >= 0; i--) {
-          ball.trail[i].life -= 0.04;
-          if (ball.trail[i].life <= 0) ball.trail.splice(i, 1);
+      } else if (ball.phase === "roll") {
+        ball.rollProgress += 0.012;
+        ball.x = startX + (endX - startX) * Math.min(ball.rollProgress, 1);
+        ball.y = GROUND - ball.r;
+        ball.rotation += 0.12;
+        ball.squash = 0.88 + Math.sin(ball.rollProgress * 20) * 0.04;
+        ball.squashV = 0;
+
+        if (ball.rollProgress >= 1) {
+          ball.phase = "blast";
+          ball.blastTimer = 0;
+          spawnBlastParticles(ball.x, ball.y);
         }
 
-        for (let i = ball.particles.length - 1; i >= 0; i--) {
-          const p = ball.particles[i];
-          p.x += p.vx;
-          p.y += p.vy;
-          p.vy += 0.12;
-          p.life -= 1 / (60 * p.maxLife);
-          if (p.life <= 0) ball.particles.splice(i, 1);
+        trail.push({ x: ball.x, y: ball.y + ball.r * 0.3, life: 1, r: ball.r * 0.25 });
+      } else if (ball.phase === "blast") {
+        ball.blastTimer += dt;
+        ball.r *= 0.88;
+        ball.opacity *= 0.9;
+        ball.squash = 0.5 + Math.random() * 1;
+        ball.squashV = 0;
+
+        if (ball.blastTimer > 0.15) {
+          ball.opacity = 0;
         }
 
-        drawTrails(ball);
-        drawShadow(ball);
-        drawBall(ball);
-
-        for (const p of ball.particles) {
-          ctx.globalAlpha = p.life * opacity;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
-          ctx.fillStyle = p.color;
-          ctx.fill();
+        if (ball.opacity <= 0 && particles.length === 0 && sparks.length === 0) {
+          fadeOut = false;
+          ball.phase = "fade";
         }
-        ctx.globalAlpha = 1;
+      } else if (ball.phase === "fade") {
+        ball.opacity = 0;
       }
 
-      ctx.globalAlpha = opacity;
-      ctx.fillStyle = "#111";
-      ctx.font = `300 ${Math.max(18, Math.min(28, w * 0.022))}px Inter, sans-serif`;
-      ctx.textAlign = "center";
-      ctx.fillText("M A I S O N", w / 2, GROUND + 50);
+      for (let i = trail.length - 1; i >= 0; i--) {
+        trail[i].life -= 0.03;
+        if (trail[i].life <= 0) trail.splice(i, 1);
+      }
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.1;
+        p.vx *= 0.99;
+        p.life -= dt / p.maxLife;
+        if (p.life <= 0) particles.splice(i, 1);
+      }
+
+      for (let i = sparks.length - 1; i >= 0; i--) {
+        const s = sparks[i];
+        s.x += s.vx;
+        s.y += s.vy;
+        s.vy += 0.08;
+        s.vx *= 0.98;
+        s.life -= dt * 1.8;
+        if (s.life <= 0) sparks.splice(i, 1);
+      }
+
+      for (const t of trail) {
+        ctx.globalAlpha = t.life * 0.3 * ball.opacity;
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, t.r * t.life, 0, Math.PI * 2);
+        ctx.fillStyle = "#4D5B47";
+        ctx.fill();
+      }
       ctx.globalAlpha = 1;
 
-      if (opacity <= 0) {
-        cancelAnimationFrame(frameRef.current);
+      drawShadow(ball);
+
+      if (ball.phase !== "fade") {
+        drawBall(ball);
+      }
+
+      for (const p of particles) {
+        ctx.globalAlpha = p.life * ball.opacity;
+        if (p.glow) {
+          ctx.shadowColor = p.color;
+          ctx.shadowBlur = 8;
+        }
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.fill();
+        ctx.shadowColor = "transparent";
+        ctx.shadowBlur = 0;
+      }
+
+      for (const s of sparks) {
+        ctx.globalAlpha = s.life * ball.opacity;
+        ctx.save();
+        ctx.translate(s.x, s.y);
+        ctx.rotate(s.angle);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(s.len * s.life, 0);
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = 1.5;
+        ctx.lineCap = "round";
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      ctx.globalAlpha = 1;
+
+      const elapsed = (now - startTime) / 1000;
+      if (!fadeOut && ball.phase === "fade" && particles.length === 0) {
+        fadeOut = true;
+      }
+
+      if (ball.opacity <= 0 && ball.phase === "fade") {
         return;
       }
 
