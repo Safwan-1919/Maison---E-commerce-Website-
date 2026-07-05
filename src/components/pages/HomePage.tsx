@@ -797,7 +797,7 @@ function TrustSection({ content }: { content: SiteContent }) {
           whileInView="visible"
           viewport={{ once: true, margin: "-50px" }}
           variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-6 lg:gap-8"
+          className="grid grid-cols-2 md:grid-cols-4 gap-y-8 gap-x-4 lg:gap-8"
         >
           {items.map((item: any, i: number) => {
             const Icon = iconMap[item.icon] || Sparkles;
@@ -805,18 +805,18 @@ function TrustSection({ content }: { content: SiteContent }) {
               <motion.div
                 key={item.title}
                 variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4 } } }}
-                className="flex flex-col items-center text-center p-4"
+                className="flex flex-col items-center text-center px-2 sm:px-4"
               >
                  <motion.div
                    whileInView={{ scale: [1, 1.1, 1] }}
                    viewport={{ once: true, margin: "-50px" }}
                    transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: i * 0.3 }}
-                   className="w-11 h-11 bg-[#F0EFED] flex items-center justify-center mb-3"
+                   className="w-11 h-11 bg-[#F0EFED] flex items-center justify-center mb-3 shrink-0"
                  >
                   <Icon className="w-5 h-5 text-[#4D5B47]" strokeWidth={1.5} />
                 </motion.div>
-                <h4 className="text-[13px] font-medium text-[#111] mb-1">{item.title}</h4>
-                <p className="text-[12px] text-[#999]">{item.desc}</p>
+                <h4 className="text-[13px] font-medium text-[#111] mb-1 whitespace-nowrap sm:whitespace-normal">{item.title}</h4>
+                <p className="text-[11px] sm:text-[12px] text-[#999] leading-snug">{item.desc}</p>
               </motion.div>
             );
           })}

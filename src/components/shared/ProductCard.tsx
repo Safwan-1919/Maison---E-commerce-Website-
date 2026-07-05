@@ -211,7 +211,7 @@ export function ProductCard({
             )}
           </div>
         </div>
-        <h3 className="text-[14px] font-normal leading-tight text-[#111] line-clamp-2 min-h-[2.5em]">
+        <h3 className="text-[13px] font-normal leading-snug text-[#111]">
           {name}
         </h3>
         <div className="flex items-center gap-2">
