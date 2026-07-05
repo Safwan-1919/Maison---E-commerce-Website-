@@ -66,7 +66,7 @@ function buildDropdownData(categories: Category[], brands: Brand[]): Record<stri
 
 export function Navigation() {
   const { navigate, toggleCart, getCartCount, wishlistItems, setSearchOpen, setMobileMenuOpen, resetFilters, setFilter, compareItems, setCompareOpen, setAuthOpen } = useStore();
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, isAdmin, logout } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [cartBadgeKey, setCartBadgeKey] = useState(0);
@@ -400,6 +400,15 @@ export function Navigation() {
                         <User className="w-4 h-4" strokeWidth={1.5} />
                         My Account
                       </button>
+                      {isAdmin && (
+                        <button suppressHydrationWarning
+                          onClick={() => { navigate("admin"); setUserMenuOpen(false); }}
+                          className="w-full text-left px-4 py-2.5 text-[13px] text-[#111] hover:bg-[#F8F8F6] hover:text-[#4D5B47] transition-colors flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" strokeWidth={1.5} viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                          Admin Dashboard
+                        </button>
+                      )}
                       <button suppressHydrationWarning
                         onClick={handleLogout}
                         className="w-full text-left px-4 py-2.5 text-[13px] text-[#111] hover:bg-[#F8F8F6] hover:text-[#C53030] transition-colors flex items-center gap-2 border-t border-[#E8E8E8]"
