@@ -439,10 +439,7 @@ function CategoriesSection() {
                   <div className={`absolute inset-0 bg-gradient-to-br ${categoryColors[i % categoryColors.length]} transition-transform duration-700 group-hover:scale-105`} />
                 )}
                 <div className="absolute bottom-0 left-0 h-[2px] bg-[#4D5B47] w-0 group-hover:w-full transition-all duration-[400ms] ease-[cubic-bezier(0.25,0.1,0.25,1)]" />
-                <div className="relative z-10 h-full flex flex-col justify-between">
-                  <div className="w-11 h-11 rounded-[4px] bg-white/60 backdrop-blur-sm flex items-center justify-center text-[#4D5B47] transition-all duration-300 group-hover:bg-white group-hover:shadow-sm">
-                    {iconMap[cat.icon] || <span className="text-[18px] font-medium">{cat.name.charAt(0)}</span>}
-                  </div>
+                <div className="relative z-10 h-full flex flex-col justify-end">
                   <div>
                     <h3 className="text-[14px] font-medium text-white mb-0.5">{cat.name}</h3>
                     <span className="text-[11px] text-white/70">{cat.productCount} products</span>
