@@ -13,6 +13,7 @@ import WishlistPage from "@/components/pages/WishlistPage";
 import AccountPage from "@/components/pages/AccountPage";
 import OrderTrackingPage from "@/components/pages/OrderTrackingPage";
 import AdminPage from "@/components/pages/AdminPage";
+import { ContentPage } from "@/components/pages/ContentPage";
 import { Navigation } from "@/components/layout/Navigation";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { CartDrawer } from "@/components/layout/CartDrawer";
@@ -38,7 +39,29 @@ const validPages: Record<string, string> = {
   account: "account",
   admin: "admin",
   "order-tracking": "order-tracking",
+  // Content pages
+  "new-arrivals": "content",
+  "best-sellers": "content",
+  trending: "content",
+  sale: "content",
+  "gift-cards": "content",
+  contact: "content",
+  shipping: "content",
+  returns: "content",
+  "size-guide": "content",
+  faq: "content",
+  about: "content",
+  careers: "content",
+  sustainability: "content",
+  press: "content",
+  affiliates: "content",
+  privacy: "content",
+  terms: "content",
+  "cookie-policy": "content",
+  accessibility: "content",
 };
+
+const contentPages = new Set(Object.keys(validPages).filter((k) => validPages[k] === "content"));
 
 const pageConfig: Record<string, { component: React.ComponentType; showNav: boolean; showFooter: boolean }> = {
   home: { component: HomePage, showNav: true, showFooter: true },
@@ -128,7 +151,7 @@ function BackToTop() {
 }
 
 export default function Home() {
-  const { currentPage, compareItems, setCompareOpen, clearCompare, navigate } = useStore();
+  const { currentPage, contentPage, compareItems, setCompareOpen, clearCompare, navigate } = useStore();
   const config = pageConfig[currentPage] || pageConfig.home;
   const PageComponent = config.component;
   const [showSkeleton, setShowSkeleton] = useState(false);
@@ -156,6 +179,8 @@ export default function Home() {
         useStore.setState({ currentPage: "product", selectedProductId: id, previousPage: null });
       } else if (pageName === "order-tracking" && orderNum) {
         useStore.setState({ currentPage: "order-tracking", selectedOrderNumber: orderNum, previousPage: null });
+      } else if (contentPages.has(pageName)) {
+        useStore.setState({ currentPage: "content", contentPage: pageName, previousPage: null });
       } else {
         useStore.setState({ currentPage: pageName as any, previousPage: null });
       }
@@ -178,6 +203,8 @@ export default function Home() {
           useStore.setState({ currentPage: "product", selectedProductId: id, previousPage: null });
         } else if (pageName === "order-tracking" && orderNum) {
           useStore.setState({ currentPage: "order-tracking", selectedOrderNumber: orderNum, previousPage: null });
+        } else if (contentPages.has(pageName)) {
+          useStore.setState({ currentPage: "content", contentPage: pageName, previousPage: null });
         } else {
           useStore.setState({ currentPage: pageName as any, previousPage: null });
         }
@@ -261,7 +288,7 @@ export default function Home() {
           transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
           className="flex-1"
         >
-          {showSkeleton ? <PageSkeleton /> : <PageComponent />}
+          {showSkeleton ? <PageSkeleton /> : currentPage === "content" ? <ContentPage contentKey={contentPage || ""} /> : <PageComponent />}
         </motion.div>
       </AnimatePresence>
       {config.showFooter && <Footer />}

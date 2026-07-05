@@ -35,6 +35,28 @@ const defaultFooterLinkRoutes: Record<string, string> = {
   "Accessibility": "accessibility",
 };
 
+const contentPageKeys: Record<string, string> = {
+  "New Arrivals": "new-arrivals",
+  "Best Sellers": "best-sellers",
+  Trending: "trending",
+  Sale: "sale",
+  "Gift Cards": "gift-cards",
+  "Contact Us": "contact",
+  "Shipping Info": "shipping",
+  "Returns & Exchanges": "returns",
+  "Size Guide": "size-guide",
+  FAQs: "faq",
+  "About Us": "about",
+  Careers: "careers",
+  Sustainability: "sustainability",
+  Press: "press",
+  Affiliates: "affiliates",
+  "Privacy Policy": "privacy",
+  "Terms of Service": "terms",
+  "Cookie Policy": "cookie-policy",
+  Accessibility: "accessibility",
+};
+
 const iconMap: Record<string, typeof Instagram> = { Instagram, Twitter, Facebook, Youtube };
 
 const defaultSocialLinks = [
@@ -202,7 +224,14 @@ export function Footer() {
                 {links.map((link) => (
                   <li key={link}>
                     <button
-                      onClick={() => navigate(footerLinkRoutes[link] || "home")}
+                      onClick={() => {
+                        const key = contentPageKeys[link];
+                        if (key) {
+                          navigate("content", undefined, undefined, key);
+                        } else if (link === "New Arrivals" || link === "Best Sellers" || link === "Trending" || link === "Sale" || link === "Gift Cards") {
+                          navigate("shop");
+                        }
+                      }}
                       suppressHydrationWarning
                       className="text-[13px] text-[#999] hover:text-[#F8F8F6] hover:pl-1 transition-all duration-200"
                     >

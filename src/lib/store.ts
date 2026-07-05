@@ -10,7 +10,8 @@ export type Page =
   | 'wishlist'
   | 'account'
   | 'admin'
-  | 'order-tracking';
+  | 'order-tracking'
+  | 'content';
 
 export interface CartItem {
   id: string;
@@ -42,7 +43,8 @@ interface StoreState {
   previousPage: Page | null;
   selectedProductId: string | null;
   selectedOrderNumber: string | null;
-  navigate: (page: Page, productId?: string, orderNumber?: string) => void;
+  contentPage: string | null;
+  navigate: (page: Page, productId?: string, orderNumber?: string, contentPage?: string) => void;
   goBack: () => void;
 
   // Cart
@@ -135,25 +137,29 @@ export const useStore = create<StoreState>()(
   previousPage: null,
   selectedProductId: null,
   selectedOrderNumber: null,
-  navigate: (page, productId, orderNumber) => {
+  contentPage: null,
+      navigate: (page, productId, orderNumber, contentPage) => {
     set((state) => ({
       previousPage: state.currentPage,
       currentPage: page,
       selectedProductId: productId || null,
       selectedOrderNumber: orderNumber || null,
+      contentPage: contentPage || null,
       isMobileMenuOpen: false,
       isSearchOpen: false,
     }));
         if (typeof window !== 'undefined') {
+          const url = page === 'home' ? '/' : contentPage ? `/${contentPage}` : `/${page}${productId ? `/${productId}` : ''}${orderNumber ? `/${orderNumber}` : ''}`;
+          window.history.pushState({ page, productId, orderNumber, contentPage }, '', url);
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }
       },
       goBack: () => {
         const { previousPage } = get();
         if (previousPage) {
-          set({ currentPage: previousPage, previousPage: null });
+          set({ currentPage: previousPage, previousPage: null, contentPage: null });
         } else {
-          set({ currentPage: 'home' });
+          set({ currentPage: 'home', contentPage: null });
         }
         if (typeof window !== 'undefined') {
           window.scrollTo({ top: 0, behavior: 'smooth' });
