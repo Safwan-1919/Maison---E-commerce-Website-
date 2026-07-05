@@ -162,7 +162,7 @@ export default function Home() {
       window.history.replaceState({ page: pageName, productId: id, orderNumber: orderNum }, '', window.location.pathname);
     }
     setLoading(true);
-    const t = setTimeout(() => setLoading(false), 5500);
+    const t = setTimeout(() => setLoading(false), 6000);
     return () => clearTimeout(t);
   }, []);
 
