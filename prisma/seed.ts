@@ -888,13 +888,48 @@ async function main() {
     },
   ];
 
+  const nameToImage13to44: Record<string, number> = {
+    "Leather Tote Bag": 13,
+    "Pleated Wool Trousers": 14,
+    "Unstructured Linen Blazer": 15,
+    "Drawstring Linen Trousers": 16,
+    "Velvet Dinner Blazer": 17,
+    "Crossbody Messenger Bag": 18,
+    "Slim Fit Chinos": 19,
+    "Classic Aviator Sunglasses": 20,
+    "Merino Wool Crew Neck Sweater": 21,
+    "Cable Knit Turtleneck": 22,
+    "Leather Belt": 23,
+    "Trench Coat": 24,
+    "Wool Blend Scarf": 25,
+    "Minimalist Watch": 26,
+    "Quilted Puffer Vest": 27,
+    "Leather Wallet": 28,
+    "Slim Tapered Selvedge Denim": 29,
+    "Relaxed Fit Distressed Jeans": 30,
+    "White Leather Sneakers": 31,
+    "Skinny Fit Black Jeans": 32,
+    "Suede Chelsea Boots": 33,
+    "Wide Leg Vintage Jeans": 34,
+    "Leather Loafers": 35,
+    "Cotton Chino Blazer": 36,
+    "Cashmere Blend V-Neck": 37,
+    "Colour Block Pullover": 38,
+    "Carpenter Jeans": 39,
+    "Cargo Trousers": 40,
+    "Bomber Jacket": 41,
+    "Denim Trucker Jacket": 42,
+    "Canvas Low-Top Sneakers": 43,
+    "Canvas Backpack": 44,
+  };
+
   let productCount = 0;
   for (const p of newProducts) {
     const mrp = Math.round(p.price * (1 + 0.1 + Math.random() * 0.35));
     const discount = Math.round((1 - p.price / mrp) * 100);
     const slug = slugify(p.name);
     const brand = pickBrand(p.category);
-    const imgNum = productCount + 1;
+    const imgNum = nameToImage13to44[p.name] ?? (productCount + 1);
 
     await prisma.product.upsert({
       where: { slug },
