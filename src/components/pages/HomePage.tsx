@@ -70,6 +70,7 @@ interface Category {
   name: string;
   slug: string;
   icon: string;
+  image?: string;
   description: string;
   productCount: number;
   sortOrder: number;
@@ -429,15 +430,22 @@ function CategoriesSection() {
                 onClick={() => handleCategoryClick(cat.name)}
                 className="group relative overflow-hidden aspect-[4/5] p-5 sm:p-6 text-left rounded-[4px] transition-all duration-300 hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)]"
               >
-                <div className={`absolute inset-0 bg-gradient-to-br ${categoryColors[i % categoryColors.length]} transition-transform duration-700 group-hover:scale-105`} />
+                {cat.image ? (
+                  <>
+                    <img src={cat.image} alt={cat.name} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                  </>
+                ) : (
+                  <div className={`absolute inset-0 bg-gradient-to-br ${categoryColors[i % categoryColors.length]} transition-transform duration-700 group-hover:scale-105`} />
+                )}
                 <div className="absolute bottom-0 left-0 h-[2px] bg-[#4D5B47] w-0 group-hover:w-full transition-all duration-[400ms] ease-[cubic-bezier(0.25,0.1,0.25,1)]" />
                 <div className="relative z-10 h-full flex flex-col justify-between">
                   <div className="w-11 h-11 rounded-[4px] bg-white/60 backdrop-blur-sm flex items-center justify-center text-[#4D5B47] transition-all duration-300 group-hover:bg-white group-hover:shadow-sm">
                     {iconMap[cat.icon] || <span className="text-[18px] font-medium">{cat.name.charAt(0)}</span>}
                   </div>
                   <div>
-                    <h3 className="text-[14px] font-medium text-[#111] mb-0.5">{cat.name}</h3>
-                    <span className="text-[11px] text-[#999]">{cat.productCount} products</span>
+                    <h3 className="text-[14px] font-medium text-white mb-0.5">{cat.name}</h3>
+                    <span className="text-[11px] text-white/70">{cat.productCount} products</span>
                   </div>
                 </div>
               </motion.button>

@@ -77,6 +77,7 @@ const sidebarItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "products", label: "Products", icon: Package },
   { id: "orders", label: "Orders", icon: ShoppingCart },
+  { id: "categories", label: "Categories", icon: Tag },
   { id: "coupons", label: "Coupons", icon: Tag },
   { id: "site-content", label: "Site Content", icon: Settings },
 ];
@@ -355,6 +356,91 @@ function CouponSection() {
             )}
           </tbody>
         </table>
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Categories Section ──────────────────────────────────────────────────────
+function CategoriesSection() {
+  const { showNotification } = useStore();
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+
+  const fetchCategories = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/categories?withCounts=true");
+      const data = await res.json();
+      setCategories(data.categories || []);
+    } catch {}
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchCategories(); }, [fetchCategories]);
+
+  const handleImageUpdate = async (cat: any, newImage: string) => {
+    setSaving(cat.id);
+    try {
+      const res = await fetch("/api/categories", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: cat.id, image: newImage }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      showNotification(`${cat.name} image updated`, "success");
+      fetchCategories();
+    } catch {
+      showNotification("Failed to update category image", "error");
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-6 h-6 animate-spin text-[#999]" />
+      </div>
+    );
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+      <h2 className="text-[20px] font-medium mb-6">Manage Categories</h2>
+      <p className="text-[13px] text-[#999] mb-6">Update category images displayed on the homepage. Paste an image URL below.</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {categories.map((cat) => (
+          <div key={cat.id} className="border border-[#E8E8E8] bg-white p-4">
+            <div className="aspect-[4/5] relative overflow-hidden mb-3 bg-[#F0EFED]">
+              {cat.image ? (
+                <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-[#999] text-[13px]">No image</div>
+              )}
+              {saving === cat.id && (
+                <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
+                  <Loader2 className="w-5 h-5 animate-spin text-[#4D5B47]" />
+                </div>
+              )}
+            </div>
+            <h4 className="text-[14px] font-medium mb-1">{cat.name}</h4>
+            <p className="text-[11px] text-[#999] mb-3">{cat.productCount} products</p>
+            <div className="flex gap-2">
+              <input suppressHydrationWarning
+                type="text"
+                defaultValue={cat.image || ""}
+                placeholder="/images/category/name.png"
+                onBlur={(e) => {
+                  const val = e.target.value.trim();
+                  if (val !== (cat.image || "")) handleImageUpdate(cat, val);
+                }}
+                className="flex-1 px-3 py-2 border border-[#E8E8E8] text-[12px] outline-none focus:border-[#4D5B47] transition-colors"
+              />
+            </div>
+          </div>
+        ))}
       </div>
     </motion.div>
   );
@@ -1277,6 +1363,11 @@ export default function AdminPage() {
             {/* Site Content Section */}
             {activeSection === "site-content" && (
               <SiteContentSection />
+            )}
+
+            {/* Categories Section */}
+            {activeSection === "categories" && (
+              <CategoriesSection />
             )}
 
             {/* Coupons Section */}

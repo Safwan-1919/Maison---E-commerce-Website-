@@ -17,46 +17,56 @@ async function main() {
   // 1. UPDATE EXISTING CATEGORIES (icons + descriptions)
   // ============================================================
   console.log("📂 Updating categories...");
-  const categoryUpdates: Record<string, { icon: string; description: string }> = {
+  const categoryUpdates: Record<string, { icon: string; description: string; image: string }> = {
     "T-Shirts": {
       icon: "Shirt",
       description: "Premium cotton tees crafted for everyday comfort and effortless style.",
+      image: "/images/category/tshirt.png",
     },
     Shirts: {
       icon: "Menu",
       description: "From crisp formals to relaxed casuals, find the perfect shirt for every occasion.",
+      image: "/images/category/shirt.png",
     },
     Blazers: {
       icon: "Briefcase",
       description: "Tailored blazers that define sophistication and modern elegance.",
+      image: "/images/category/blazzer.png",
     },
     Sweaters: {
       icon: "Cloud",
       description: "Luxuriously soft knits to keep you warm in style through every season.",
+      image: "/images/category/sweater.png",
     },
     Jeans: {
       icon: "Star",
       description: "Premium denim crafted for the perfect fit and lasting durability.",
+      image: "/images/category/jeans.png",
     },
     Trousers: {
       icon: "MoveHorizontal",
       description: "Versatile trousers that transition seamlessly from office to evening.",
+      image: "/images/category/trouser.png",
     },
     Outerwear: {
       icon: "Shield",
       description: "Statement outerwear pieces designed to elevate any ensemble.",
+      image: "/images/category/outerwear.png",
     },
     Footwear: {
       icon: "Footprints",
       description: "From sneakers to loafers, step out in style with our curated footwear collection.",
+      image: "/images/category/footwear.png",
     },
     Bags: {
       icon: "ShoppingBag",
       description: "Functional yet fashionable bags for every need and occasion.",
+      image: "/images/category/bags.png",
     },
     Accessories: {
       icon: "Gem",
       description: "The finishing touches that complete your look with refined elegance.",
+      image: "/images/category/accesories.png",
     },
   };
 
@@ -70,6 +80,7 @@ async function main() {
         slug,
         icon: data.icon,
         description: data.description,
+        image: data.image,
       },
     });
   }
