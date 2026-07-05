@@ -182,7 +182,7 @@ export const useStore = create<StoreState>()(
             };
           }
           return {
-            cartItems: [...state.cartItems, { ...item, quantity: item.quantity || 1, id: `${item.productId}-${item.size}-${item.color}-${Date.now()}` }],
+            cartItems: [...state.cartItems, { ...item, quantity: item.quantity || 1, id: `${item.productId}-${item.size}-${item.color}-${crypto.randomUUID()}` }],
           };
         });
         get().showNotification('Added to cart', 'success');

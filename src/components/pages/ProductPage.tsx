@@ -493,7 +493,7 @@ export default function ProductPage() {
         const sizes: string[] = JSON.parse(product.sizes || "[]");
         const colors: string[] = JSON.parse(product.colors || "[]");
         if (!selectedSize && sizes.length > 0 && sizes[0] !== "ONE SIZE") {
-          setSelectedSize(sizes[Math.min(2, sizes.length - 1)]);
+          setSelectedSize(sizes[0]);
         }
         if (!selectedColor && colors.length > 0) {
           setSelectedColor(colors[0]);
@@ -612,6 +612,11 @@ export default function ProductPage() {
   ];
 
   const handleAddToCart = () => {
+    // Require size selection if sizes exist
+    if (sizes.length > 0 && sizes[0] !== "ONE SIZE" && !selectedSize) {
+      showNotification("Please select a size", "error");
+      return;
+    }
     addToCart({
       productId: product.id,
       name: product.name,

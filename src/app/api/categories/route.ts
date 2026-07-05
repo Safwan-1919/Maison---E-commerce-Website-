@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/auth";
 
 // GET /api/categories?withCounts=true
 export async function GET(request: NextRequest) {
@@ -51,6 +52,7 @@ export async function GET(request: NextRequest) {
 // PATCH /api/categories — update a category (admin)
 export async function PATCH(request: NextRequest) {
   try {
+    await requireAdmin();
     const body = await request.json();
     const { id, ...data } = body;
     if (!id) {
@@ -66,7 +68,14 @@ export async function PATCH(request: NextRequest) {
     }
     const updated = await db.category.update({ where: { id }, data: filtered });
     return NextResponse.json({ category: updated });
-  } catch (error) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    if (message === "Unauthorized") {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (message === "Forbidden") {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    }
     console.error("Category update error:", error);
     return NextResponse.json({ error: "Failed to update category" }, { status: 500 });
   }

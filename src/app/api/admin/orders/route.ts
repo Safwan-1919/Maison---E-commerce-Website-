@@ -58,7 +58,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "id and status are required" }, { status: 400 });
     }
 
-    const validStatuses = ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled"];
+    const validStatuses = ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled", "returned"];
     if (!validStatuses.includes(status)) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }

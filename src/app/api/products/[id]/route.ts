@@ -36,7 +36,10 @@ export async function GET(
     }
 
     // Compute image from images array
-    const imgs = typeof product.images === "string" ? JSON.parse(product.images) : (Array.isArray(product.images) ? product.images : []);
+    let imgs: string[] = [];
+    try {
+      imgs = typeof product.images === "string" ? JSON.parse(product.images) : (Array.isArray(product.images) ? product.images : []);
+    } catch { imgs = []; }
     const enrichedProduct = { ...product, image: imgs[0] || "" };
 
     // Get similar products
@@ -57,7 +60,10 @@ export async function GET(
     });
 
     const enrichedSimilar = similar.map((p) => {
-      const pImgs = typeof p.images === "string" ? JSON.parse(p.images) : (Array.isArray(p.images) ? p.images : []);
+      let pImgs: string[] = [];
+      try {
+        pImgs = typeof p.images === "string" ? JSON.parse(p.images) : (Array.isArray(p.images) ? p.images : []);
+      } catch { pImgs = []; }
       return { ...p, image: pImgs[0] || "" };
     });
 

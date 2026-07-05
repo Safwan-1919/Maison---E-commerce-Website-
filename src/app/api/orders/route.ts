@@ -83,59 +83,14 @@ export async function POST(request: NextRequest) {
 
     const { items, shippingAddress, paymentMethod, couponCode } = parsed.data;
 
-    // Calculate subtotal
-    const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-
-    // Validate and apply coupon if provided
-    let discount = 0;
-
-    if (couponCode) {
-      const coupon = await db.coupon.findUnique({
-        where: { code: couponCode.toUpperCase() },
-      });
-
-      if (!coupon || !coupon.isActive) {
-        return NextResponse.json({ success: false, error: "Invalid or inactive coupon code" }, { status: 400 });
-      }
-
-      if (coupon.expiresAt && new Date(coupon.expiresAt) < new Date()) {
-        return NextResponse.json({ success: false, error: "Coupon has expired" }, { status: 400 });
-      }
-
-      if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
-        return NextResponse.json({ success: false, error: "Coupon has reached its usage limit" }, { status: 400 });
-      }
-
-      if (coupon.minOrder && subtotal < coupon.minOrder) {
-        return NextResponse.json(
-          { success: false, error: `Minimum order amount of ₹${coupon.minOrder} required for this coupon` },
-          { status: 400 }
-        );
-      }
-
-      if (coupon.type === "percentage") {
-        discount = (subtotal * coupon.discount) / 100;
-      } else {
-        discount = coupon.discount;
-      }
-
-      // Increment coupon usage
-      await db.coupon.update({
-        where: { id: coupon.id },
-        data: { usedCount: { increment: 1 } },
-      });
-    }
-
-    const shipping = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
-    const total = Math.max(0, subtotal - discount + shipping);
-
-    // Use transaction for stock check + order creation + stock decrement
+    // Use transaction for: price verification + stock check + coupon + order creation + stock decrement
     const order = await db.$transaction(async (tx) => {
-      // Check stock availability for all items first
+      // 1. Verify prices from DB — never trust client-supplied prices
+      let subtotal = 0;
       for (const item of items) {
         const product = await tx.product.findUnique({
           where: { id: item.productId },
-          select: { stock: true, name: true },
+          select: { price: true, mrp: true, stock: true, name: true },
         });
         if (!product) {
           throw new Error(`Product not found: ${item.name}`);
@@ -143,7 +98,46 @@ export async function POST(request: NextRequest) {
         if (product.stock < item.quantity) {
           throw new Error(`Insufficient stock for ${item.name}. Available: ${product.stock}, Requested: ${item.quantity}`);
         }
+        // Override client price with DB price
+        item.price = product.price;
+        subtotal += product.price * item.quantity;
       }
+
+      // 2. Validate and apply coupon (inside transaction to prevent race condition)
+      let discount = 0;
+      if (couponCode) {
+        const coupon = await tx.coupon.findUnique({
+          where: { code: couponCode.toUpperCase() },
+        });
+
+        if (!coupon || !coupon.isActive) {
+          throw new Error("Invalid or inactive coupon code");
+        }
+        if (coupon.expiresAt && new Date(coupon.expiresAt) < new Date()) {
+          throw new Error("Coupon has expired");
+        }
+        if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
+          throw new Error("Coupon has reached its usage limit");
+        }
+        if (coupon.minOrder && subtotal < coupon.minOrder) {
+          throw new Error(`Minimum order amount of ₹${coupon.minOrder} required for this coupon`);
+        }
+
+        if (coupon.type === "percentage") {
+          discount = (subtotal * coupon.discount) / 100;
+        } else {
+          discount = coupon.discount;
+        }
+
+        // Increment coupon usage atomically inside transaction
+        await tx.coupon.update({
+          where: { id: coupon.id },
+          data: { usedCount: { increment: 1 } },
+        });
+      }
+
+      const shipping = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
+      const total = Math.max(0, subtotal - discount + shipping);
 
       // Generate unique order number with retry
       const now = new Date();
@@ -162,7 +156,7 @@ export async function POST(request: NextRequest) {
         throw new Error("Failed to generate unique order number");
       }
 
-      // Create order with items
+      // Create order with items (using DB-verified prices)
       const newOrder = await tx.order.create({
         data: {
           orderNumber,

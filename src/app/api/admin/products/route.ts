@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get("category") || "";
     const brand = searchParams.get("brand") || "";
     const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20");
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20")));
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = {};

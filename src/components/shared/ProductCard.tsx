@@ -48,15 +48,8 @@ export function ProductCard({
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
-    addToCart({
-      productId: id,
-      name,
-      price,
-      mrp,
-      image,
-      size: "M",
-      color: "Default",
-    });
+    // Open quick view so user can select size/color instead of hardcoding
+    setQuickViewProductId(id);
   };
 
   const handleWishlist = (e: React.MouseEvent) => {

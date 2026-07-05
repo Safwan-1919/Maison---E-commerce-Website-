@@ -28,7 +28,10 @@ export async function GET(request: NextRequest) {
     });
 
     const enrichedProducts = products.map((p) => {
-      const imgs = typeof p.images === "string" ? JSON.parse(p.images) : (Array.isArray(p.images) ? p.images : []);
+      let imgs: string[] = [];
+      try {
+        imgs = typeof p.images === "string" ? JSON.parse(p.images) : (Array.isArray(p.images) ? p.images : []);
+      } catch { imgs = []; }
       return {
         id: p.id,
         name: p.name,

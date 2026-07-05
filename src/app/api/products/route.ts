@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const bestSeller = searchParams.get("bestSeller");
     const flashDeal = searchParams.get("flashDeal");
     const isNew = searchParams.get("new");
-    const limit = parseInt(searchParams.get("limit") || "50");
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "50")));
     const page = parseInt(searchParams.get("page") || "1");
     const skip = (page - 1) * limit;
 
@@ -143,7 +143,10 @@ export async function GET(request: NextRequest) {
 
     // Add computed image field from images array
     const enrichedProducts = products.map((p) => {
-      const imgs = typeof p.images === "string" ? JSON.parse(p.images) : (Array.isArray(p.images) ? p.images : []);
+      let imgs: string[] = [];
+      try {
+        imgs = typeof p.images === "string" ? JSON.parse(p.images) : (Array.isArray(p.images) ? p.images : []);
+      } catch { imgs = []; }
       return { ...p, image: imgs[0] || "" };
     });
 

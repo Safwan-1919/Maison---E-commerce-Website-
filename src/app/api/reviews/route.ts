@@ -118,6 +118,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
+    // Verify the user has a delivered order containing this product
+    const hasPurchased = await db.orderItem.findFirst({
+      where: {
+        productId,
+        order: {
+          userId: user.id,
+          status: { in: ["delivered", "shipped", "confirmed", "processing"] },
+        },
+      },
+    });
+
+    if (!hasPurchased) {
+      return NextResponse.json(
+        { error: "You can only review products you have purchased" },
+        { status: 403 }
+      );
+    }
+
     // Check if user already reviewed this product
     const existingReview = await db.review.findFirst({
       where: { productId, userId: user.id },

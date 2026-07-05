@@ -15,23 +15,11 @@ export async function GET() {
   }
 }
 
-// POST /api/coupons - Create or validate coupon
+// POST /api/coupons - Create coupon (admin only)
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-
-    // If called with just { code }, validate it (used by cart/checkout)
-    if (body.code && !body.type) {
-      const coupon = await db.coupon.findUnique({ where: { code: body.code.toUpperCase() } });
-      if (!coupon) return NextResponse.json({ valid: false, message: "Invalid coupon code" });
-      if (!coupon.isActive) return NextResponse.json({ valid: false, message: "This coupon is no longer active" });
-      if (coupon.expiresAt && new Date(coupon.expiresAt) < new Date()) return NextResponse.json({ valid: false, message: "This coupon has expired" });
-      if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) return NextResponse.json({ valid: false, message: "This coupon has reached its usage limit" });
-      return NextResponse.json({ valid: true, discount: coupon.discount, type: coupon.type, minOrder: coupon.minOrder });
-    }
-
-    // Otherwise, create a new coupon (admin only)
     await requireAdmin();
+    const body = await request.json();
     const { code, type, discount, minOrder, maxUses, expiresAt, isActive } = body;
 
     if (!code || !type || discount === undefined) {
@@ -54,9 +42,10 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, coupon }, { status: 201 });
-  } catch (error: any) {
-    if (error.message === "Unauthorized") return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    if (error.message === "Forbidden") return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    if (message === "Unauthorized") return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    if (message === "Forbidden") return NextResponse.json({ error: "Admin access required" }, { status: 403 });
     console.error("Coupon create error:", error);
     return NextResponse.json({ error: "Failed to create coupon" }, { status: 500 });
   }

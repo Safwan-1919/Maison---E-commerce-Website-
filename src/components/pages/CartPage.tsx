@@ -58,10 +58,10 @@ export default function CartPage() {
     setApplyingCoupon(true);
     setCouponError("");
     try {
-      const res = await fetch("/api/coupons", {
+      const res = await fetch("/api/coupons/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: couponCode }),
+        body: JSON.stringify({ code: couponCode, orderTotal: total }),
       });
       const data = await res.json();
       if (data.valid) {
@@ -86,16 +86,8 @@ export default function CartPage() {
   };
 
   const handleAddToBag = (product: RecommendedProduct) => {
-    addToCart({
-      id: `${product.id}-M-Default-${Date.now()}`,
-      productId: product.id,
-      name: product.name,
-      price: product.price,
-      mrp: product.mrp,
-      image: product.image,
-      size: "M",
-      color: "Default",
-    });
+    // Open quick view for size/color selection instead of hardcoding
+    useStore.getState().setQuickViewProductId(product.id);
   };
 
   const shippingProgress = Math.min((total / FREE_SHIPPING_THRESHOLD) * 100, 100);
@@ -223,15 +215,17 @@ export default function CartPage() {
                     <div className="flex items-center justify-between mt-3">
                       <div className="flex items-center border border-[#E8E8E8]">
                         <button suppressHydrationWarning
+                          disabled={item.quantity <= 1}
                           onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
-                          className="w-8 h-8 flex items-center justify-center hover:bg-[#F0EFED] transition-colors"
+                          className={`w-8 h-8 flex items-center justify-center transition-colors ${item.quantity <= 1 ? 'text-[#D1D1D1] cursor-not-allowed' : 'hover:bg-[#F0EFED]'}`}
                         >
                           <Minus className="w-3 h-3" strokeWidth={1.5} />
                         </button>
                         <span className="w-10 text-center text-[13px] font-medium">{item.quantity}</span>
                         <button suppressHydrationWarning
+                          disabled={item.quantity >= 10}
                           onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
-                          className="w-8 h-8 flex items-center justify-center hover:bg-[#F0EFED] transition-colors"
+                          className={`w-8 h-8 flex items-center justify-center transition-colors ${item.quantity >= 10 ? 'text-[#D1D1D1] cursor-not-allowed' : 'hover:bg-[#F0EFED]'}`}
                         >
                           <Plus className="w-3 h-3" strokeWidth={1.5} />
                         </button>
