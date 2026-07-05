@@ -27,6 +27,18 @@ import { NewsletterPopup } from "@/components/shared/NewsletterPopup";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { GitCompareArrows, X } from "lucide-react";
 import { useCallback, useRef } from "react";
+import { LoadingScreen } from "@/components/shared/LoadingScreen";
+
+const validPages: Record<string, string> = {
+  shop: "shop",
+  product: "product",
+  cart: "cart",
+  checkout: "checkout",
+  wishlist: "wishlist",
+  account: "account",
+  admin: "admin",
+  "order-tracking": "order-tracking",
+};
 
 const pageConfig: Record<string, { component: React.ComponentType; showNav: boolean; showFooter: boolean }> = {
   home: { component: HomePage, showNav: true, showFooter: true },
@@ -116,10 +128,11 @@ function BackToTop() {
 }
 
 export default function Home() {
-  const { currentPage, compareItems, setCompareOpen, clearCompare } = useStore();
+  const { currentPage, compareItems, setCompareOpen, clearCompare, navigate } = useStore();
   const config = pageConfig[currentPage] || pageConfig.home;
   const PageComponent = config.component;
   const [showSkeleton, setShowSkeleton] = useState(false);
+  const [loading, setLoading] = useState(true);
   const prevPageRef = useRef(currentPage);
 
   useEffect(() => {
@@ -132,8 +145,54 @@ export default function Home() {
     }
   }, [currentPage]);
 
+  useEffect(() => {
+    const path = window.location.pathname;
+    const segments = path.split("/").filter(Boolean);
+    const pageName = segments[0] || "home";
+    if (validPages[pageName] && pageName !== "home") {
+      const id = segments[1] || undefined;
+      const orderNum = segments[2] || undefined;
+      if (pageName === "product" && id) {
+        useStore.setState({ currentPage: "product", selectedProductId: id, previousPage: null });
+      } else if (pageName === "order-tracking" && orderNum) {
+        useStore.setState({ currentPage: "order-tracking", selectedOrderNumber: orderNum, previousPage: null });
+      } else {
+        useStore.setState({ currentPage: pageName as any, previousPage: null });
+      }
+      window.history.replaceState({ page: pageName, productId: id, orderNumber: orderNum }, '', window.location.pathname);
+    }
+    setLoading(true);
+    const t = setTimeout(() => setLoading(false), 1200);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      const path = window.location.pathname;
+      const segments = path.split("/").filter(Boolean);
+      const pageName = segments[0] || "home";
+      if (validPages[pageName]) {
+        const id = segments[1] || undefined;
+        const orderNum = segments[2] || undefined;
+        if (pageName === "product" && id) {
+          useStore.setState({ currentPage: "product", selectedProductId: id, previousPage: null });
+        } else if (pageName === "order-tracking" && orderNum) {
+          useStore.setState({ currentPage: "order-tracking", selectedOrderNumber: orderNum, previousPage: null });
+        } else {
+          useStore.setState({ currentPage: pageName as any, previousPage: null });
+        }
+      } else {
+        useStore.setState({ currentPage: "home", previousPage: null });
+      }
+      window.scrollTo({ top: 0 });
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col bg-[#F8F8F6]">
+      {loading && <LoadingScreen />}
       {config.showNav && <AnnouncementBar />}
       {config.showNav && <Navigation />}
       <SearchOverlay />
