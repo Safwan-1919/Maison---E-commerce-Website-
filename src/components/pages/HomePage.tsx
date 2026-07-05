@@ -120,9 +120,9 @@ function HeroSection({ content }: { content: SiteContent }) {
   const bgY = useTransform(scrollYProgress, [0, 1], ["0%", "15%"]);
   const heroOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
 
-  // Smooth text scaling — completes in 70% scroll
-  const textScale = useTransform(scrollYProgress, [0, 0.7], [1, 0.1], { ease: (t: number) => 1 - Math.pow(1 - t, 3) });
-  const textOpacity = useTransform(scrollYProgress, [0.5, 0.68], [1, 0]);
+  // Smooth text scaling — completes in 60% scroll
+  const textScale = useTransform(scrollYProgress, [0, 0.6], [1, 0.45], { ease: (t: number) => 1 - Math.pow(1 - t, 3) });
+  const textOpacity = useTransform(scrollYProgress, [0.4, 0.58], [1, 0]);
 
   // Badge, subtitle, buttons fade early
   const badgeOpacity = useTransform(scrollYProgress, [0, 0.08], [1, 0]);
@@ -137,7 +137,7 @@ function HeroSection({ content }: { content: SiteContent }) {
   const heroImage = content.heroImage || "/images/hero-bg.png";
 
   return (
-    <section ref={ref} className="relative h-[300vh]">
+    <section ref={ref} className="relative h-[170vh]">
       {/* Sticky viewport */}
       <div className="sticky top-0 h-screen overflow-hidden">
         <motion.div className="absolute inset-0" style={{ y: bgY, opacity: heroOpacity }}>
