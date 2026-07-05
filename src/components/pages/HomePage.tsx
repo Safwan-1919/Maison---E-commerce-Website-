@@ -118,8 +118,17 @@ function HeroSection({ content }: { content: SiteContent }) {
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
   const bgY = useTransform(scrollYProgress, [0, 1], ["0%", "20%"]);
-  const opacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
-  const textY = useTransform(scrollYProgress, [0, 0.5], ["0%", "40%"]);
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
+
+  // Scroll-driven text scaling — text shrinks as you scroll
+  const textScale = useTransform(scrollYProgress, [0, 0.5], [1, 0.35]);
+  const textY = useTransform(scrollYProgress, [0, 0.5], ["0%", "30%"]);
+  const textOpacity = useTransform(scrollYProgress, [0, 0.4], [1, 0]);
+
+  // Badge and subtitle fade faster
+  const badgeOpacity = useTransform(scrollYProgress, [0, 0.15], [1, 0]);
+  const subtitleOpacity = useTransform(scrollYProgress, [0, 0.25], [1, 0]);
+  const buttonsOpacity = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
 
   const badge = content.heroBadge || `New Season ${new Date().getFullYear()}`;
   const title = content.heroTitle || "Redefine Your Style";
@@ -129,99 +138,112 @@ function HeroSection({ content }: { content: SiteContent }) {
   const heroImage = content.heroImage || "/images/hero-bg.png";
 
   return (
-    <motion.section ref={ref} className="relative h-screen min-h-[600px] max-h-[900px] overflow-hidden" style={{ opacity }}>
-      <motion.div className="absolute inset-0" style={{ y: bgY }}>
-        <img
-          src={heroImage}
-          alt={`${BRAND_NAME} Collection`}
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/50" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-black/30" />
-        <motion.div
-          className="absolute bottom-0 left-0 right-0 h-40"
-          animate={{ opacity: [0.3, 0.5, 0.3] }}
-          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-          style={{ background: "linear-gradient(to top, rgba(0,0,0,0.6), transparent)" }}
-        />
-      </motion.div>
-
-      <motion.div
-        className="relative z-10 h-full flex flex-col items-center justify-center text-center px-4 sm:px-6"
-        style={{ y: textY }}
-      >
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-          className="mb-4 flex items-center gap-3"
-        >
-          <span className="hidden sm:block w-8 h-[1px] bg-white/30" />
-          <span className="text-[11px] font-medium tracking-[0.3em] uppercase text-white/70">
-            {badge}
-          </span>
-          <span className="hidden sm:block w-8 h-[1px] bg-white/30" />
+    <section ref={ref} className="relative h-[150vh]">
+      {/* Sticky viewport */}
+      <div className="sticky top-0 h-screen overflow-hidden">
+        <motion.div className="absolute inset-0" style={{ y: bgY, opacity: heroOpacity }}>
+          <img
+            src={heroImage}
+            alt={`${BRAND_NAME} Collection`}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/50" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-black/30" />
+          <motion.div
+            className="absolute bottom-0 left-0 right-0 h-40"
+            animate={{ opacity: [0.3, 0.5, 0.3] }}
+            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+            style={{ background: "linear-gradient(to top, rgba(0,0,0,0.6), transparent)" }}
+          />
         </motion.div>
 
-        <motion.h1
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, delay: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
-            className="text-[32px] sm:text-[44px] md:text-[56px] lg:text-[72px] xl:text-[88px] font-medium tracking-[-0.03em] text-white leading-[0.95] mb-4 sm:mb-6"
-        >
-          {title.includes(" ") ? (
-            <>
-              {title.split(" ").slice(0, Math.ceil(title.split(" ").length / 2)).join(" ")}
-              <br />
-              <span className="italic font-normal text-white/80">{title.split(" ").slice(Math.ceil(title.split(" ").length / 2)).join(" ")}</span>
-            </>
-          ) : title}
-        </motion.h1>
-
-        <motion.p
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.55, ease: [0.25, 0.1, 0.25, 1] }}
-           className="text-[15px] sm:text-[17px] text-white/70 max-w-[90%] sm:max-w-[420px] mb-8 sm:mb-10 leading-relaxed"
-        >
-          {subtitle}
-        </motion.p>
-
+        {/* Scrolling text container — scales down with scroll */}
         <motion.div
-          initial={{ opacity: 0, scaleX: 0 }}
-          animate={{ opacity: 1, scaleX: 1 }}
-          transition={{ duration: 0.8, delay: 0.65, ease: [0.25, 0.1, 0.25, 1] }}
-          className="w-16 h-px bg-[#E8E8E8]/30 mb-8 sm:mb-10"
-        />
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.7, ease: [0.25, 0.1, 0.25, 1] }}
-          className="flex flex-col sm:flex-row gap-3 sm:gap-4"
+          className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 sm:px-6"
+          style={{
+            scale: textScale,
+            y: textY,
+            opacity: textOpacity,
+          }}
         >
-          <motion.button suppressHydrationWarning
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => useStore.getState().navigate("shop")}
-            className="px-6 sm:px-8 py-4 bg-white text-[#111] text-[12px] font-medium tracking-[0.2em] uppercase hover:bg-[#F0EFED] transition-colors flex items-center justify-center gap-2 min-w-[170px] sm:min-w-[200px]"
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+            className="mb-4 flex items-center gap-3"
+            style={{ opacity: badgeOpacity }}
           >
-            {ctaPrimary} <ArrowRight className="w-4 h-4" />
-          </motion.button>
-          <motion.button suppressHydrationWarning
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="px-6 sm:px-8 py-4 border border-white/40 text-white text-[12px] font-medium tracking-[0.2em] uppercase hover:bg-white/10 backdrop-blur-sm transition-colors flex items-center justify-center gap-2 min-w-[170px] sm:min-w-[200px]"
+            <span className="hidden sm:block w-8 h-[1px] bg-white/30" />
+            <span className="text-[11px] font-medium tracking-[0.3em] uppercase text-white/70">
+              {badge}
+            </span>
+            <span className="hidden sm:block w-8 h-[1px] bg-white/30" />
+          </motion.div>
+
+          <motion.h1
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.9, delay: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
+            className="text-[40px] sm:text-[56px] md:text-[72px] lg:text-[88px] xl:text-[110px] font-medium tracking-[-0.03em] text-white leading-[0.92] mb-4 sm:mb-6"
           >
-            {ctaSecondary}
-          </motion.button>
+            {title.includes(" ") ? (
+              <>
+                {title.split(" ").slice(0, Math.ceil(title.split(" ").length / 2)).join(" ")}
+                <br />
+                <span className="italic font-normal text-white/80">{title.split(" ").slice(Math.ceil(title.split(" ").length / 2)).join(" ")}</span>
+              </>
+            ) : title}
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.55, ease: [0.25, 0.1, 0.25, 1] }}
+            className="text-[15px] sm:text-[17px] text-white/70 max-w-[90%] sm:max-w-[420px] mb-8 sm:mb-10 leading-relaxed"
+            style={{ opacity: subtitleOpacity }}
+          >
+            {subtitle}
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, scaleX: 0 }}
+            animate={{ opacity: 1, scaleX: 1 }}
+            transition={{ duration: 0.8, delay: 0.65, ease: [0.25, 0.1, 0.25, 1] }}
+            className="w-16 h-px bg-[#E8E8E8]/30 mb-8 sm:mb-10"
+          />
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.7, ease: [0.25, 0.1, 0.25, 1] }}
+            className="flex flex-col sm:flex-row gap-3 sm:gap-4"
+            style={{ opacity: buttonsOpacity }}
+          >
+            <motion.button suppressHydrationWarning
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => useStore.getState().navigate("shop")}
+              className="px-6 sm:px-8 py-4 bg-white text-[#111] text-[12px] font-medium tracking-[0.2em] uppercase hover:bg-[#F0EFED] transition-colors flex items-center justify-center gap-2 min-w-[170px] sm:min-w-[200px]"
+            >
+              {ctaPrimary} <ArrowRight className="w-4 h-4" />
+            </motion.button>
+            <motion.button suppressHydrationWarning
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="px-6 sm:px-8 py-4 border border-white/40 text-white text-[12px] font-medium tracking-[0.2em] uppercase hover:bg-white/10 backdrop-blur-sm transition-colors flex items-center justify-center gap-2 min-w-[170px] sm:min-w-[200px]"
+            >
+              {ctaSecondary}
+            </motion.button>
+          </motion.div>
         </motion.div>
 
+        {/* Scroll indicator */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.2, duration: 0.6 }}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 z-10"
+          style={{ opacity: subtitleOpacity }}
         >
           <span className="text-[10px] tracking-[0.3em] uppercase text-white/40">Scroll</span>
           <motion.div
@@ -230,8 +252,8 @@ function HeroSection({ content }: { content: SiteContent }) {
             className="w-px h-6 bg-gradient-to-b from-white/40 to-transparent"
           />
         </motion.div>
-      </motion.div>
-    </motion.section>
+      </div>
+    </section>
   );
 }
 
