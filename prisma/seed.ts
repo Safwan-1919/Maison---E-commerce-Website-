@@ -894,10 +894,17 @@ async function main() {
     const discount = Math.round((1 - p.price / mrp) * 100);
     const slug = slugify(p.name);
     const brand = pickBrand(p.category);
+    const imgNum = productCount + 1;
 
     await prisma.product.upsert({
       where: { slug },
-      update: {},
+      update: {
+        images: JSON.stringify([
+          `/images/products/product-${imgNum}.jpg`,
+          `/images/products/product-${((imgNum + 5) % 44) + 1}.jpg`,
+          `/images/products/product-${((imgNum + 10) % 44) + 1}.jpg`,
+        ]),
+      },
       create: {
         name: p.name,
         slug,
@@ -909,9 +916,9 @@ async function main() {
         sizes: p.sizes,
         colors: p.colors,
         images: JSON.stringify([
-          `/images/products/product-${(productCount % 12) + 1}.jpg`,
-          `/images/products/product-${((productCount + 1) % 12) + 1}.jpg`,
-          `/images/products/product-${((productCount + 2) % 12) + 1}.jpg`,
+          `/images/products/product-${imgNum}.jpg`,
+          `/images/products/product-${((imgNum + 5) % 44) + 1}.jpg`,
+          `/images/products/product-${((imgNum + 10) % 44) + 1}.jpg`,
         ]),
         stock: Math.floor(Math.random() * 80) + 5,
         material: p.material,
