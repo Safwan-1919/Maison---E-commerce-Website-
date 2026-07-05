@@ -165,76 +165,55 @@ function HeroSection({ content }: { content: SiteContent }) {
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
 
-  // ── Background layers (move at different speeds) ──
+  // ── Background layers ──
   const bgScale = useTransform(scrollYProgress, [0, 1], [1, 1.15]);
   const bgY = useTransform(scrollYProgress, [0, 1], ["0%", "25%"]);
-  const bgBlur = useTransform(scrollYProgress, [0, 0.6], [0, 8]);
   const overlayOpacity = useTransform(scrollYProgress, [0, 0.5], [0.4, 0.7]);
 
-  // ── Badge — fades first, drifts up ──
-  const badgeY = useTransform(scrollYProgress, [0, 0.15], [0, -30]);
-  const badgeOpacity = useTransform(scrollYProgress, [0, 0.12], [1, 0]);
-
-  // ── Title words — staggered, each word has its own offset ──
-  const titleWords = (content.heroTitle || "Redefine Your Style").split(" ");
-
-  // ── Subtitle — fades mid, drifts up ──
-  const subtitleY = useTransform(scrollYProgress, [0, 0.25], [0, -20]);
-  const subtitleOpacity = useTransform(scrollYProgress, [0.05, 0.2], [1, 0]);
-
-  // ── Divider line — width shrinks to center ──
-  const lineWidth = useTransform(scrollYProgress, [0, 0.15], [64, 0]);
-
-  // ── Buttons — staggered exit ──
-  const btn1Y = useTransform(scrollYProgress, [0, 0.18], [0, 40]);
-  const btn1Opacity = useTransform(scrollYProgress, [0, 0.15], [1, 0]);
-  const btn2Y = useTransform(scrollYProgress, [0.02, 0.2], [0, 40]);
-  const btn2Opacity = useTransform(scrollYProgress, [0.02, 0.17], [1, 0]);
+  // ── Text container — scale + fade ──
+  const textScale = useTransform(scrollYProgress, [0, 0.55], [1, 0.35]);
+  const textOpacity = useTransform(scrollYProgress, [0.35, 0.55], [1, 0]);
 
   // ── Scroll progress bar ──
-  const progressWidth = useTransform(scrollYProgress, [0, 0.6], ["0%", "100%"]);
-
-  // ── Overall text container — final scale ──
-  const containerScale = useTransform(scrollYProgress, [0, 0.55], [1, 0.4], {
-    ease: (t: number) => 1 - Math.pow(1 - t, 3),
-  });
-  const containerOpacity = useTransform(scrollYProgress, [0.4, 0.55], [1, 0]);
+  const progressWidth = useTransform(scrollYProgress, [0, 0.55], ["0%", "100%"]);
 
   const badge = content.heroBadge || `New Season ${new Date().getFullYear()}`;
+  const title = content.heroTitle || "Redefine Your Style";
   const subtitle = content.heroSubtitle || "Considered essentials crafted from the world's finest materials. Less noise, more substance.";
   const ctaPrimary = content.heroCtaPrimary || "Shop Collection";
   const ctaSecondary = content.heroCtaSecondary || "Our Story";
   const heroImage = content.heroImage || "/images/hero-bg.png";
 
-  return (
-    <section ref={ref} className="relative h-[200vh]">
-      <div className="sticky top-0 h-screen overflow-hidden">
+  const titleWords = title.split(" ");
+  const italicStart = Math.ceil(titleWords.length / 2);
 
-        {/* ── Background with zoom + blur ── */}
-        <motion.div className="absolute inset-0" style={{ y: bgY, scale: bgScale }}>
-          <motion.img
+  return (
+    <section ref={ref} className="relative" style={{ height: "200vh" }}>
+      <div className="sticky top-0 h-screen w-full overflow-hidden">
+
+        {/* ── Background ── */}
+        <motion.div
+          className="absolute inset-0"
+          style={{ y: bgY, scale: bgScale, transformOrigin: "center center" }}
+        >
+          <img
             src={heroImage}
             alt={`${BRAND_NAME} Collection`}
             className="absolute inset-0 w-full h-full object-cover"
-            style={{ filter: useTransform(bgBlur, (v) => `blur(${v}px)`) }}
           />
           <motion.div className="absolute inset-0 bg-black" style={{ opacity: overlayOpacity }} />
           <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60" />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-black/20" />
         </motion.div>
 
-        {/* ── Scroll progress line at bottom ── */}
+        {/* ── Progress bar ── */}
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-white/10 z-20">
-          <motion.div
-            className="h-full bg-white/40"
-            style={{ width: progressWidth }}
-          />
+          <motion.div className="h-full bg-white/40" style={{ width: progressWidth }} />
         </div>
 
-        {/* ── Text content — scales down centered ── */}
+        {/* ── Text ── */}
         <motion.div
-          className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 sm:px-6"
-          style={{ scale: containerScale, opacity: containerOpacity, transformOrigin: "center center" }}
+          className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 sm:px-6 z-10"
+          style={{ scale: textScale, opacity: textOpacity, transformOrigin: "center center" }}
         >
           {/* Badge */}
           <motion.div
@@ -242,26 +221,25 @@ function HeroSection({ content }: { content: SiteContent }) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            style={{ y: badgeY, opacity: badgeOpacity }}
           >
             <span className="hidden sm:block w-8 h-[1px] bg-white/25" />
-            <span className="text-[11px] font-medium tracking-[0.3em] uppercase text-white/60">
-              {badge}
-            </span>
+            <span className="text-[11px] font-medium tracking-[0.3em] uppercase text-white/60">{badge}</span>
             <span className="hidden sm:block w-8 h-[1px] bg-white/25" />
           </motion.div>
 
-          {/* Title — each word animates independently */}
+          {/* Title */}
           <h1 className="text-[40px] sm:text-[56px] md:text-[72px] lg:text-[88px] xl:text-[110px] font-medium tracking-[-0.03em] text-white leading-[0.92] mb-5 sm:mb-7">
             {titleWords.map((word, i) => (
-              <HeroWord
+              <motion.span
                 key={i}
-                word={word}
-                index={i}
-                total={titleWords.length}
-                scrollYProgress={scrollYProgress}
-                isItalic={i >= Math.ceil(titleWords.length / 2) - 1}
-              />
+                className={i >= italicStart ? "italic font-normal text-white/80" : ""}
+                style={{ display: "inline-block", marginRight: i < titleWords.length - 1 ? "0.3em" : 0 }}
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.3 + i * 0.1, ease: [0.16, 1, 0.3, 1] }}
+              >
+                {word}
+              </motion.span>
             ))}
           </h1>
 
@@ -271,21 +249,20 @@ function HeroSection({ content }: { content: SiteContent }) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            style={{ y: subtitleY, opacity: subtitleOpacity }}
           >
             {subtitle}
           </motion.p>
 
-          {/* Divider line — shrinks to center */}
+          {/* Divider */}
           <motion.div
-            className="h-[1px] bg-white/20 mb-8 sm:mb-10"
+            className="w-16 h-[1px] bg-white/20 mb-8 sm:mb-10"
             initial={{ scaleX: 0 }}
             animate={{ scaleX: 1 }}
             transition={{ duration: 0.8, delay: 0.7, ease: [0.16, 1, 0.3, 1] }}
-            style={{ width: lineWidth, transformOrigin: "center" }}
+            style={{ transformOrigin: "center" }}
           />
 
-          {/* Buttons — staggered */}
+          {/* Buttons */}
           <motion.div
             className="flex flex-col sm:flex-row gap-3 sm:gap-4"
             initial={{ opacity: 0, y: 20 }}
@@ -297,7 +274,6 @@ function HeroSection({ content }: { content: SiteContent }) {
               whileTap={{ scale: 0.97 }}
               onClick={() => useStore.getState().navigate("shop")}
               className="px-6 sm:px-8 py-4 bg-white text-[#111] text-[12px] font-medium tracking-[0.2em] uppercase hover:bg-[#F0EFED] transition-colors flex items-center justify-center gap-2 min-w-[170px] sm:min-w-[200px]"
-              style={{ y: btn1Y, opacity: btn1Opacity }}
             >
               {ctaPrimary} <ArrowRight className="w-4 h-4" />
             </motion.button>
@@ -305,20 +281,18 @@ function HeroSection({ content }: { content: SiteContent }) {
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               className="px-6 sm:px-8 py-4 border border-white/30 text-white text-[12px] font-medium tracking-[0.2em] uppercase hover:bg-white/10 backdrop-blur-sm transition-colors flex items-center justify-center gap-2 min-w-[170px] sm:min-w-[200px]"
-              style={{ y: btn2Y, opacity: btn2Opacity }}
             >
               {ctaSecondary}
             </motion.button>
           </motion.div>
         </motion.div>
 
-        {/* ── Scroll indicator — bounces then fades ── */}
+        {/* ── Scroll indicator ── */}
         <motion.div
           className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 z-10"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.4, duration: 0.8 }}
-          style={{ opacity: subtitleOpacity }}
         >
           <span className="text-[10px] tracking-[0.3em] uppercase text-white/35">Scroll</span>
           <motion.div
@@ -329,30 +303,12 @@ function HeroSection({ content }: { content: SiteContent }) {
         </motion.div>
 
         {/* ── Corner branding ── */}
-        <motion.div
-          className="absolute top-6 left-6 sm:top-8 sm:left-8 z-10"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5, duration: 0.8 }}
-          style={{ opacity: badgeOpacity }}
-        >
-          <span className="text-[18px] sm:text-[20px] font-medium tracking-[0.15em] text-white/50 uppercase">
-            {BRAND_NAME}
-          </span>
-        </motion.div>
-
-        {/* ── Year badge — top right ── */}
-        <motion.div
-          className="absolute top-6 right-6 sm:top-8 sm:right-8 z-10"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6, duration: 0.8 }}
-          style={{ opacity: badgeOpacity }}
-        >
-          <span className="text-[11px] tracking-[0.2em] text-white/30">
-            © {new Date().getFullYear()}
-          </span>
-        </motion.div>
+        <div className="absolute top-6 left-6 sm:top-8 sm:left-8 z-10">
+          <span className="text-[18px] sm:text-[20px] font-medium tracking-[0.15em] text-white/50 uppercase">{BRAND_NAME}</span>
+        </div>
+        <div className="absolute top-6 right-6 sm:top-8 sm:right-8 z-10">
+          <span className="text-[11px] tracking-[0.2em] text-white/30">© {new Date().getFullYear()}</span>
+        </div>
       </div>
     </section>
   );
