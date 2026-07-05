@@ -36,11 +36,6 @@ const defaultFooterLinkRoutes: Record<string, string> = {
 };
 
 const contentPageKeys: Record<string, string> = {
-  "New Arrivals": "new-arrivals",
-  "Best Sellers": "best-sellers",
-  Trending: "trending",
-  Sale: "sale",
-  "Gift Cards": "gift-cards",
   "Contact Us": "contact",
   "Shipping Info": "shipping",
   "Returns & Exchanges": "returns",
@@ -55,6 +50,14 @@ const contentPageKeys: Record<string, string> = {
   "Terms of Service": "terms",
   "Cookie Policy": "cookie-policy",
   Accessibility: "accessibility",
+};
+
+const shopFilterMap: Record<string, string> = {
+  "New Arrivals": "newest",
+  "Best Sellers": "bestselling",
+  Trending: "trending",
+  Sale: "popular",
+  "Gift Cards": "popular",
 };
 
 const iconMap: Record<string, typeof Instagram> = { Instagram, Twitter, Facebook, Youtube };
@@ -226,9 +229,11 @@ export function Footer() {
                     <button
                       onClick={() => {
                         const key = contentPageKeys[link];
+                        const sort = shopFilterMap[link];
                         if (key) {
                           navigate("content", undefined, undefined, key);
-                        } else if (link === "New Arrivals" || link === "Best Sellers" || link === "Trending" || link === "Sale" || link === "Gift Cards") {
+                        } else if (sort) {
+                          useStore.getState().setFilter("sortBy", sort);
                           navigate("shop");
                         }
                       }}
