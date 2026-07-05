@@ -637,6 +637,11 @@ export default function AdminPage() {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
 
+  // Product image editing
+  const [editingImage, setEditingImage] = useState<{ id: string; name: string; images: string } | null>(null);
+  const [imageUrls, setImageUrls] = useState<string[]>(["", "", ""]);
+  const [savingImage, setSavingImage] = useState(false);
+
   // Fetch dashboard stats
   const fetchStats = useCallback(async () => {
     setLoading(true);
@@ -737,6 +742,30 @@ export default function AdminPage() {
       showNotification("Failed to update order status", "error");
     }
     setUpdatingOrderId(null);
+  };
+
+  // Handle product image update
+  const handleSaveProductImages = async () => {
+    if (!editingImage) return;
+    setSavingImage(true);
+    try {
+      const filtered = imageUrls.filter((u) => u.trim());
+      const res = await fetch("/api/admin/products", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: editingImage.id, images: JSON.stringify(filtered) }),
+      });
+      if (res.ok) {
+        showNotification("Product images updated", "success");
+        setEditingImage(null);
+        fetchProducts();
+      } else {
+        showNotification("Failed to update images", "error");
+      }
+    } catch {
+      showNotification("Failed to update images", "error");
+    }
+    setSavingImage(false);
   };
 
   // Auth guard
@@ -1156,13 +1185,22 @@ export default function AdminPage() {
                                 onClick={() => navigate("product", product.id)}
                               >
                                 <td className="py-3 px-4">
-                                  <div className="w-10 h-12 relative overflow-hidden bg-[#F0EFED]">
+                                  <button suppressHydrationWarning
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      let imgs: string[] = [];
+                                      try { imgs = JSON.parse(product.images || "[]"); } catch {}
+                                      setEditingImage({ id: product.id, name: product.name, images: product.images || "[]" });
+                                      setImageUrls([imgs[0] || "", imgs[1] || "", imgs[2] || ""]);
+                                    }}
+                                    className="w-10 h-12 relative overflow-hidden bg-[#F0EFED] hover:ring-2 hover:ring-[#4D5B47] transition-all cursor-pointer"
+                                  >
                                     <img
-                                      src={product.images?.split(",").filter(Boolean)[0] || "/placeholder.jpg"}
+                                      src={(() => { try { const imgs = JSON.parse(product.images || "[]"); return imgs[0] || "/placeholder.jpg"; } catch { return "/placeholder.jpg"; } })()}
                                       alt={product.name}
                                       className="w-10 h-12 object-cover rounded-[2px]"
                                     />
-                                  </div>
+                                  </button>
                                 </td>
                                 <td className="py-3 px-4 font-medium text-[#111] max-w-[200px]">
                                   <p className="line-clamp-1">{product.name}</p>
@@ -1377,6 +1415,71 @@ export default function AdminPage() {
           </div>
         </div>
       </div>
+
+      {/* Product Image Editor Modal */}
+      {editingImage && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white border border-[#E8E8E8] w-full max-w-[500px] p-6"
+          >
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h3 className="text-[16px] font-medium">Edit Images</h3>
+                <p className="text-[12px] text-[#999] mt-0.5">{editingImage.name}</p>
+              </div>
+              <button suppressHydrationWarning onClick={() => setEditingImage(null)} className="w-8 h-8 flex items-center justify-center hover:bg-[#F0EFED] transition-colors">
+                <span className="text-[18px] text-[#666]">×</span>
+              </button>
+            </div>
+
+            <div className="space-y-3 mb-5">
+              {imageUrls.map((url, i) => (
+                <div key={i}>
+                  <label className="text-[11px] font-medium tracking-wider uppercase text-[#999] mb-1 block">
+                    Image {i + 1} {i === 0 && "(main)"}
+                  </label>
+                  <div className="flex gap-2">
+                    {url && (
+                      <div className="w-12 h-16 bg-[#F0EFED] overflow-hidden flex-shrink-0">
+                        <img src={url} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                      </div>
+                    )}
+                    <input suppressHydrationWarning
+                      type="text"
+                      value={url}
+                      onChange={(e) => {
+                        const next = [...imageUrls];
+                        next[i] = e.target.value;
+                        setImageUrls(next);
+                      }}
+                      placeholder="/images/products/product-1.jpg or URL"
+                      className="flex-1 px-3 py-2 border border-[#E8E8E8] text-[12px] outline-none focus:border-[#4D5B47] transition-colors"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <button suppressHydrationWarning
+                onClick={() => setEditingImage(null)}
+                className="px-4 py-2 border border-[#E8E8E8] text-[12px] font-medium tracking-wide hover:bg-[#F0EFED] transition-colors"
+              >
+                Cancel
+              </button>
+              <button suppressHydrationWarning
+                onClick={handleSaveProductImages}
+                disabled={savingImage}
+                className="px-4 py-2 bg-[#111] text-[#F8F8F6] text-[12px] font-medium tracking-wide hover:bg-[#333] transition-colors disabled:opacity-50"
+              >
+                {savingImage ? "Saving..." : "Save Images"}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </main>
   );
 }
