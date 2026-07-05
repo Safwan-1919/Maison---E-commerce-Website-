@@ -154,12 +154,13 @@ function HeroSection({ content }: { content: SiteContent }) {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-          className="mb-4"
+          className="mb-4 flex items-center gap-3"
         >
-          <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/10 backdrop-blur-md border border-white/20 text-[11px] font-medium tracking-[0.2em] uppercase text-white/90">
-            <Sparkles className="w-3 h-3" />
+          <span className="hidden sm:block w-8 h-[1px] bg-white/30" />
+          <span className="text-[11px] font-medium tracking-[0.3em] uppercase text-white/70">
             {badge}
           </span>
+          <span className="hidden sm:block w-8 h-[1px] bg-white/30" />
         </motion.div>
 
         <motion.h1
