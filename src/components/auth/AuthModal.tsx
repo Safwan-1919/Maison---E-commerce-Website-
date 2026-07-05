@@ -48,8 +48,28 @@ export function AuthModal() {
       setError("Please fill in all required fields");
       return;
     }
-    if (registerForm.password.length < 6) {
-      setError("Password must be at least 6 characters");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registerForm.email)) {
+      setError("Please enter a valid email address");
+      return;
+    }
+    if (registerForm.password.length < 8) {
+      setError("Password must be at least 8 characters");
+      return;
+    }
+    if (!/[A-Z]/.test(registerForm.password)) {
+      setError("Password must contain at least one uppercase letter");
+      return;
+    }
+    if (!/[a-z]/.test(registerForm.password)) {
+      setError("Password must contain at least one lowercase letter");
+      return;
+    }
+    if (!/[0-9]/.test(registerForm.password)) {
+      setError("Password must contain at least one number");
+      return;
+    }
+    if (!/[^A-Za-z0-9]/.test(registerForm.password)) {
+      setError("Password must contain at least one special character (!@#$%^&*)");
       return;
     }
     if (registerForm.password !== registerForm.confirmPassword) {
@@ -258,7 +278,7 @@ export function AuthModal() {
                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#999]" />
                         <input suppressHydrationWarning
                           type={showPassword ? "text" : "password"}
-                          placeholder="Password (min 6 characters)"
+                          placeholder="Password"
                           value={registerForm.password}
                           onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
                           className={inputClass + " pl-11 pr-11"}
@@ -272,6 +292,22 @@ export function AuthModal() {
                           {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                       </div>
+                      {registerForm.password && (
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 px-1">
+                          {[
+                            { label: "8+ characters", met: registerForm.password.length >= 8 },
+                            { label: "Uppercase letter", met: /[A-Z]/.test(registerForm.password) },
+                            { label: "Lowercase letter", met: /[a-z]/.test(registerForm.password) },
+                            { label: "Number", met: /[0-9]/.test(registerForm.password) },
+                            { label: "Special character", met: /[^A-Za-z0-9]/.test(registerForm.password) },
+                          ].map((rule) => (
+                            <span key={rule.label} className={`text-[10px] flex items-center gap-1 ${rule.met ? "text-[#4D5B47]" : "text-[#999]"}`}>
+                              <span className={`w-1 h-1 rounded-full ${rule.met ? "bg-[#4D5B47]" : "bg-[#ccc]"}`} />
+                              {rule.label}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       <div className="relative">
                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#999]" />
                         <input suppressHydrationWarning
