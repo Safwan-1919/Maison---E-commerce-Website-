@@ -87,6 +87,7 @@ export async function GET(request: NextRequest) {
         createdAt: order.createdAt,
         items: order.items.map((item) => ({
           id: item.id,
+          productId: item.productId,
           name: item.name,
           price: canSeeSensitive ? item.price : null,
           quantity: item.quantity,

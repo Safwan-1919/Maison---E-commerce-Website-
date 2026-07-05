@@ -126,13 +126,13 @@ export default function OrderTrackingPage() {
     if (!order) return;
     order.items.forEach((item) => {
       addToCart({
-        productId: item.id,
+        productId: item.productId || item.id,
         name: item.name,
         price: item.price,
         mrp: item.price,
         image: item.image,
-        size: item.size,
-        color: item.color,
+        size: item.size || "M",
+        color: item.color || "Default",
         quantity: item.quantity,
       });
     });

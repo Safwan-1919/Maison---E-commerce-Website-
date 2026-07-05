@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useStore } from "@/lib/store";
 import { BRAND_NAME } from "@/lib/constants";
 import { motion } from "framer-motion";
@@ -228,9 +229,14 @@ const shopPages: Record<string, { title: string; subtitle: string; fetchParam: s
 export function ContentPage({ contentKey }: { contentKey: string }) {
   const { navigate } = useStore();
 
-  // If it's a shop filter page, redirect to shop
+  // If it's a shop filter page, redirect to shop via useEffect
+  useEffect(() => {
+    if (shopPages[contentKey]) {
+      navigate("shop", undefined, undefined, contentKey);
+    }
+  }, [contentKey, navigate]);
+
   if (shopPages[contentKey]) {
-    navigate("shop", undefined, undefined, contentKey);
     return null;
   }
 

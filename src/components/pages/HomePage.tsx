@@ -281,6 +281,7 @@ function HeroSection({ content }: { content: SiteContent }) {
             <motion.button suppressHydrationWarning
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
+              onClick={() => useStore.getState().navigate("content", undefined, undefined, "about")}
               className="px-6 sm:px-8 py-4 border border-white/30 text-white text-[12px] font-medium tracking-[0.2em] uppercase hover:bg-white/10 backdrop-blur-sm transition-colors flex items-center justify-center gap-2 min-w-[170px] sm:min-w-[200px]"
             >
               {ctaSecondary}

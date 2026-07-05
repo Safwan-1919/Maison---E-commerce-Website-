@@ -38,13 +38,13 @@ export async function GET(
   }
 }
 
-// PATCH /api/orders/[id] - Update order status (admin only)
+// PATCH /api/orders/[id] - Cancel order (owner or admin)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireAdmin();
+    const user = await requireAuth();
     const { id: orderNumber } = await params;
 
     const contentType = request.headers.get("content-type");
@@ -67,6 +67,24 @@ export async function PATCH(
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
+    // Admin can update any order; regular users can only cancel their own confirmed/processing orders
+    const isAdmin = user.role === "admin";
+    const isOwner = order.userId === user.id;
+
+    if (!isAdmin && !isOwner) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
+    if (!isAdmin) {
+      // Regular users can only cancel, and only confirmed/processing orders
+      if (status !== "cancelled") {
+        return NextResponse.json({ error: "You can only cancel orders" }, { status: 403 });
+      }
+      if (!["confirmed", "processing"].includes(order.status)) {
+        return NextResponse.json({ error: "This order can no longer be cancelled" }, { status: 400 });
+      }
+    }
+
     const updated = await db.order.update({
       where: { orderNumber },
       data: { status },
@@ -77,9 +95,6 @@ export async function PATCH(
   } catch (error: any) {
     if (error.message === "Unauthorized") {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    }
-    if (error.message === "Forbidden") {
-      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
     }
     console.error("Order update error:", error);
     return NextResponse.json({ error: "Failed to update order" }, { status: 500 });

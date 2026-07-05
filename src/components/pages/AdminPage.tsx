@@ -768,6 +768,26 @@ export default function AdminPage() {
     setSavingImage(false);
   };
 
+  // Handle product deletion
+  const handleDeleteProduct = async (productId: string, productName: string) => {
+    if (!confirm(`Are you sure you want to delete "${productName}"? This cannot be undone.`)) return;
+    try {
+      const res = await fetch("/api/admin/products", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: productId }),
+      });
+      if (res.ok) {
+        showNotification("Product deleted", "success");
+        fetchProducts();
+      } else {
+        showNotification("Failed to delete product", "error");
+      }
+    } catch {
+      showNotification("Failed to delete product", "error");
+    }
+  };
+
   // Auth guard
   if (authLoading) {
     return (
@@ -1172,6 +1192,7 @@ export default function AdminPage() {
                               <th className="text-left py-3 px-4 text-[11px] font-medium tracking-wider uppercase text-[#999]">Stock</th>
                               <th className="text-center py-3 px-4 text-[11px] font-medium tracking-wider uppercase text-[#999]">Rating</th>
                               <th className="text-center py-3 px-4 text-[11px] font-medium tracking-wider uppercase text-[#999]">Status</th>
+                              <th className="text-center py-3 px-4 text-[11px] font-medium tracking-wider uppercase text-[#999]">Action</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1239,11 +1260,22 @@ export default function AdminPage() {
                                     {product.stock === 0 ? "Out of Stock" : product.stock < 30 ? "Low Stock" : "In Stock"}
                                   </span>
                                 </td>
+                                <td className="py-3 px-4 text-center">
+                                  <button suppressHydrationWarning
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteProduct(product.id, product.name);
+                                    }}
+                                    className="text-[11px] text-[#C53030] hover:text-[#C53030]/80 transition-colors uppercase tracking-wide"
+                                  >
+                                    Delete
+                                  </button>
+                                </td>
                               </motion.tr>
                             ))}
                             {filteredProducts.length === 0 && (
                               <tr>
-                                <td colSpan={8} className="py-12 text-center text-[13px] text-[#999]">
+                                <td colSpan={9} className="py-12 text-center text-[13px] text-[#999]">
                                   {productSearch || productCategory ? "No products match your filters" : "No products found"}
                                 </td>
                               </tr>

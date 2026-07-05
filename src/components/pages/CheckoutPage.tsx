@@ -130,38 +130,39 @@ export default function CheckoutPage() {
 
     Promise.all([fetchProfile, fetchContent])
       .then(([userData, contentData]) => {
-        if (userData.addresses) {
+        const profile = userData.user || userData;
+        if (profile.addresses) {
           try {
-            const parsed: SavedAddress[] = JSON.parse(userData.addresses);
+            const parsed: SavedAddress[] = JSON.parse(profile.addresses);
             if (Array.isArray(parsed) && parsed.length > 0) {
               setSavedAddresses(parsed);
               const addr = parsed[0];
               setShipping((prev) => ({
                 ...prev,
-                fullName: addr.fullName || prev.fullName || userData.name || user?.name || "",
-                phone: addr.phone || prev.phone || userData.phone || "",
+                fullName: addr.fullName || prev.fullName || profile.name || user?.name || "",
+                phone: addr.phone || prev.phone || profile.phone || "",
                 address1: addr.address1 || addr.street || prev.address1,
                 address2: addr.address2 || prev.address2,
                 city: addr.city || prev.city,
                 state: addr.state || prev.state,
                 pincode: addr.pincode || addr.zip || prev.pincode,
-                email: userData.email || user?.email || prev.email,
+                email: profile.email || user?.email || prev.email,
               }));
               setSelectedAddressIdx(0);
             } else {
               setShipping((prev) => ({
                 ...prev,
-                email: userData.email || user?.email || prev.email,
-                fullName: prev.fullName || userData.name || user?.name || "",
-                phone: prev.phone || userData.phone || "",
+                email: profile.email || user?.email || prev.email,
+                fullName: prev.fullName || profile.name || user?.name || "",
+                phone: prev.phone || profile.phone || "",
               }));
             }
           } catch {
             setShipping((prev) => ({
               ...prev,
-              email: userData.email || user?.email || prev.email,
-              fullName: prev.fullName || userData.name || user?.name || "",
-              phone: prev.phone || userData.phone || "",
+              email: profile.email || user?.email || prev.email,
+              fullName: prev.fullName || profile.name || user?.name || "",
+              phone: prev.phone || profile.phone || "",
             }));
           }
         }

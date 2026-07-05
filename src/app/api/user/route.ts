@@ -99,3 +99,29 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
   }
 }
+
+// DELETE /api/user - Delete current user account
+export async function DELETE() {
+  try {
+    const user = await requireAuth();
+
+    // Delete user's data in order (handle foreign key constraints)
+    await db.$transaction(async (tx) => {
+      // Delete reviews
+      await tx.review.deleteMany({ where: { userId: user.id } });
+      // Delete wishlist items
+      await tx.wishlistItem.deleteMany({ where: { userId: user.id } });
+      // Delete notification preferences (if any)
+      // Note: Orders are kept for historical records but user info is anonymized
+      await tx.user.delete({ where: { id: user.id } });
+    });
+
+    return NextResponse.json({ success: true, message: "Account deleted successfully" });
+  } catch (error: any) {
+    if (error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    console.error("User deletion error:", error);
+    return NextResponse.json({ error: "Failed to delete account" }, { status: 500 });
+  }
+}

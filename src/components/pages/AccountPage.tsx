@@ -1204,7 +1204,22 @@ function SettingsTab() {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel className="rounded-[4px]">Cancel</AlertDialogCancel>
-                  <AlertDialogAction className="rounded-[4px] bg-[#C53030] hover:bg-[#C53030]/90 text-white">
+                  <AlertDialogAction
+                    className="rounded-[4px] bg-[#C53030] hover:bg-[#C53030]/90 text-white"
+                    onClick={async () => {
+                      try {
+                        const res = await fetch("/api/user", { method: "DELETE" });
+                        if (res.ok) {
+                          showNotification("Account deleted", "success");
+                          await logout();
+                        } else {
+                          showNotification("Failed to delete account", "error");
+                        }
+                      } catch {
+                        showNotification("Failed to delete account", "error");
+                      }
+                    }}
+                  >
                     Delete Account
                   </AlertDialogAction>
                 </AlertDialogFooter>
