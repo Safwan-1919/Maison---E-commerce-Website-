@@ -909,9 +909,9 @@ async function main() {
         sizes: p.sizes,
         colors: p.colors,
         images: JSON.stringify([
-          `/images/products/${slug}-1.jpg`,
-          `/images/products/${slug}-2.jpg`,
-          `/images/products/${slug}-3.jpg`,
+          `/images/products/product-${(productCount % 12) + 1}.jpg`,
+          `/images/products/product-${((productCount + 1) % 12) + 1}.jpg`,
+          `/images/products/product-${((productCount + 2) % 12) + 1}.jpg`,
         ]),
         stock: Math.floor(Math.random() * 80) + 5,
         material: p.material,
@@ -965,7 +965,7 @@ async function main() {
         quantity: qty,
         size: "M",
         color: "Default",
-        image: `/images/products/${prod.slug}-1.jpg`,
+        image: (() => { const imgs = typeof prod.images === 'string' ? JSON.parse(prod.images) : prod.images; return imgs[0] || '/images/products/product-1.jpg'; })(),
       });
     }
 
@@ -1405,14 +1405,14 @@ async function main() {
     editorialTitle: "Less noise. More substance.",
     editorialTitleColor: "#4D5B47",
     editorialText: "At MAISON, we believe the best style is invisible. No logos screaming for attention, no trends chasing the moment. Just exceptional materials, considered design, and pieces that speak for themselves.|Every garment is a result of hundreds of decisions \u2014 from the mill where the fabric is woven to the last stitch. We partner with the same artisans and suppliers as the world's most prestigious houses, making true luxury accessible.",
-    editorialImage: "/images/products/product-6.png",
+    editorialImage: "/images/products/product-6.jpg",
     editorialCta: "Discover Our Collection",
     editorialLabel: "SS25 Collection",
 
     features: JSON.stringify([
-      { image: "/images/products/product-4.png", badge: "New Season", title: "Knitwear", subtitle: "Cashmere & merino essentials" },
-      { image: "/images/products/product-5.png", badge: "Handcrafted", title: "Footwear", subtitle: "Boots, sneakers & more" },
-      { image: "/images/products/product-10.png", badge: "Investment Pieces", title: "Outerwear", subtitle: "Coats & jackets for every season" },
+      { image: "/images/products/product-4.jpg", badge: "New Season", title: "Knitwear", subtitle: "Cashmere & merino essentials" },
+      { image: "/images/products/product-5.jpg", badge: "Handcrafted", title: "Footwear", subtitle: "Boots, sneakers & more" },
+      { image: "/images/products/product-10.jpg", badge: "Investment Pieces", title: "Outerwear", subtitle: "Coats & jackets for every season" },
     ]),
 
     stats: JSON.stringify([
